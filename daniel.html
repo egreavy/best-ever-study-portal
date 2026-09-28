@@ -102,6 +102,13 @@
   .chapter-row .row-right{
     display:flex;align-items:center;gap:9px;flex:0 0 auto;
   }
+  .chapter-note-input{
+    flex:0 0 100%;width:100%;border:none;border-bottom:1px solid var(--card-border);
+    background:transparent;font-size:12.5px;color:var(--ink);padding:5px 2px;outline:none;
+    margin-top:2px;cursor:text;
+  }
+  .chapter-note-input::placeholder{color:var(--sub);}
+  .chapter-note-input:focus{border-bottom-color:#7c3aed;}
 
   .empty{color:var(--sub);font-size:14px;padding:10px 4px;}
   .error-box{
@@ -215,15 +222,20 @@
   .upnext-wrap{margin-bottom:22px;display:flex;flex-direction:column;gap:14px;}
   .upnext-group h4{margin:0 0 8px;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--sub);}
   .upnext-card{
-    background:#fff;border:1px solid var(--card-border);border-left:4px solid #d97706;
+    background:#fff;border:1px solid var(--card-border);border-left:4px solid #7c3aed;
     border-radius:14px;padding:12px 16px;margin-bottom:8px;cursor:pointer;
     display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
   }
-  .upnext-card:hover{border-color:#d97706;}
+  .upnext-card:hover{border-color:#7c3aed;}
   .upnext-main{flex:1;min-width:160px;}
   .upnext-title{font-weight:800;font-size:14.5px;margin:0;}
   .upnext-sub{font-size:12px;color:var(--sub);margin:2px 0 0;}
-  .upnext-note{font-size:12.5px;color:var(--ink);margin-top:6px;background:var(--bg);border-radius:8px;padding:5px 9px;display:inline-block;}
+  .upnext-note-input{
+    font-size:12.5px;color:var(--ink);margin-top:6px;background:var(--bg);border:1px solid transparent;
+    border-radius:8px;padding:5px 9px;width:100%;max-width:280px;outline:none;cursor:text;
+  }
+  .upnext-note-input::placeholder{color:var(--sub);}
+  .upnext-note-input:focus{border-color:#7c3aed;background:#fff;}
   .upnext-meta{display:flex;align-items:center;gap:10px;flex:0 0 auto;}
   .upnext-remove{
     flex:0 0 auto;width:24px;height:24px;border-radius:50%;border:none;background:transparent;
@@ -256,8 +268,8 @@
     padding:5px 10px;border-radius:8px;cursor:pointer;
   }
   .chapter-row.flagged{
-    border:1px solid #d97706;
-    border-left:4px solid #d97706;
+    border:1px solid #7c3aed;
+    border-left:4px solid #7c3aed;
     background:#fff;
   }
   .flag-icon-btn{
@@ -265,10 +277,10 @@
     font-size:15px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;
     flex:0 0 auto;line-height:1;padding:0;transition:background .15s ease,border-color .15s ease,color .15s ease;
   }
-  .flag-icon-btn:hover{border-color:#d97706;color:#d97706;}
-  .flag-icon-btn.active{background:#d97706;border-color:#d97706;color:#fff;}
+  .flag-icon-btn:hover{border-color:#7c3aed;color:#7c3aed;}
+  .flag-icon-btn.active{background:#7c3aed;border-color:#7c3aed;color:#fff;}
   .subject-flag-badge{
-    font-size:11px;font-weight:800;color:#fff;background:#d97706;
+    font-size:11px;font-weight:800;color:#fff;background:#7c3aed;
     border-radius:999px;padding:3px 9px;white-space:nowrap;
   }
   .subject-head .row-right{gap:8px;flex:0 0 auto;}
@@ -469,6 +481,7 @@ async function renderDashboard(){
                     <span class="mini-count">${done}/${totalSteps}</span>
                     <button class="flag-icon-btn${isFlagged ? " active" : ""}" data-topic="${c.id}" data-state="${flag.flagType || ""}" title="${isFlagged ? "Remove from revision list" : "Add to revision list"}" aria-label="${isFlagged ? "Remove from revision list" : "Add to revision list"}">${isFlagged ? "&check;" : "&#43;"}</button>
                   </div>
+                  ${isFlagged ? `<input type="text" class="chapter-note-input" data-topic="${c.id}" placeholder="Add a note or deadline" value="${esc(flag.note)}" />` : ""}
                 </div>`;
             }).join("")
           : `<div class="empty">No chapters yet.</div>`;
@@ -503,7 +516,7 @@ async function renderDashboard(){
         <div class="upnext-main">
           <p class="upnext-title">${esc(t.title)}</p>
           <p class="upnext-sub">${esc(subjectTitle)} &middot; Chapter ${esc(String(t.order_num ?? ""))}</p>
-          ${flag.note ? `<span class="upnext-note">${esc(flag.note)}</span>` : ""}
+          <input type="text" class="upnext-note-input" data-topic="${t.id}" placeholder="Add a note or deadline" value="${esc(flag.note)}" />
         </div>
         <div class="upnext-meta">
           <div class="mini-track"><div class="mini-fill" style="width:${pct}%"></div></div>
@@ -579,6 +592,20 @@ async function renderDashboard(){
     });
   });
 
+  document.querySelectorAll(".upnext-note-input").forEach(el => {
+    el.addEventListener("click", (ev) => ev.stopPropagation());
+    el.addEventListener("keydown", (ev) => { if (ev.key === "Enter") el.blur(); });
+    el.addEventListener("blur", async () => {
+      const topicId = el.dataset.topic;
+      const note = (el.value || "").trim();
+      await sb(`topic_flags?topic_id=eq.${topicId}&profile_id=eq.${PROFILE.id}`, {
+        method: "PATCH",
+        prefer: "return=minimal",
+        body: { note: note, updated_at: new Date().toISOString() }
+      });
+    });
+  });
+
   document.querySelectorAll(".flag-icon-btn").forEach(el => {
     el.addEventListener("click", async (ev) => {
       ev.stopPropagation();
@@ -589,14 +616,31 @@ async function renderDashboard(){
           method: "DELETE",
           prefer: "return=minimal"
         });
+        await renderDashboard();
       } else {
         await sb("topic_flags", {
           method: "POST",
           prefer: "resolution=merge-duplicates,return=minimal",
           body: [{ topic_id: topicId, profile_id: PROFILE.id, flag_type: "revise", updated_at: new Date().toISOString() }]
         });
+        await renderDashboard();
+        const noteInput = document.querySelector(`.chapter-note-input[data-topic="${topicId}"]`);
+        if (noteInput) noteInput.focus();
       }
-      await renderDashboard();
+    });
+  });
+
+  document.querySelectorAll(".chapter-note-input").forEach(el => {
+    el.addEventListener("click", (ev) => ev.stopPropagation());
+    el.addEventListener("keydown", (ev) => { if (ev.key === "Enter") el.blur(); });
+    el.addEventListener("blur", async () => {
+      const topicId = el.dataset.topic;
+      const note = (el.value || "").trim();
+      await sb(`topic_flags?topic_id=eq.${topicId}&profile_id=eq.${PROFILE.id}`, {
+        method: "PATCH",
+        prefer: "return=minimal",
+        body: { note: note, updated_at: new Date().toISOString() }
+      });
     });
   });
 
@@ -819,7 +863,7 @@ async function renderChapter(){
       ${topic && topic.notebook_url ? `<a class="notebook-link" href="${esc(topic.notebook_url)}" target="_blank" rel="noopener">Open NotebookLM notebook</a>` : ""}
       <div style="display:flex;align-items:center;gap:10px;margin-top:12px;">
         <button class="flag-icon-btn${currentFlag.flagType ? " active" : ""}" id="chapFlagToggle" title="${currentFlag.flagType ? "Remove from revision list" : "Add to revision list"}" aria-label="${currentFlag.flagType ? "Remove from revision list" : "Add to revision list"}">${currentFlag.flagType ? "&check;" : "&#43;"}</button>
-        <span style="font-size:13px;font-weight:700;color:${currentFlag.flagType ? "#d97706" : "var(--sub)"};">${currentFlag.flagType ? "Marked for revision" : "Add to revision list"}</span>
+        <span style="font-size:13px;font-weight:700;color:${currentFlag.flagType ? "#7c3aed" : "var(--sub)"};">${currentFlag.flagType ? "Marked for revision" : "Add to revision list"}</span>
       </div>
       ${currentFlag.flagType ? `
         <div class="flag-note-row" style="margin-top:8px;">
