@@ -259,15 +259,53 @@
     border-radius:999px;padding:3px 9px;white-space:nowrap;
   }
   .subject-head .row-right{gap:8px;flex:0 0 auto;}
+
+  .settings-btn{
+    width:36px;height:36px;border-radius:50%;border:1px solid var(--card-border);background:#fff;
+    color:var(--sub);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+    transition:background .15s ease,color .15s ease;
+  }
+  .settings-btn:hover{background:var(--track);color:var(--ink);}
+
+  .settings-subject{
+    background:#fff;border:1px solid var(--card-border);border-radius:18px;
+    padding:18px 20px;margin-bottom:14px;
+  }
+  .settings-subject h3{margin:0 0 2px;font-size:16px;font-weight:800;}
+  .settings-subject .sub{margin:0 0 14px;color:var(--sub);font-size:13px;}
+  .settings-step-row{
+    display:flex;align-items:center;gap:12px;padding:10px 0;
+    border-top:1px solid var(--card-border);
+  }
+  .settings-step-row:first-of-type{border-top:none;}
+  .settings-step-emoji{font-size:18px;flex:0 0 auto;width:24px;text-align:center;}
+  .settings-step-body{flex:1;}
+  .settings-step-title{font-weight:700;font-size:14px;}
+  .settings-step-title.disabled{color:var(--sub);text-decoration:line-through;text-decoration-color:var(--sub);}
+  .settings-step-blurb{font-size:12px;color:var(--sub);margin-top:1px;}
+  .settings-toggle{
+    flex:0 0 auto;width:42px;height:24px;border-radius:999px;border:none;cursor:pointer;
+    background:var(--track);position:relative;transition:background .15s ease;
+  }
+  .settings-toggle.on{background:var(--green);}
+  .settings-toggle .knob{
+    position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;
+    box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .15s ease;
+  }
+  .settings-toggle.on .knob{left:20px;}
+  .settings-hint{color:var(--sub);font-size:13px;margin:0 0 18px;}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="topbar">
     <div class="brand"><span class="dot"></span> Study Portal</div>
-    <div class="profile-pill">
-      <div class="avatar">A</div>
-      <strong style="font-size:13px;">Annabel</strong>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <button id="settingsBtn" class="settings-btn" title="Settings" aria-label="Settings">&#9881;</button>
+      <div class="profile-pill">
+        <div class="avatar">A</div>
+        <strong style="font-size:13px;">Annabel</strong>
+      </div>
     </div>
   </div>
   <div id="view"><div class="loading">Loading…</div></div>
@@ -348,15 +386,32 @@ async function renderDashboard(){
     ? await sb(`topics?select=id,title,order_num,notebook_url,subject_id&subject_id=in.${inList(subjectIds)}&order=order_num.asc`)
     : [];
 
-  const doneRows = await sb(`nlm_progress?select=topic_id&profile_id=eq.${PROFILE.id}&done=eq.true`);
-  const doneCountMap = {};
-  doneRows.forEach(r => { doneCountMap[r.topic_id] = (doneCountMap[r.topic_id] || 0) + 1; });
-
-  const templateRows = subjectIds.length
-    ? await sb(`nlm_checklist_templates?select=subject_id&subject_id=in.${inList(subjectIds)}`)
+  const templateRowsAll = subjectIds.length
+    ? await sb(`nlm_checklist_templates?select=id,subject_id,step_order&subject_id=in.${inList(subjectIds)}`)
     : [];
+  const disabledRows = await sb(`nlm_disabled_steps?select=template_id&profile_id=eq.${PROFILE.id}`);
+  const disabledSet = new Set(disabledRows.map(r => r.template_id));
+  const templateRows = templateRowsAll.filter(r => !disabledSet.has(r.id));
   const stepCountMap = {};
   templateRows.forEach(r => { stepCountMap[r.subject_id] = (stepCountMap[r.subject_id] || 0) + 1; });
+
+  const disabledStepOrdersBySubject = {};
+  templateRowsAll.forEach(r => {
+    if (disabledSet.has(r.id)) {
+      (disabledStepOrdersBySubject[r.subject_id] = disabledStepOrdersBySubject[r.subject_id] || new Set()).add(r.step_order);
+    }
+  });
+  const topicSubjectMap = {};
+  topics.forEach(t => { topicSubjectMap[t.id] = t.subject_id; });
+
+  const doneRows = await sb(`nlm_progress?select=topic_id,step_order&profile_id=eq.${PROFILE.id}&done=eq.true`);
+  const doneCountMap = {};
+  doneRows.forEach(r => {
+    const subjId = topicSubjectMap[r.topic_id];
+    const disabledOrders = disabledStepOrdersBySubject[subjId];
+    if (disabledOrders && disabledOrders.has(r.step_order)) return;
+    doneCountMap[r.topic_id] = (doneCountMap[r.topic_id] || 0) + 1;
+  });
 
   const flagRows = await sb(`topic_flags?select=topic_id,flag_type,note&profile_id=eq.${PROFILE.id}`);
   const flagMap = {};
@@ -606,9 +661,14 @@ async function renderChapter(){
   const subjectRows = topic ? await sb(`subjects?select=title&id=eq.${topic.subject_id}`) : [];
   if (topic) topic.subject_title = subjectRows[0] ? subjectRows[0].title : "";
 
-  const templateRows = topic
-    ? await sb(`nlm_checklist_templates?select=step_order,emoji,title,blurb,actions&subject_id=eq.${topic.subject_id}&order=step_order.asc`)
+  const templateRowsAll = topic
+    ? await sb(`nlm_checklist_templates?select=id,step_order,emoji,title,blurb,actions&subject_id=eq.${topic.subject_id}&order=step_order.asc`)
     : [];
+  const disabledRows = topic
+    ? await sb(`nlm_disabled_steps?select=template_id&profile_id=eq.${PROFILE.id}`)
+    : [];
+  const disabledSet = new Set(disabledRows.map(r => r.template_id));
+  const templateRows = templateRowsAll.filter(r => !disabledSet.has(r.id));
   const progressRows = await sb(`nlm_progress?select=step_order,done,resource_url&topic_id=eq.${state.topicId}&profile_id=eq.${PROFILE.id}`);
   const confidenceRows = await sb(`nlm_confidence?select=rating&topic_id=eq.${state.topicId}&profile_id=eq.${PROFILE.id}`);
   const flagRows = await sb(`topic_flags?select=flag_type,note&topic_id=eq.${state.topicId}&profile_id=eq.${PROFILE.id}`);
@@ -879,9 +939,90 @@ async function renderChapter(){
   }
 }
 
+async function renderSettings(){
+  document.getElementById("view").innerHTML = `<div class="loading">Loading settings…</div>`;
+
+  const subjects = await sb(`subjects?select=id,title&user_id=eq.${PROFILE.id}&order=title.asc`);
+  const subjectIds = subjects.map(s => s.id);
+  const templateRows = subjectIds.length
+    ? await sb(`nlm_checklist_templates?select=id,subject_id,step_order,emoji,title,blurb&subject_id=in.${inList(subjectIds)}&order=step_order.asc`)
+    : [];
+  const disabledRows = await sb(`nlm_disabled_steps?select=template_id&profile_id=eq.${PROFILE.id}`);
+  const disabledSet = new Set(disabledRows.map(r => r.template_id));
+
+  const bySubject = {};
+  subjects.forEach(s => { bySubject[s.id] = { title: s.title, steps: [] }; });
+  templateRows.forEach(t => { if (bySubject[t.subject_id]) bySubject[t.subject_id].steps.push(t); });
+
+  const html = `
+    <div class="crumb"><span id="settingsBack">&larr; Back to subjects</span></div>
+    <div class="section-head"><h2 class="section-title">Settings</h2></div>
+    <p class="settings-hint">Turn off any tasks ${esc(PROFILE.name)} doesn't want to see for a subject — like skipping the audio overview. Turned-off tasks won't count toward progress.</p>
+    ${subjectIds.length === 0 ? `<div class="empty">No subjects yet.</div>` : subjects.map(s => {
+      const steps = bySubject[s.id].steps;
+      return `
+        <div class="settings-subject">
+          <h3>${esc(s.title)}</h3>
+          <p class="sub">${steps.length} ${steps.length === 1 ? "task" : "tasks"}</p>
+          ${steps.map(t => {
+            const enabled = !disabledSet.has(t.id);
+            return `
+              <div class="settings-step-row">
+                <span class="settings-step-emoji">${t.emoji || ""}</span>
+                <div class="settings-step-body">
+                  <div class="settings-step-title${enabled ? "" : " disabled"}">${esc(t.title)}</div>
+                  <div class="settings-step-blurb">${esc(t.blurb || "")}</div>
+                </div>
+                <button class="settings-toggle ${enabled ? "on" : ""}" data-template="${t.id}" aria-label="Toggle ${esc(t.title)}"><span class="knob"></span></button>
+              </div>`;
+          }).join("")}
+        </div>`;
+    }).join("")}
+  `;
+  document.getElementById("view").innerHTML = html;
+
+  document.getElementById("settingsBack").addEventListener("click", () => {
+    state.view = "dashboard";
+    render();
+  });
+
+  document.querySelectorAll(".settings-toggle").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const templateId = btn.dataset.template;
+      const isOn = btn.classList.contains("on");
+      btn.disabled = true;
+      if (isOn) {
+        await sb("nlm_disabled_steps", {
+          method: "POST",
+          prefer: "resolution=merge-duplicates,return=minimal",
+          body: [{ template_id: templateId, profile_id: PROFILE.id }]
+        });
+      } else {
+        await sb(`nlm_disabled_steps?template_id=eq.${templateId}&profile_id=eq.${PROFILE.id}`, {
+          method: "DELETE",
+          prefer: "return=minimal"
+        });
+      }
+      btn.disabled = false;
+      btn.classList.toggle("on");
+      const titleEl = btn.closest(".settings-step-row").querySelector(".settings-step-title");
+      titleEl.classList.toggle("disabled");
+    });
+  });
+}
+
 function render(){
   if(state.view === "chapter") { renderChapter(); return; }
+  if(state.view === "settings") { renderSettings(); return; }
   renderDashboard();
+}
+
+const settingsBtn = document.getElementById("settingsBtn");
+if (settingsBtn) {
+  settingsBtn.addEventListener("click", () => {
+    state.view = "settings";
+    render();
+  });
 }
 
 render();
