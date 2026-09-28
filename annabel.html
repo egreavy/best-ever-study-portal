@@ -249,6 +249,16 @@
   }
   .chapter-row{flex-wrap:wrap;}
   .chapter-row .row-right{gap:10px;}
+  .chapter-row.flagged{
+    border:1px solid var(--flagcolor,var(--accent));
+    border-left:4px solid var(--flagcolor,var(--accent));
+    background:#fff;
+  }
+  .subject-flag-badge{
+    font-size:11px;font-weight:800;color:#fff;background:var(--flagcolor,var(--accent));
+    border-radius:999px;padding:3px 9px;white-space:nowrap;
+  }
+  .subject-head .row-right{gap:8px;flex:0 0 auto;}
 </style>
 </head>
 <body>
@@ -372,12 +382,21 @@ async function renderDashboard(){
     : subjectIds.map((sid, si) => {
         const s = bySubject[sid];
         const totalSteps = stepCountMap[sid] || 10;
+        const flaggedInSubject = s.chapters.filter(c => flagMap[c.id]);
+        const reviseInSubject = flaggedInSubject.filter(c => flagMap[c.id].flagType === "revise").length;
+        const reviewInSubject = flaggedInSubject.filter(c => flagMap[c.id].flagType === "review").length;
+        const orderedChapters = s.chapters.slice().sort((a, b) => {
+          const af = flagMap[a.id] ? 1 : 0;
+          const bf = flagMap[b.id] ? 1 : 0;
+          return bf - af;
+        });
         const chapters = s.chapters.length
-          ? s.chapters.map(c => {
+          ? orderedChapters.map(c => {
               const done = doneCountMap[c.id] || 0;
               const pct = Math.round(done / totalSteps * 100);
               const flag = flagMap[c.id] || { flagType: null, note: "" };
               const conf = confMap[c.id];
+              const flagColor = flag.flagType === "revise" ? "#d1477a" : flag.flagType === "review" ? "#3568c9" : null;
               const noteRow = flag.flagType
                 ? `<div class="flag-note-row" data-note-for="${c.id}">
                      <input type="text" data-role="note-input" placeholder="Add a note, e.g. test on Tue 29/09" value="${esc(flag.note)}" />
@@ -385,7 +404,7 @@ async function renderDashboard(){
                    </div>`
                 : "";
               return `
-                <div class="chapter-row" data-topic="${c.id}" data-subject="${sid}">
+                <div class="chapter-row${flag.flagType ? " flagged" : ""}" data-topic="${c.id}" data-subject="${sid}" ${flagColor ? `style="--flagcolor:${flagColor}"` : ""}>
                   <div class="left">
                     <div class="chapter-num">${c.order_num ?? "-"}</div>
                     <div class="chapter-title">${esc(c.title)}</div>
@@ -403,6 +422,9 @@ async function renderDashboard(){
                 </div>`;
             }).join("")
           : `<div class="empty">No chapters yet.</div>`;
+        const flagBadge = flaggedInSubject.length
+          ? `<span class="subject-flag-badge" style="--flagcolor:${reviseInSubject ? "#d1477a" : "#3568c9"}">${flaggedInSubject.length} flagged</span>`
+          : "";
         return `
           <div class="subject-card reveal" data-subject-card="${sid}" style="transition-delay:${si * 60}ms">
             <div class="subject-head" data-toggle-subject="${sid}">
@@ -413,7 +435,10 @@ async function renderDashboard(){
                   <p>${esc(s.desc || "")}</p>
                 </div>
               </div>
-              <span class="subject-count">${s.chapters.length} ${s.chapters.length === 1 ? "chapter" : "chapters"}</span>
+              <div class="row-right">
+                ${flagBadge}
+                <span class="subject-count">${s.chapters.length} ${s.chapters.length === 1 ? "chapter" : "chapters"}</span>
+              </div>
             </div>
             <div class="subject-chapters">${chapters}</div>
           </div>`;
