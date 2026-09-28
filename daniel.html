@@ -396,7 +396,7 @@ async function renderDashboard(){
               const pct = Math.round(done / totalSteps * 100);
               const flag = flagMap[c.id] || { flagType: null, note: "" };
               const conf = confMap[c.id];
-              const flagColor = flag.flagType === "revise" ? "#d1477a" : flag.flagType === "review" ? "#3568c9" : null;
+              const flagColor = flag.flagType === "revise" ? "#d97706" : flag.flagType === "review" ? "#3568c9" : null;
               const noteRow = flag.flagType
                 ? `<div class="flag-note-row" data-note-for="${c.id}">
                      <input type="text" data-role="note-input" placeholder="Add a note, e.g. test on Tue 29/09" value="${esc(flag.note)}" />
@@ -415,7 +415,7 @@ async function renderDashboard(){
                     <span class="mini-count">${done}/${totalSteps}</span>
                     <div class="flag-pills">
                       <button class="flag-pill ${flag.flagType === "review" ? "active" : ""}" style="--flagcolor:#3568c9" data-flag="review" data-topic="${c.id}">Review</button>
-                      <button class="flag-pill ${flag.flagType === "revise" ? "active" : ""}" style="--flagcolor:#d1477a" data-flag="revise" data-topic="${c.id}">Revise</button>
+                      <button class="flag-pill ${flag.flagType === "revise" ? "active" : ""}" style="--flagcolor:#d97706" data-flag="revise" data-topic="${c.id}">Revise</button>
                     </div>
                   </div>
                   ${noteRow}
@@ -423,7 +423,7 @@ async function renderDashboard(){
             }).join("")
           : `<div class="empty">No chapters yet.</div>`;
         const flagBadge = flaggedInSubject.length
-          ? `<span class="subject-flag-badge" style="--flagcolor:${reviseInSubject ? "#d1477a" : "#3568c9"}">${flaggedInSubject.length} flagged</span>`
+          ? `<span class="subject-flag-badge" style="--flagcolor:${reviseInSubject ? "#d97706" : "#3568c9"}">${flaggedInSubject.length} flagged</span>`
           : "";
         return `
           <div class="subject-card reveal" data-subject-card="${sid}" style="transition-delay:${si * 60}ms">
@@ -449,7 +449,7 @@ async function renderDashboard(){
     const totalSteps = stepCountMap[t.subject_id] || 10;
     const pct = Math.round(done / totalSteps * 100);
     const conf = confMap[t.id];
-    const flagColor = flag.flagType === "revise" ? "#d1477a" : "#3568c9";
+    const flagColor = flag.flagType === "revise" ? "#d97706" : "#3568c9";
     return `
       <div class="upnext-card" style="--flagcolor:${flagColor}" data-topic="${t.id}" data-subject="${t.subject_id}">
         <div class="upnext-main">
@@ -542,7 +542,8 @@ async function renderDashboard(){
           body: [{ topic_id: topicId, profile_id: PROFILE.id, flag_type: flagType, updated_at: new Date().toISOString() }]
         });
       }
-      renderDashboard();
+      await renderDashboard();
+      if (!isActive) window.scrollTo({ top: 0, behavior: "smooth" });
     });
   });
 
@@ -784,7 +785,7 @@ async function renderChapter(){
       ${topic && topic.notebook_url ? `<a class="notebook-link" href="${esc(topic.notebook_url)}" target="_blank" rel="noopener">Open NotebookLM notebook</a>` : ""}
       <div class="flag-pills" style="margin-top:12px;">
         <button class="flag-pill ${currentFlag.flagType === "review" ? "active" : ""}" style="--flagcolor:#3568c9" id="chapFlagReview">Review</button>
-        <button class="flag-pill ${currentFlag.flagType === "revise" ? "active" : ""}" style="--flagcolor:#d1477a" id="chapFlagRevise">Revise</button>
+        <button class="flag-pill ${currentFlag.flagType === "revise" ? "active" : ""}" style="--flagcolor:#d97706" id="chapFlagRevise">Revise</button>
       </div>
       ${currentFlag.flagType ? `
         <div class="flag-note-row" style="margin-top:8px;">
@@ -820,14 +821,17 @@ async function renderChapter(){
         method: "DELETE",
         prefer: "return=minimal"
       });
+      renderChapter();
     } else {
       await sb("topic_flags", {
         method: "POST",
         prefer: "resolution=merge-duplicates,return=minimal",
         body: [{ topic_id: state.topicId, profile_id: PROFILE.id, flag_type: flagType, updated_at: new Date().toISOString() }]
       });
+      state.view = "dashboard";
+      await renderDashboard();
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
-    renderChapter();
   }
 
   const chapFlagReview = document.getElementById("chapFlagReview");
