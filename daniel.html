@@ -85,23 +85,22 @@
   .subject-card.expanded .subject-chapters{display:block;}
 
   .chapter-row{
-    display:flex;flex-direction:column;align-items:stretch;
-    padding:12px 14px;border-radius:12px;background:var(--bg);
+    display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 14px;
+    padding:11px 14px;border-radius:12px;background:var(--bg);
     margin-top:8px;cursor:pointer;border:1px solid transparent;
   }
   .chapter-row:hover{border-color:var(--card-border);}
-  .chapter-row .left{display:flex;align-items:center;gap:10px;}
+  .chapter-row .left{display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 180px;}
   .chapter-num{
-    width:30px;height:30px;border-radius:9px;background:var(--accent);color:#fff;
-    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex:0 0 auto;
+    width:28px;height:28px;border-radius:9px;background:var(--accent);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12.5px;flex:0 0 auto;
   }
-  .chapter-title{font-weight:700;font-size:14.5px;}
-  .mini-track{width:70px;height:8px;background:var(--track);border-radius:999px;overflow:hidden;flex:0 0 auto;}
+  .chapter-title{font-weight:700;font-size:14px;}
+  .mini-track{width:56px;height:7px;background:var(--track);border-radius:999px;overflow:hidden;flex:0 0 auto;}
   .mini-fill{height:100%;background:var(--accent);}
-  .mini-count{font-size:12px;color:var(--sub);font-weight:700;}
+  .mini-count{font-size:11.5px;color:var(--sub);font-weight:700;}
   .chapter-row .row-right{
-    display:flex;align-items:center;flex-wrap:wrap;gap:10px;
-    margin-top:10px;margin-left:40px;
+    display:flex;align-items:center;gap:9px;flex:0 0 auto;
   }
 
   .empty{color:var(--sub);font-size:14px;padding:10px 4px;}
@@ -261,6 +260,13 @@
     border-left:4px solid var(--flagcolor,var(--accent));
     background:#fff;
   }
+  .flag-toggle{
+    border:1.5px solid var(--card-border);background:#fff;color:var(--sub);
+    font-size:11px;font-weight:800;padding:4px 11px;border-radius:999px;cursor:pointer;
+    white-space:nowrap;flex:0 0 auto;transition:background .15s ease,border-color .15s ease,color .15s ease;
+  }
+  .flag-toggle:hover{border-color:var(--flagcolor,var(--accent));}
+  .flag-toggle.active{background:var(--flagcolor,var(--accent));border-color:var(--flagcolor,var(--accent));color:#fff;}
   .subject-flag-badge{
     font-size:11px;font-weight:800;color:#fff;background:var(--flagcolor,var(--accent));
     border-radius:999px;padding:3px 9px;white-space:nowrap;
@@ -424,10 +430,6 @@ async function renderDashboard(){
   const flagMap = {};
   flagRows.forEach(r => { flagMap[r.topic_id] = { flagType: r.flag_type, note: r.note || "" }; });
 
-  const confRows = await sb(`nlm_confidence?select=topic_id,rating&profile_id=eq.${PROFILE.id}`);
-  const confMap = {};
-  confRows.forEach(r => { confMap[r.topic_id] = parseInt(r.rating, 10); });
-
   const bySubject = {};
   subjects.forEach(s => { bySubject[s.id] = { title: s.title, desc: s.description, chapters: [] }; });
   topics.forEach(t => { if (bySubject[t.subject_id]) bySubject[t.subject_id].chapters.push(t); });
@@ -457,14 +459,8 @@ async function renderDashboard(){
               const done = doneCountMap[c.id] || 0;
               const pct = Math.round(done / totalSteps * 100);
               const flag = flagMap[c.id] || { flagType: null, note: "" };
-              const conf = confMap[c.id];
               const flagColor = flag.flagType === "revise" ? "#d97706" : flag.flagType === "review" ? "#3568c9" : null;
-              const noteRow = flag.flagType
-                ? `<div class="flag-note-row" data-note-for="${c.id}">
-                     <input type="text" data-role="note-input" placeholder="Add a note, e.g. test on Tue 29/09" value="${esc(flag.note)}" />
-                     <button data-action="save-note" data-topic="${c.id}">Save</button>
-                   </div>`
-                : "";
+              const flagLabel = flag.flagType === "revise" ? "Revise" : flag.flagType === "review" ? "Review" : "Flag";
               return `
                 <div class="chapter-row${flag.flagType ? " flagged" : ""}" data-topic="${c.id}" data-subject="${sid}" ${flagColor ? `style="--flagcolor:${flagColor}"` : ""}>
                   <div class="left">
@@ -472,15 +468,10 @@ async function renderDashboard(){
                     <div class="chapter-title">${esc(c.title)}</div>
                   </div>
                   <div class="row-right">
-                    ${conf != null ? `<span class="conf-badge" style="background:${confColor(conf)}">${conf}/10</span>` : ""}
                     <div class="mini-track"><div class="mini-fill" style="width:${pct}%"></div></div>
                     <span class="mini-count">${done}/${totalSteps}</span>
-                    <div class="flag-pills">
-                      <button class="flag-pill ${flag.flagType === "review" ? "active" : ""}" style="--flagcolor:#3568c9" data-flag="review" data-topic="${c.id}">Review</button>
-                      <button class="flag-pill ${flag.flagType === "revise" ? "active" : ""}" style="--flagcolor:#d97706" data-flag="revise" data-topic="${c.id}">Revise</button>
-                    </div>
+                    <button class="flag-toggle${flag.flagType ? " active" : ""}" data-topic="${c.id}" data-state="${flag.flagType || ""}">${flagLabel}</button>
                   </div>
-                  ${noteRow}
                 </div>`;
             }).join("")
           : `<div class="empty">No chapters yet.</div>`;
@@ -510,7 +501,6 @@ async function renderDashboard(){
     const done = doneCountMap[t.id] || 0;
     const totalSteps = stepCountMap[t.subject_id] || 10;
     const pct = Math.round(done / totalSteps * 100);
-    const conf = confMap[t.id];
     const flagColor = flag.flagType === "revise" ? "#d97706" : "#3568c9";
     return `
       <div class="upnext-card" style="--flagcolor:${flagColor}" data-topic="${t.id}" data-subject="${t.subject_id}">
@@ -520,7 +510,6 @@ async function renderDashboard(){
           ${flag.note ? `<span class="upnext-note">${esc(flag.note)}</span>` : ""}
         </div>
         <div class="upnext-meta">
-          ${conf != null ? `<span class="conf-badge" style="background:${confColor(conf)}">${conf}/10</span>` : ""}
           <div class="mini-track"><div class="mini-fill" style="width:${pct}%"></div></div>
           <span class="mini-count">${done}/${totalSteps}</span>
           <button class="upnext-remove" data-topic="${t.id}" title="Remove from this list" aria-label="Remove from this list">&times;</button>
@@ -602,13 +591,14 @@ async function renderDashboard(){
     });
   });
 
-  document.querySelectorAll(".flag-pill").forEach(el => {
+  document.querySelectorAll(".flag-toggle").forEach(el => {
     el.addEventListener("click", async (ev) => {
       ev.stopPropagation();
       const topicId = el.dataset.topic;
-      const flagType = el.dataset.flag;
-      const isActive = el.classList.contains("active");
-      if (isActive) {
+      const order = [null, "review", "revise"];
+      const current = el.dataset.state || null;
+      const next = order[(order.indexOf(current) + 1) % order.length];
+      if (next === null) {
         await sb(`topic_flags?topic_id=eq.${topicId}&profile_id=eq.${PROFILE.id}`, {
           method: "DELETE",
           prefer: "return=minimal"
@@ -617,35 +607,11 @@ async function renderDashboard(){
         await sb("topic_flags", {
           method: "POST",
           prefer: "resolution=merge-duplicates,return=minimal",
-          body: [{ topic_id: topicId, profile_id: PROFILE.id, flag_type: flagType, updated_at: new Date().toISOString() }]
+          body: [{ topic_id: topicId, profile_id: PROFILE.id, flag_type: next, updated_at: new Date().toISOString() }]
         });
       }
       await renderDashboard();
     });
-  });
-
-  document.querySelectorAll('[data-action="save-note"]').forEach(btn => {
-    btn.addEventListener("click", async (ev) => {
-      ev.stopPropagation();
-      const topicId = btn.dataset.topic;
-      const row = btn.closest(".flag-note-row");
-      const input = row.querySelector('[data-role="note-input"]');
-      const note = (input.value || "").trim();
-      btn.disabled = true;
-      btn.textContent = "Saving...";
-      await sb(`topic_flags?topic_id=eq.${topicId}&profile_id=eq.${PROFILE.id}`, {
-        method: "PATCH",
-        prefer: "return=minimal",
-        body: { note: note, updated_at: new Date().toISOString() }
-      });
-      btn.disabled = false;
-      btn.textContent = "Saved!";
-      setTimeout(() => { btn.textContent = "Save"; }, 1200);
-    });
-  });
-
-  document.querySelectorAll('.flag-note-row input, .flag-note-row').forEach(el => {
-    el.addEventListener("click", (ev) => ev.stopPropagation());
   });
 
   observeReveal(".subject-card");
