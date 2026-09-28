@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daniel's Study Portal</title>
+<style>
+  :root{
+    color-scheme: light;
+    --ink:#232323;
+    --sub:#6b6b64;
+    --accent:#0f6e5c;
+    --accent-soft:#dcefe7;
+    --profile:#3b82f6;
+    --green:#1a7d4a;
+    --track:#e6e1d2;
+    --card-border:#e6e3da;
+    --bg:#f3f1ec;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    min-height:100vh;
+    line-height:1.55;
+    letter-spacing:0.1px;
+  }
+  .wrap{max-width:820px;margin:0 auto;padding:24px 18px 60px;}
+
+  .topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:22px;
+    flex-wrap:wrap;
+    gap:10px;
+  }
+  .brand{font-weight:800;font-size:18px;display:flex;align-items:center;gap:8px;}
+  .brand .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);}
+
+  .profile-pill{
+    display:flex;align-items:center;gap:8px;
+    background:#fff;border:1px solid var(--card-border);
+    padding:6px 12px;border-radius:999px;
+  }
+  .avatar{
+    width:28px;height:28px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    color:#fff;font-weight:800;font-size:13px;
+    background:var(--profile);
+  }
+
+  #view{}
+
+  .crumb{color:var(--sub);font-size:13px;margin-bottom:14px;cursor:pointer;}
+  .crumb span{cursor:pointer;color:var(--accent);font-weight:700;}
+  .section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:6px 0 16px;flex-wrap:wrap;}
+  .section-title{font-size:22px;font-weight:800;margin:0;}
+  .refresh-btn{
+    border:1px solid var(--card-border);background:#fff;color:var(--accent);
+    font-size:12px;font-weight:700;padding:7px 14px;border-radius:999px;cursor:pointer;
+  }
+  .refresh-btn:hover{background:var(--track);}
+
+  .subject-card{
+    background:#fff;border:1px solid var(--card-border);border-radius:18px;
+    padding:18px 20px;margin-bottom:14px;
+  }
+  .subject-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:0;cursor:pointer;user-select:none;}
+  .subject-card.expanded .subject-head{margin-bottom:10px;}
+  .subject-head-left{display:flex;align-items:center;gap:10px;}
+  .subject-head h3{margin:0;font-size:17px;font-weight:800;}
+  .subject-head p{margin:2px 0 0;color:var(--sub);font-size:13px;}
+  .subject-count{
+    font-size:12px;font-weight:700;color:var(--accent);background:var(--accent-soft);
+    padding:3px 10px;border-radius:999px;flex:0 0 auto;
+  }
+  .subject-chevron{
+    flex:0 0 auto;color:var(--sub);font-size:14px;transition:transform .15s ease;
+  }
+  .subject-card.expanded .subject-chevron{transform:rotate(90deg);}
+  .subject-chapters{display:none;}
+  .subject-card.expanded .subject-chapters{display:block;}
+
+  .chapter-row{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:12px 14px;border-radius:12px;background:var(--bg);
+    margin-top:8px;cursor:pointer;border:1px solid transparent;
+  }
+  .chapter-row:hover{border-color:var(--card-border);}
+  .chapter-row .left{display:flex;align-items:center;gap:10px;}
+  .chapter-num{
+    width:30px;height:30px;border-radius:9px;background:var(--accent);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex:0 0 auto;
+  }
+  .chapter-title{font-weight:700;font-size:14.5px;}
+  .mini-track{width:70px;height:8px;background:var(--track);border-radius:999px;overflow:hidden;}
+  .mini-fill{height:100%;background:var(--accent);}
+  .mini-count{font-size:12px;color:var(--sub);font-weight:700;margin-left:8px;}
+  .row-right{display:flex;align-items:center;}
+
+  .empty{color:var(--sub);font-size:14px;padding:10px 4px;}
+  .error-box{
+    color:#b91c1c;background:#fef2f2;border:1px solid #fecaca;border-radius:14px;
+    padding:16px 18px;font-size:13.5px;line-height:1.5;
+  }
+  .error-box strong{display:block;margin-bottom:4px;font-size:14.5px;}
+  .error-box code{display:block;margin-top:6px;background:#fff;border:1px solid #fecaca;border-radius:8px;padding:8px 10px;font-size:12px;white-space:pre-wrap;word-break:break-word;}
+  .retry-btn{
+    margin-top:12px;border:none;background:#b91c1c;color:#fff;font-size:12px;font-weight:700;
+    padding:7px 14px;border-radius:9px;cursor:pointer;
+  }
+
+  .chapter-header{
+    background:#fff;border:1px solid var(--card-border);border-radius:18px;
+    padding:20px 22px;margin-bottom:20px;
+  }
+  .chapter-eyebrow{margin:0 0 6px;color:var(--sub);font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;}
+  .chapter-header h2{margin:0 0 4px;font-size:20px;font-weight:800;}
+  .notebook-link{
+    display:inline-flex;align-items:center;gap:6px;margin-top:10px;
+    background:var(--accent-soft);color:var(--accent);font-weight:700;font-size:13px;
+    padding:7px 14px;border-radius:999px;text-decoration:none;
+  }
+  .progress-top{display:flex;justify-content:space-between;font-size:13px;font-weight:700;margin:14px 0 8px;}
+  .progress-top .count{color:var(--accent);}
+  .track{height:10px;background:var(--track);border-radius:999px;overflow:hidden;}
+  .fill{height:100%;width:0%;border-radius:999px;background:var(--accent);transition:width .3s ease;}
+  .celebrate{display:none;margin-top:10px;text-align:center;font-weight:800;color:var(--green);font-size:14px;}
+  .celebrate.show{display:block;}
+
+  .steps{display:flex;flex-direction:column;gap:12px;}
+  .step{
+    background:#fff;border-radius:16px;padding:16px 20px;
+    border:1px solid var(--card-border);
+  }
+  .step.collapsed{cursor:pointer;transition:border-color .15s ease;}
+  .step.collapsed:hover{border-color:var(--accent);}
+  .step.expanded{border:2px solid var(--accent);padding:17px 19px;}
+  .step.done .step-title{text-decoration:line-through;text-decoration-color:var(--sub);}
+  .step-head{display:flex;align-items:flex-start;gap:12px;}
+  .num{
+    flex:0 0 auto;width:32px;height:32px;border-radius:50%;background:var(--stepcolor,var(--track));
+    color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;
+  }
+  .step.done .num{background:var(--green);color:#fff;}
+  .step-body{flex:1;}
+  .step-title{margin:0;font-size:16px;font-weight:800;}
+  .step-blurb{margin:2px 0 0;color:var(--sub);font-size:13px;}
+  .check{
+    flex:0 0 auto;width:30px;height:30px;border-radius:9px;border:2.5px solid var(--card-border);
+    cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;
+    color:transparent;background:#fff;transition:background .15s ease,border-color .15s ease,transform .1s ease;
+  }
+  .step.expanded .check{border-color:var(--accent);}
+  .check:hover{background:var(--accent-soft);border-color:var(--accent);}
+  .check:active{transform:scale(.92);}
+  .step.done .check{background:var(--green);border-color:var(--green);color:#fff;}
+  @keyframes popCheck{0%{transform:scale(.7);}55%{transform:scale(1.2);}100%{transform:scale(1);}}
+  .check.just-checked{animation:popCheck .35s ease;}
+
+  .reveal{opacity:0;transform:translateY(16px);transition:opacity .5s ease,transform .5s ease;}
+  .reveal.in{opacity:1;transform:translateY(0);}
+
+  .actions{margin-top:14px;display:flex;flex-direction:column;gap:14px;}
+  .action-instruction{margin:0 0 8px;font-size:13.5px;color:var(--ink);}
+  .prompt-box{background:var(--bg);border:1px solid var(--card-border);border-radius:12px;padding:10px 12px;display:flex;gap:10px;align-items:flex-start;justify-content:space-between;}
+  .prompt-text{font-size:13.5px;line-height:1.55;color:var(--ink);}
+  .copy-btn{flex:0 0 auto;border:none;background:var(--accent-soft);color:var(--accent);font-size:12px;font-weight:700;padding:6px 10px;border-radius:9px;cursor:pointer;}
+  .copy-btn.copied{background:var(--green);color:#fff;}
+  .done-link{margin-top:8px;font-size:13px;}
+  .done-link a{color:var(--accent);font-weight:700;text-decoration:none;}
+  .done-link .change-btn{margin-left:8px;border:none;background:none;color:var(--sub);font-size:11.5px;text-decoration:underline;cursor:pointer;padding:0;}
+  .link-form{margin-top:10px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+  .link-form input{flex:1;min-width:160px;border:1px solid var(--card-border);border-radius:9px;padding:6px 10px;font-size:13px;}
+  .link-form button{flex:0 0 auto;border:none;background:var(--accent);color:#fff;font-size:12px;font-weight:700;padding:6px 12px;border-radius:9px;cursor:pointer;}
+  .skip-link{display:inline-block;margin-top:10px;color:var(--sub);font-size:12.5px;text-decoration:underline;cursor:pointer;}
+  .skip-link:hover{color:var(--ink);}
+
+  .confidence-card{
+    background:#fff;border:1px solid var(--card-border);border-radius:18px;
+    padding:20px 22px;margin-top:20px;
+  }
+  .confidence-card h3{margin:0 0 4px;font-size:16px;font-weight:800;}
+  .confidence-card .sub{margin:0 0 16px;color:var(--sub);font-size:13px;}
+  .confidence-row{display:flex;align-items:center;gap:16px;}
+  .confidence-value{
+    flex:0 0 auto;color:var(--accent);font-weight:800;font-size:22px;
+    display:flex;align-items:baseline;gap:2px;min-width:44px;justify-content:flex-end;
+  }
+  .confidence-value .max{color:var(--sub);font-weight:700;font-size:13px;}
+  .confidence-slider{
+    flex:1;-webkit-appearance:none;appearance:none;height:8px;border-radius:999px;
+    background:var(--track);outline:none;cursor:pointer;
+  }
+  .confidence-slider::-webkit-slider-thumb{
+    -webkit-appearance:none;width:24px;height:24px;border-radius:50%;background:#fff;
+    cursor:pointer;border:3px solid var(--accent);box-shadow:0 1px 4px rgba(0,0,0,.25);
+  }
+  .confidence-slider::-moz-range-thumb{
+    width:24px;height:24px;border-radius:50%;background:#fff;
+    cursor:pointer;border:3px solid var(--accent);box-shadow:0 1px 4px rgba(0,0,0,.25);
+  }
+  .confidence-labels{display:flex;justify-content:space-between;font-size:11.5px;color:var(--sub);margin-top:8px;}
+  .confidence-saved{font-size:12px;color:var(--green);font-weight:700;margin-top:10px;height:16px;opacity:0;transition:opacity .2s ease;}
+  .confidence-saved.show{opacity:1;}
+
+  .loading{color:var(--sub);text-align:center;padding:40px 0;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div class="brand"><span class="dot"></span> Study Portal</div>
+    <div class="profile-pill">
+      <div class="avatar">D</div>
+      <strong style="font-size:13px;">Daniel</strong>
+    </div>
+  </div>
+  <div id="view"><div class="loading">Loading…</div></div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://dhxwajidrtyukyxmiyml.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRoeHdhamlkcnR5dWt5eG1peW1sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYzMzYyNzQsImV4cCI6MjA1MTkxMjI3NH0.fnH1eI1vLtQASjII_6K0d6NZevD62tnthXe0uyMgh0s";
+const PROFILE = { id: "8d1d2f44-c93b-4fa4-9e15-dac1e4586623", name: "Daniel" };
+const STEP_COLORS = ["#0f8f76","#e2703a","#3568c9","#cf9a12","#d1477a","#7c5cbf"];
+
+function observeReveal(selector){
+  const els = document.querySelectorAll(selector);
+  if(!("IntersectionObserver" in window)){
+    els.forEach(el => el.classList.add("in"));
+    return;
+  }
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if(entry.isIntersecting){
+        entry.target.classList.add("in");
+        io.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.12 });
+  els.forEach(el => io.observe(el));
+}
+
+let state = { view: "dashboard", subjectId: null, topicId: null, expandedStep: null };
+let lastError = null;
+
+function esc(s){ return (s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+async function sb(path, opts){
+  opts = opts || {};
+  lastError = null;
+  try {
+    const res = await fetch(SUPABASE_URL + "/rest/v1/" + path, {
+      method: opts.method || "GET",
+      headers: Object.assign({
+        apikey: SUPABASE_KEY,
+        Authorization: "Bearer " + SUPABASE_KEY
+      }, opts.body ? { "Content-Type": "application/json" } : {}, opts.prefer ? { "Prefer": opts.prefer } : {}),
+      body: opts.body ? JSON.stringify(opts.body) : undefined
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      lastError = "Request failed (" + res.status + "): " + text.slice(0, 300);
+      return opts.method && opts.method !== "GET" ? null : [];
+    }
+    if (res.status === 204) return null;
+    const text = await res.text();
+    return text ? JSON.parse(text) : [];
+  } catch (e) {
+    lastError = "Network error: " + (e && e.message ? e.message : String(e));
+    return opts.method && opts.method !== "GET" ? null : [];
+  }
+}
+
+function inList(ids){
+  return ids.length ? "(" + ids.map(id => `"${id}"`).join(",") + ")" : '("00000000-0000-0000-0000-000000000000")';
+}
+
+async function renderDashboard(){
+  document.getElementById("view").innerHTML = `<div class="loading">Loading your subjects…</div>`;
+
+  const subjects = await sb(`subjects?select=id,title,description&user_id=eq.${PROFILE.id}&order=title.asc`);
+  const dashboardError = lastError;
+
+  const subjectIds = subjects.map(s => s.id);
+  const topics = subjectIds.length
+    ? await sb(`topics?select=id,title,order_num,notebook_url,subject_id&subject_id=in.${inList(subjectIds)}&order=order_num.asc`)
+    : [];
+
+  const doneRows = await sb(`nlm_progress?select=topic_id&profile_id=eq.${PROFILE.id}&done=eq.true`);
+  const doneCountMap = {};
+  doneRows.forEach(r => { doneCountMap[r.topic_id] = (doneCountMap[r.topic_id] || 0) + 1; });
+
+  const templateRows = subjectIds.length
+    ? await sb(`nlm_checklist_templates?select=subject_id&subject_id=in.${inList(subjectIds)}`)
+    : [];
+  const stepCountMap = {};
+  templateRows.forEach(r => { stepCountMap[r.subject_id] = (stepCountMap[r.subject_id] || 0) + 1; });
+
+  const bySubject = {};
+  subjects.forEach(s => { bySubject[s.id] = { title: s.title, desc: s.description, chapters: [] }; });
+  topics.forEach(t => { if (bySubject[t.subject_id]) bySubject[t.subject_id].chapters.push(t); });
+
+  const html = subjectIds.length === 0
+    ? (dashboardError
+        ? `<div class="error-box">
+             <strong>Couldn't load subjects</strong>
+             The database call didn't return the expected data. This usually means the connection failed or timed out — it's worth trying again.
+             <code>${esc(dashboardError)}</code>
+             <button class="retry-btn" id="retryLoad">Try again</button>
+           </div>`
+        : `<div class="empty">No subjects yet.</div>`)
+    : subjectIds.map((sid, si) => {
+        const s = bySubject[sid];
+        const totalSteps = stepCountMap[sid] || 10;
+        const chapters = s.chapters.length
+          ? s.chapters.map(c => {
+              const done = doneCountMap[c.id] || 0;
+              const pct = Math.round(done / totalSteps * 100);
+              return `
+                <div class="chapter-row" data-topic="${c.id}" data-subject="${sid}">
+                  <div class="left">
+                    <div class="chapter-num">${c.order_num ?? "-"}</div>
+                    <div class="chapter-title">${esc(c.title)}</div>
+                  </div>
+                  <div class="row-right">
+                    <div class="mini-track"><div class="mini-fill" style="width:${pct}%"></div></div>
+                    <span class="mini-count">${done}/${totalSteps}</span>
+                  </div>
+                </div>`;
+            }).join("")
+          : `<div class="empty">No chapters yet.</div>`;
+        return `
+          <div class="subject-card reveal" data-subject-card="${sid}" style="transition-delay:${si * 60}ms">
+            <div class="subject-head" data-toggle-subject="${sid}">
+              <div class="subject-head-left">
+                <span class="subject-chevron">&#9654;</span>
+                <div>
+                  <h3>${esc(s.title)}</h3>
+                  <p>${esc(s.desc || "")}</p>
+                </div>
+              </div>
+              <span class="subject-count">${s.chapters.length} ${s.chapters.length === 1 ? "chapter" : "chapters"}</span>
+            </div>
+            <div class="subject-chapters">${chapters}</div>
+          </div>`;
+      }).join("");
+
+  document.getElementById("view").innerHTML = `
+    <div class="section-head">
+      <div class="section-title">${esc(PROFILE.name)}'s subjects</div>
+      <button class="refresh-btn" id="refreshBtn">&#8635; Refresh</button>
+    </div>
+    ${html}
+  `;
+
+  const refreshBtn = document.getElementById("refreshBtn");
+  if(refreshBtn) refreshBtn.addEventListener("click", renderDashboard);
+  const retryBtn = document.getElementById("retryLoad");
+  if(retryBtn) retryBtn.addEventListener("click", renderDashboard);
+
+  document.querySelectorAll("[data-toggle-subject]").forEach(el => {
+    el.addEventListener("click", () => {
+      el.closest(".subject-card").classList.toggle("expanded");
+    });
+  });
+
+  document.querySelectorAll(".chapter-row").forEach(el => {
+    el.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      state.topicId = el.dataset.topic;
+      state.subjectId = el.dataset.subject;
+      state.view = "chapter";
+      state.expandedStep = null;
+      render();
+    });
+  });
+
+  observeReveal(".subject-card");
+}
+
+function actionHTML(a){
+  if(a.type === "prompt"){
+    return `
+      <div class="action">
+        <p class="action-instruction">Paste the prompt below into the NotebookLM chat window.</p>
+        <div class="prompt-box">
+          <div class="prompt-text">${esc(a.text)}</div>
+          <button class="copy-btn" data-text="${encodeURIComponent(a.text)}">Copy</button>
+        </div>
+      </div>`;
+  }
+  if(a.type === "customize"){
+    return `
+      <div class="action">
+        <p class="action-instruction">In the Studio panel, click Customize, paste the prompt below, then generate.</p>
+        <div class="prompt-box">
+          <div class="prompt-text">${esc(a.text)}</div>
+          <button class="copy-btn" data-text="${encodeURIComponent(a.text)}">Copy</button>
+        </div>
+      </div>`;
+  }
+  return `<div class="action"><p class="action-instruction" style="margin-bottom:0;">${esc(a.text)}</p></div>`;
+}
+
+async function renderChapter(){
+  document.getElementById("view").innerHTML = `<div class="loading">Loading chapter…</div>`;
+
+  const topicRows = await sb(`topics?select=id,title,notebook_url,subject_id,order_num&id=eq.${state.topicId}`);
+  const topic = topicRows[0];
+  const subjectRows = topic ? await sb(`subjects?select=title&id=eq.${topic.subject_id}`) : [];
+  if (topic) topic.subject_title = subjectRows[0] ? subjectRows[0].title : "";
+
+  const templateRows = topic
+    ? await sb(`nlm_checklist_templates?select=step_order,emoji,title,blurb,actions&subject_id=eq.${topic.subject_id}&order=step_order.asc`)
+    : [];
+  const progressRows = await sb(`nlm_progress?select=step_order,done,resource_url&topic_id=eq.${state.topicId}&profile_id=eq.${PROFILE.id}`);
+  const confidenceRows = await sb(`nlm_confidence?select=rating&topic_id=eq.${state.topicId}&profile_id=eq.${PROFILE.id}`);
+
+  const doneMap = {};
+  progressRows.forEach(r => { doneMap[r.step_order] = { done: !!r.done, resourceUrl: r.resource_url || "" }; });
+  const confidenceRating = confidenceRows[0] ? parseInt(confidenceRows[0].rating, 10) : null;
+
+  const stepOrders = templateRows.map(t => t.step_order);
+  if (state.expandedStep === null || !stepOrders.includes(state.expandedStep)) {
+    const firstNotDone = templateRows.find(t => !(doneMap[t.step_order] || {}).done);
+    state.expandedStep = firstNotDone ? firstNotDone.step_order : (stepOrders[stepOrders.length - 1] ?? null);
+  }
+
+  function totalSteps(){ return templateRows.length || 10; }
+  function doneCount(){ return Object.values(doneMap).filter(v => v.done).length; }
+
+  function stepHTML(t, i){
+    const actions = Array.isArray(t.actions) ? t.actions : (typeof t.actions === "string" ? JSON.parse(t.actions) : []);
+    const entry = doneMap[t.step_order] || { done: false, resourceUrl: "" };
+    const isDone = entry.done;
+    const isExpanded = t.step_order === state.expandedStep;
+    const stepColor = STEP_COLORS[i % STEP_COLORS.length];
+
+    if (!isExpanded) {
+      return `
+        <div class="step collapsed ${isDone ? "done" : ""}" data-expand="${t.step_order}" style="--stepcolor:${stepColor}">
+          <div class="step-head">
+            <div class="num">${isDone ? "&#10003;" : t.step_order}</div>
+            <div class="step-body">
+              <p class="step-title">${esc(t.title)}</p>
+              <p class="step-blurb">${esc(t.blurb || "")}</p>
+            </div>
+            <div class="check" data-step="${t.step_order}" data-done="${isDone}">&#10003;</div>
+          </div>
+        </div>`;
+    }
+
+    let linkLine = "";
+    if (entry.resourceUrl) {
+      linkLine = `<div class="done-link"><a href="${esc(entry.resourceUrl)}" target="_blank" rel="noopener">Open saved link for this step</a><button class="change-btn" data-step="${t.step_order}" data-action="change-link">change</button></div>`;
+    } else {
+      linkLine = `
+        <div class="link-form" data-step="${t.step_order}">
+          <input type="url" placeholder="Paste a link to the resource you generated for this step" data-role="link-input" />
+          <button data-action="save-link" data-step="${t.step_order}">Save link</button>
+        </div>`;
+    }
+    const nextStep = templateRows[i + 1] ? templateRows[i + 1].step_order : null;
+    return `
+      <div class="step expanded ${isDone ? "done" : ""}" style="--stepcolor:${stepColor}">
+        <div class="step-head">
+          <div class="num">${isDone ? "&#10003;" : t.step_order}</div>
+          <div class="step-body">
+            <p class="step-title">${esc(t.title)}</p>
+          </div>
+          <div class="check" data-step="${t.step_order}" data-done="${isDone}">&#10003;</div>
+        </div>
+        <div class="actions">${actions.map(a => actionHTML(a)).join("")}</div>
+        ${linkLine}
+        ${nextStep !== null ? `<span class="skip-link" data-skip-to="${nextStep}">Skip for now, go to next step</span>` : ""}
+      </div>`;
+  }
+
+  function updateProgressUI(){
+    const dc = doneCount(), ts = totalSteps();
+    const countEl = document.getElementById("doneCount");
+    const fillEl = document.getElementById("fill");
+    const celebrateEl = document.getElementById("celebrate");
+    if (countEl) countEl.textContent = `${dc}/${ts} complete`;
+    if (fillEl) fillEl.style.width = `${dc / ts * 100}%`;
+    if (celebrateEl) celebrateEl.classList.toggle("show", dc === ts && ts > 0);
+  }
+
+  function bindStepEvents(){
+    const stepsEl = document.getElementById("stepsContainer");
+    if (!stepsEl) return;
+
+    stepsEl.querySelectorAll("[data-expand]").forEach(el => {
+      el.addEventListener("click", () => {
+        state.expandedStep = parseInt(el.dataset.expand, 10);
+        refreshSteps();
+      });
+    });
+
+    stepsEl.querySelectorAll("[data-skip-to]").forEach(el => {
+      el.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        state.expandedStep = parseInt(el.dataset.skipTo, 10);
+        refreshSteps();
+      });
+    });
+
+    stepsEl.querySelectorAll(".check").forEach(el => {
+      el.addEventListener("click", async (ev) => {
+        ev.stopPropagation();
+        const step = parseInt(el.dataset.step, 10);
+        const newDone = el.dataset.done !== "true";
+        doneMap[step] = doneMap[step] || { done: false, resourceUrl: "" };
+        doneMap[step].done = newDone;
+        el.dataset.done = String(newDone);
+        if (newDone) el.classList.add("just-checked");
+        refreshSteps();
+        await sb("nlm_progress", {
+          method: "POST",
+          prefer: "resolution=merge-duplicates,return=minimal",
+          body: [{ topic_id: state.topicId, profile_id: PROFILE.id, step_order: step, done: newDone, updated_at: new Date().toISOString() }]
+        });
+      });
+    });
+
+    stepsEl.querySelectorAll('[data-action="save-link"]').forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const step = parseInt(btn.dataset.step, 10);
+        const form = btn.closest(".link-form");
+        const input = form.querySelector('[data-role="link-input"]');
+        const url = (input.value || "").trim();
+        if (!url) return;
+        btn.disabled = true;
+        btn.textContent = "Saving...";
+        await sb("nlm_progress", {
+          method: "POST",
+          prefer: "resolution=merge-duplicates,return=minimal",
+          body: [{ topic_id: state.topicId, profile_id: PROFILE.id, step_order: step, resource_url: url, updated_at: new Date().toISOString() }]
+        });
+        doneMap[step] = doneMap[step] || { done: false, resourceUrl: "" };
+        doneMap[step].resourceUrl = url;
+        refreshSteps();
+      });
+    });
+
+    stepsEl.querySelectorAll('[data-action="change-link"]').forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const step = parseInt(btn.dataset.step, 10);
+        await sb(`nlm_progress?topic_id=eq.${state.topicId}&profile_id=eq.${PROFILE.id}&step_order=eq.${step}`, {
+          method: "PATCH",
+          prefer: "return=minimal",
+          body: { resource_url: null, updated_at: new Date().toISOString() }
+        });
+        if (doneMap[step]) doneMap[step].resourceUrl = "";
+        refreshSteps();
+      });
+    });
+
+    stepsEl.querySelectorAll(".copy-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const text = decodeURIComponent(btn.dataset.text);
+        try{ await navigator.clipboard.writeText(text); }
+        catch(e){
+          const ta = document.createElement("textarea");
+          ta.value = text; document.body.appendChild(ta); ta.select();
+          document.execCommand("copy"); document.body.removeChild(ta);
+        }
+        btn.textContent = "Copied!"; btn.classList.add("copied");
+        setTimeout(() => { btn.textContent = "Copy"; btn.classList.remove("copied"); }, 1300);
+      });
+    });
+  }
+
+  function refreshSteps(){
+    const stepsEl = document.getElementById("stepsContainer");
+    if (!stepsEl) return;
+    stepsEl.innerHTML = templateRows.map((t, i) => stepHTML(t, i)).join("");
+    bindStepEvents();
+    updateProgressUI();
+  }
+
+  document.getElementById("view").innerHTML = `
+    <div class="crumb"><span id="backBtn">&larr; Back to subjects</span></div>
+    <div class="chapter-header">
+      ${topic ? `<p class="chapter-eyebrow">${esc(topic.subject_title)} &middot; Chapter ${esc(String(topic.order_num ?? ""))}</p>` : ""}
+      <h2>${esc(topic ? topic.title : "")}</h2>
+      ${topic && topic.notebook_url ? `<a class="notebook-link" href="${esc(topic.notebook_url)}" target="_blank" rel="noopener">Open NotebookLM notebook</a>` : ""}
+      <div class="progress-top"><span>Progress</span><span class="count" id="doneCount">${doneCount()}/${totalSteps()} complete</span></div>
+      <div class="track"><div class="fill" id="fill" style="width:${doneCount()/totalSteps()*100}%"></div></div>
+      <div class="celebrate ${doneCount() === totalSteps() ? "show" : ""}" id="celebrate">Chapter mastered!</div>
+    </div>
+    <div class="steps" id="stepsContainer"></div>
+    <div class="confidence-card reveal">
+      <h3>How confident do you feel about this chapter?</h3>
+      <p class="sub">1 means still shaky, 10 means you could teach it. Drag the slider - it saves automatically.</p>
+      <div class="confidence-row">
+        <input type="range" min="1" max="10" step="1" value="${confidenceRating || 5}" class="confidence-slider" id="confSlider" />
+        <div class="confidence-value"><span id="confValue">${confidenceRating || 5}</span><span class="max">/10</span></div>
+      </div>
+      <div class="confidence-labels"><span>1 &middot; Not confident</span><span>10 &middot; Very confident</span></div>
+      <div class="confidence-saved" id="confSaved">Saved</div>
+    </div>
+  `;
+
+  document.getElementById("backBtn").addEventListener("click", () => {
+    state.view = "dashboard";
+    render();
+  });
+
+  observeReveal(".confidence-card");
+  refreshSteps();
+
+  const confSlider = document.getElementById("confSlider");
+  const confValue = document.getElementById("confValue");
+  const confSaved = document.getElementById("confSaved");
+  if (confSlider) {
+    confSlider.addEventListener("input", () => {
+      confValue.textContent = confSlider.value;
+    });
+    confSlider.addEventListener("change", async () => {
+      await sb("nlm_confidence", {
+        method: "POST",
+        prefer: "resolution=merge-duplicates,return=minimal",
+        body: [{ topic_id: state.topicId, profile_id: PROFILE.id, rating: parseInt(confSlider.value, 10), updated_at: new Date().toISOString() }]
+      });
+      confSaved.classList.add("show");
+      setTimeout(() => confSaved.classList.remove("show"), 1500);
+    });
+  }
+}
+
+function render(){
+  if(state.view === "chapter") { renderChapter(); return; }
+  renderDashboard();
+}
+
+render();
+</script>
+</body>
+</html>
