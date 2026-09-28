@@ -334,7 +334,7 @@ function observeReveal(selector){
   els.forEach(el => io.observe(el));
 }
 
-let state = { view: "dashboard", subjectId: null, topicId: null, expandedStep: null };
+let state = { view: "dashboard", subjectId: null, topicId: null, expandedStep: null, expandedSubjects: new Set() };
 let lastError = null;
 
 function esc(s){ return (s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
@@ -481,7 +481,7 @@ async function renderDashboard(){
           ? `<span class="subject-flag-badge" style="--flagcolor:${reviseInSubject ? "#d97706" : "#3568c9"}">${flaggedInSubject.length} flagged</span>`
           : "";
         return `
-          <div class="subject-card reveal" data-subject-card="${sid}" style="transition-delay:${si * 60}ms">
+          <div class="subject-card reveal${state.expandedSubjects.has(sid) ? " expanded" : ""}" data-subject-card="${sid}" style="transition-delay:${si * 60}ms">
             <div class="subject-head" data-toggle-subject="${sid}">
               <div class="subject-head-left">
                 <span class="subject-chevron">&#9654;</span>
@@ -554,6 +554,9 @@ async function renderDashboard(){
 
   document.querySelectorAll("[data-toggle-subject]").forEach(el => {
     el.addEventListener("click", () => {
+      const sid = el.dataset.toggleSubject;
+      if (state.expandedSubjects.has(sid)) state.expandedSubjects.delete(sid);
+      else state.expandedSubjects.add(sid);
       el.closest(".subject-card").classList.toggle("expanded");
     });
   });
@@ -598,7 +601,6 @@ async function renderDashboard(){
         });
       }
       await renderDashboard();
-      if (!isActive) window.scrollTo({ top: 0, behavior: "smooth" });
     });
   });
 
