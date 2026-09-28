@@ -226,6 +226,12 @@
   .upnext-sub{font-size:12px;color:var(--sub);margin:2px 0 0;}
   .upnext-note{font-size:12.5px;color:var(--ink);margin-top:6px;background:var(--bg);border-radius:8px;padding:5px 9px;display:inline-block;}
   .upnext-meta{display:flex;align-items:center;gap:10px;flex:0 0 auto;}
+  .upnext-remove{
+    flex:0 0 auto;width:24px;height:24px;border-radius:50%;border:none;background:transparent;
+    color:var(--sub);font-size:18px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;
+    transition:background .15s ease,color .15s ease;
+  }
+  .upnext-remove:hover{background:var(--track);color:var(--ink);}
   .conf-badge{
     font-size:11.5px;font-weight:800;color:#fff;background:var(--sub);
     border-radius:999px;padding:3px 9px;white-space:nowrap;
@@ -517,6 +523,7 @@ async function renderDashboard(){
           ${conf != null ? `<span class="conf-badge" style="background:${confColor(conf)}">${conf}/10</span>` : ""}
           <div class="mini-track"><div class="mini-fill" style="width:${pct}%"></div></div>
           <span class="mini-count">${done}/${totalSteps}</span>
+          <button class="upnext-remove" data-topic="${t.id}" title="Remove from this list" aria-label="Remove from this list">&times;</button>
         </div>
       </div>`;
   }
@@ -580,6 +587,18 @@ async function renderDashboard(){
       state.view = "chapter";
       state.expandedStep = null;
       render();
+    });
+  });
+
+  document.querySelectorAll(".upnext-remove").forEach(el => {
+    el.addEventListener("click", async (ev) => {
+      ev.stopPropagation();
+      const topicId = el.dataset.topic;
+      await sb(`topic_flags?topic_id=eq.${topicId}&profile_id=eq.${PROFILE.id}`, {
+        method: "DELETE",
+        prefer: "return=minimal"
+      });
+      renderDashboard();
     });
   });
 
