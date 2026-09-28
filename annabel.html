@@ -215,11 +215,11 @@
   .upnext-wrap{margin-bottom:22px;display:flex;flex-direction:column;gap:14px;}
   .upnext-group h4{margin:0 0 8px;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--sub);}
   .upnext-card{
-    background:#fff;border:1px solid var(--card-border);border-left:4px solid var(--flagcolor,var(--accent));
+    background:#fff;border:1px solid var(--card-border);border-left:4px solid #d97706;
     border-radius:14px;padding:12px 16px;margin-bottom:8px;cursor:pointer;
     display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
   }
-  .upnext-card:hover{border-color:var(--flagcolor,var(--accent));}
+  .upnext-card:hover{border-color:#d97706;}
   .upnext-main{flex:1;min-width:160px;}
   .upnext-title{font-weight:800;font-size:14.5px;margin:0;}
   .upnext-sub{font-size:12px;color:var(--sub);margin:2px 0 0;}
@@ -256,19 +256,19 @@
     padding:5px 10px;border-radius:8px;cursor:pointer;
   }
   .chapter-row.flagged{
-    border:1px solid var(--flagcolor,var(--accent));
-    border-left:4px solid var(--flagcolor,var(--accent));
+    border:1px solid #d97706;
+    border-left:4px solid #d97706;
     background:#fff;
   }
-  .flag-toggle{
-    border:1.5px solid var(--card-border);background:#fff;color:var(--sub);
-    font-size:11px;font-weight:800;padding:4px 11px;border-radius:999px;cursor:pointer;
-    white-space:nowrap;flex:0 0 auto;transition:background .15s ease,border-color .15s ease,color .15s ease;
+  .flag-icon-btn{
+    width:26px;height:26px;border-radius:50%;border:1.5px solid var(--card-border);background:#fff;color:var(--sub);
+    font-size:15px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;
+    flex:0 0 auto;line-height:1;padding:0;transition:background .15s ease,border-color .15s ease,color .15s ease;
   }
-  .flag-toggle:hover{border-color:var(--flagcolor,var(--accent));}
-  .flag-toggle.active{background:var(--flagcolor,var(--accent));border-color:var(--flagcolor,var(--accent));color:#fff;}
+  .flag-icon-btn:hover{border-color:#d97706;color:#d97706;}
+  .flag-icon-btn.active{background:#d97706;border-color:#d97706;color:#fff;}
   .subject-flag-badge{
-    font-size:11px;font-weight:800;color:#fff;background:var(--flagcolor,var(--accent));
+    font-size:11px;font-weight:800;color:#fff;background:#d97706;
     border-radius:999px;padding:3px 9px;white-space:nowrap;
   }
   .subject-head .row-right{gap:8px;flex:0 0 auto;}
@@ -447,8 +447,6 @@ async function renderDashboard(){
         const s = bySubject[sid];
         const totalSteps = stepCountMap[sid] || 10;
         const flaggedInSubject = s.chapters.filter(c => flagMap[c.id]);
-        const reviseInSubject = flaggedInSubject.filter(c => flagMap[c.id].flagType === "revise").length;
-        const reviewInSubject = flaggedInSubject.filter(c => flagMap[c.id].flagType === "review").length;
         const orderedChapters = s.chapters.slice().sort((a, b) => {
           const af = flagMap[a.id] ? 1 : 0;
           const bf = flagMap[b.id] ? 1 : 0;
@@ -459,10 +457,9 @@ async function renderDashboard(){
               const done = doneCountMap[c.id] || 0;
               const pct = Math.round(done / totalSteps * 100);
               const flag = flagMap[c.id] || { flagType: null, note: "" };
-              const flagColor = flag.flagType === "revise" ? "#d97706" : flag.flagType === "review" ? "#3568c9" : null;
-              const flagLabel = flag.flagType === "revise" ? "Revise" : flag.flagType === "review" ? "Review" : "Flag";
+              const isFlagged = !!flag.flagType;
               return `
-                <div class="chapter-row${flag.flagType ? " flagged" : ""}" data-topic="${c.id}" data-subject="${sid}" ${flagColor ? `style="--flagcolor:${flagColor}"` : ""}>
+                <div class="chapter-row${isFlagged ? " flagged" : ""}" data-topic="${c.id}" data-subject="${sid}">
                   <div class="left">
                     <div class="chapter-num">${c.order_num ?? "-"}</div>
                     <div class="chapter-title">${esc(c.title)}</div>
@@ -470,13 +467,13 @@ async function renderDashboard(){
                   <div class="row-right">
                     <div class="mini-track"><div class="mini-fill" style="width:${pct}%"></div></div>
                     <span class="mini-count">${done}/${totalSteps}</span>
-                    <button class="flag-toggle${flag.flagType ? " active" : ""}" data-topic="${c.id}" data-state="${flag.flagType || ""}">${flagLabel}</button>
+                    <button class="flag-icon-btn${isFlagged ? " active" : ""}" data-topic="${c.id}" data-state="${flag.flagType || ""}" title="${isFlagged ? "Remove from revision list" : "Add to revision list"}" aria-label="${isFlagged ? "Remove from revision list" : "Add to revision list"}">${isFlagged ? "&check;" : "&#43;"}</button>
                   </div>
                 </div>`;
             }).join("")
           : `<div class="empty">No chapters yet.</div>`;
         const flagBadge = flaggedInSubject.length
-          ? `<span class="subject-flag-badge" style="--flagcolor:${reviseInSubject ? "#d97706" : "#3568c9"}">${flaggedInSubject.length} flagged</span>`
+          ? `<span class="subject-flag-badge">${flaggedInSubject.length} to revise</span>`
           : "";
         return `
           <div class="subject-card reveal${state.expandedSubjects.has(sid) ? " expanded" : ""}" data-subject-card="${sid}" style="transition-delay:${si * 60}ms">
@@ -501,9 +498,8 @@ async function renderDashboard(){
     const done = doneCountMap[t.id] || 0;
     const totalSteps = stepCountMap[t.subject_id] || 10;
     const pct = Math.round(done / totalSteps * 100);
-    const flagColor = flag.flagType === "revise" ? "#d97706" : "#3568c9";
     return `
-      <div class="upnext-card" style="--flagcolor:${flagColor}" data-topic="${t.id}" data-subject="${t.subject_id}">
+      <div class="upnext-card" data-topic="${t.id}" data-subject="${t.subject_id}">
         <div class="upnext-main">
           <p class="upnext-title">${esc(t.title)}</p>
           <p class="upnext-sub">${esc(subjectTitle)} &middot; Chapter ${esc(String(t.order_num ?? ""))}</p>
@@ -518,21 +514,13 @@ async function renderDashboard(){
   }
 
   const flaggedTopics = topics.filter(t => flagMap[t.id]);
-  const reviseTopics = flaggedTopics.filter(t => flagMap[t.id].flagType === "revise");
-  const reviewTopics = flaggedTopics.filter(t => flagMap[t.id].flagType === "review");
 
   const upnextHtml = flaggedTopics.length === 0 ? "" : `
     <div class="upnext-wrap">
-      ${reviseTopics.length ? `
-        <div class="upnext-group">
-          <h4>For Revision</h4>
-          ${reviseTopics.map(t => upnextCard(t, bySubject[t.subject_id] ? bySubject[t.subject_id].title : "", flagMap[t.id])).join("")}
-        </div>` : ""}
-      ${reviewTopics.length ? `
-        <div class="upnext-group">
-          <h4>Up Next &middot; Review</h4>
-          ${reviewTopics.map(t => upnextCard(t, bySubject[t.subject_id] ? bySubject[t.subject_id].title : "", flagMap[t.id])).join("")}
-        </div>` : ""}
+      <div class="upnext-group">
+        <h4>For Revision</h4>
+        ${flaggedTopics.map(t => upnextCard(t, bySubject[t.subject_id] ? bySubject[t.subject_id].title : "", flagMap[t.id])).join("")}
+      </div>
     </div>`;
 
   document.getElementById("view").innerHTML = `
@@ -591,14 +579,12 @@ async function renderDashboard(){
     });
   });
 
-  document.querySelectorAll(".flag-toggle").forEach(el => {
+  document.querySelectorAll(".flag-icon-btn").forEach(el => {
     el.addEventListener("click", async (ev) => {
       ev.stopPropagation();
       const topicId = el.dataset.topic;
-      const order = [null, "review", "revise"];
-      const current = el.dataset.state || null;
-      const next = order[(order.indexOf(current) + 1) % order.length];
-      if (next === null) {
+      const isFlagged = !!el.dataset.state;
+      if (isFlagged) {
         await sb(`topic_flags?topic_id=eq.${topicId}&profile_id=eq.${PROFILE.id}`, {
           method: "DELETE",
           prefer: "return=minimal"
@@ -607,7 +593,7 @@ async function renderDashboard(){
         await sb("topic_flags", {
           method: "POST",
           prefer: "resolution=merge-duplicates,return=minimal",
-          body: [{ topic_id: topicId, profile_id: PROFILE.id, flag_type: next, updated_at: new Date().toISOString() }]
+          body: [{ topic_id: topicId, profile_id: PROFILE.id, flag_type: "revise", updated_at: new Date().toISOString() }]
         });
       }
       await renderDashboard();
@@ -831,9 +817,9 @@ async function renderChapter(){
       ${topic ? `<p class="chapter-eyebrow">${esc(topic.subject_title)} &middot; Chapter ${esc(String(topic.order_num ?? ""))}</p>` : ""}
       <h2>${esc(topic ? topic.title : "")}</h2>
       ${topic && topic.notebook_url ? `<a class="notebook-link" href="${esc(topic.notebook_url)}" target="_blank" rel="noopener">Open NotebookLM notebook</a>` : ""}
-      <div class="flag-pills" style="margin-top:12px;">
-        <button class="flag-pill ${currentFlag.flagType === "review" ? "active" : ""}" style="--flagcolor:#3568c9" id="chapFlagReview">Review</button>
-        <button class="flag-pill ${currentFlag.flagType === "revise" ? "active" : ""}" style="--flagcolor:#d97706" id="chapFlagRevise">Revise</button>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:12px;">
+        <button class="flag-icon-btn${currentFlag.flagType ? " active" : ""}" id="chapFlagToggle" title="${currentFlag.flagType ? "Remove from revision list" : "Add to revision list"}" aria-label="${currentFlag.flagType ? "Remove from revision list" : "Add to revision list"}">${currentFlag.flagType ? "&check;" : "&#43;"}</button>
+        <span style="font-size:13px;font-weight:700;color:${currentFlag.flagType ? "#d97706" : "var(--sub)"};">${currentFlag.flagType ? "Marked for revision" : "Add to revision list"}</span>
       </div>
       ${currentFlag.flagType ? `
         <div class="flag-note-row" style="margin-top:8px;">
@@ -862,8 +848,8 @@ async function renderChapter(){
     render();
   });
 
-  async function setChapterFlag(flagType){
-    const isActive = currentFlag.flagType === flagType;
+  async function setChapterFlag(){
+    const isActive = !!currentFlag.flagType;
     if (isActive) {
       await sb(`topic_flags?topic_id=eq.${state.topicId}&profile_id=eq.${PROFILE.id}`, {
         method: "DELETE",
@@ -874,7 +860,7 @@ async function renderChapter(){
       await sb("topic_flags", {
         method: "POST",
         prefer: "resolution=merge-duplicates,return=minimal",
-        body: [{ topic_id: state.topicId, profile_id: PROFILE.id, flag_type: flagType, updated_at: new Date().toISOString() }]
+        body: [{ topic_id: state.topicId, profile_id: PROFILE.id, flag_type: "revise", updated_at: new Date().toISOString() }]
       });
       state.view = "dashboard";
       await renderDashboard();
@@ -882,10 +868,8 @@ async function renderChapter(){
     }
   }
 
-  const chapFlagReview = document.getElementById("chapFlagReview");
-  const chapFlagRevise = document.getElementById("chapFlagRevise");
-  if (chapFlagReview) chapFlagReview.addEventListener("click", () => setChapterFlag("review"));
-  if (chapFlagRevise) chapFlagRevise.addEventListener("click", () => setChapterFlag("revise"));
+  const chapFlagToggle = document.getElementById("chapFlagToggle");
+  if (chapFlagToggle) chapFlagToggle.addEventListener("click", () => setChapterFlag());
 
   const chapNoteSave = document.getElementById("chapNoteSave");
   if (chapNoteSave) {
