@@ -179,11 +179,19 @@
   .prompt-text{font-size:13.5px;line-height:1.55;color:var(--ink);}
   .copy-btn{flex:0 0 auto;border:none;background:var(--accent-soft);color:var(--accent);font-size:12px;font-weight:700;padding:6px 10px;border-radius:9px;cursor:pointer;}
   .copy-btn.copied{background:var(--green);color:#fff;}
+  .prompt-accordion{border:1px solid var(--card-border);border-radius:12px;background:var(--bg);overflow:hidden;}
+  .prompt-accordion summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 12px;font-size:12.5px;font-weight:700;color:var(--sub);user-select:none;}
+  .prompt-accordion summary::-webkit-details-marker{display:none;}
+  .prompt-accordion summary .chev{transition:transform .15s ease;font-size:11px;color:var(--sub);}
+  .prompt-accordion[open] summary .chev{transform:rotate(180deg);}
+  .prompt-accordion[open] summary{border-bottom:1px solid var(--card-border);}
+  .prompt-accordion .prompt-box{border:none;border-radius:0;}
   .make-video-btn{
     border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:700;
     padding:9px 18px;border-radius:999px;cursor:pointer;
   }
   .make-video-btn.queued{background:var(--track);color:var(--sub);cursor:default;}
+  .make-video-btn.secondary{background:var(--accent-soft);color:var(--accent);font-size:12.5px;padding:7px 14px;}
   .cancel-video-btn{
     border:none;background:none;color:var(--sub);font-size:12px;text-decoration:underline;
     cursor:pointer;margin-left:10px;padding:0;
@@ -688,20 +696,26 @@ function actionHTML(a){
     return `
       <div class="action">
         <p class="action-instruction">Paste the prompt below into the NotebookLM chat window.</p>
-        <div class="prompt-box">
-          <div class="prompt-text">${esc(a.text)}</div>
-          <button class="copy-btn" data-text="${encodeURIComponent(a.text)}">Copy</button>
-        </div>
+        <details class="prompt-accordion">
+          <summary>Show prompt <span class="chev">&#9660;</span></summary>
+          <div class="prompt-box">
+            <div class="prompt-text">${esc(a.text)}</div>
+            <button class="copy-btn" data-text="${encodeURIComponent(a.text)}">Copy</button>
+          </div>
+        </details>
       </div>`;
   }
   if(a.type === "customize"){
     return `
       <div class="action">
         <p class="action-instruction">In the Studio panel, click Customize, paste the prompt below, then generate.</p>
-        <div class="prompt-box">
-          <div class="prompt-text">${esc(a.text)}</div>
-          <button class="copy-btn" data-text="${encodeURIComponent(a.text)}">Copy</button>
-        </div>
+        <details class="prompt-accordion">
+          <summary>Show prompt <span class="chev">&#9660;</span></summary>
+          <div class="prompt-box">
+            <div class="prompt-text">${esc(a.text)}</div>
+            <button class="copy-btn" data-text="${encodeURIComponent(a.text)}">Copy</button>
+          </div>
+        </details>
       </div>`;
   }
   return `<div class="action"><p class="action-instruction" style="margin-bottom:0;">${esc(a.text)}</p></div>`;
@@ -787,6 +801,16 @@ async function renderChapter(){
             : `<button class="make-video-btn" data-topic="${state.topicId}" data-prompt="${encodeURIComponent((actions.find(a => a.type === "customize") || {}).text || "")}">&#127916; Make video</button>`}
         </div>`;
       linkLine = "";
+    } else if (isAutoVideo && entry.resourceUrl) {
+      const vr = videoRequest;
+      const isQueued = vr && (vr.status === "pending" || vr.status === "processing");
+      actionsHtml = `
+        <div class="action">
+          ${isQueued
+            ? `<p class="action-instruction" style="margin-bottom:10px;">Generating a new version — the link below will update automatically when it's ready.</p><button class="make-video-btn queued" disabled>&#9203; Queued</button><button class="cancel-video-btn" data-topic="${state.topicId}">Cancel request</button>`
+            : `<button class="make-video-btn secondary" data-topic="${state.topicId}" data-prompt="${encodeURIComponent((actions.find(a => a.type === "customize") || {}).text || "")}">&#127916; Generate another video</button>`}
+        </div>`;
+      linkLine = `<div class="done-link"><a href="${esc(entry.resourceUrl)}" target="_blank" rel="noopener">Open saved link for this step</a><button class="change-btn" data-step="${t.step_order}" data-action="change-link">change</button></div>`;
     } else {
       actionsHtml = `<div class="actions">${actions.map(a => actionHTML(a)).join("")}</div>`;
       if (entry.resourceUrl) {
