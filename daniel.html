@@ -488,7 +488,7 @@ async function renderDashboard(){
                   <div class="row-right">
                     <div class="mini-track"><div class="mini-fill" style="width:${pct}%"></div></div>
                     <span class="mini-count">${done}/${totalSteps}</span>
-                    <button class="flag-icon-btn${isFlagged ? " active" : ""}" data-topic="${c.id}" data-state="${flag.flagType || ""}" title="${isFlagged ? "Remove from revision list" : "Add to revision list"}" aria-label="${isFlagged ? "Remove from revision list" : "Add to revision list"}">${isFlagged ? "&check;" : "&#43;"}</button>
+                    <button class="flag-icon-btn${isFlagged ? " active" : ""}" data-topic="${c.id}" data-subject="${sid}" data-state="${flag.flagType || ""}" title="${isFlagged ? "Remove from revision list" : "Add to revision list"}" aria-label="${isFlagged ? "Remove from revision list" : "Add to revision list"}">${isFlagged ? "&check;" : "&#43;"}</button>
                   </div>
                   ${isFlagged ? `<input type="text" class="chapter-note-input" data-topic="${c.id}" placeholder="Add a note or deadline" value="${esc(flag.note)}" />` : ""}
                 </div>`;
@@ -627,11 +627,13 @@ async function renderDashboard(){
         });
         await renderDashboard();
       } else {
+        const subjectId = el.dataset.subject;
         await sb("topic_flags", {
           method: "POST",
           prefer: "resolution=merge-duplicates,return=minimal",
           body: [{ topic_id: topicId, profile_id: PROFILE.id, flag_type: "revise", updated_at: new Date().toISOString() }]
         });
+        maybeAutoQueueVideo(topicId, subjectId);
         await renderDashboard();
         const noteInput = document.querySelector(`.chapter-note-input[data-topic="${topicId}"]`);
         if (noteInput) noteInput.focus();
@@ -654,6 +656,31 @@ async function renderDashboard(){
   });
 
   observeReveal(".subject-card");
+}
+
+async function maybeAutoQueueVideo(topicId, subjectId){
+  if (!topicId || !subjectId) return;
+  try {
+    const [progressRows, existingReqRows, templateRows] = await Promise.all([
+      sb(`nlm_progress?select=resource_url&topic_id=eq.${topicId}&profile_id=eq.${PROFILE.id}&step_order=eq.2`),
+      sb(`video_requests?select=status&topic_id=eq.${topicId}&profile_id=eq.${PROFILE.id}`),
+      sb(`nlm_checklist_templates?select=actions&subject_id=eq.${subjectId}&title=eq.Video Overview`)
+    ]);
+    if (progressRows[0] && progressRows[0].resource_url) return;
+    const existing = existingReqRows[0];
+    if (existing && ["pending", "processing", "done"].includes(existing.status)) return;
+    const tmpl = templateRows[0];
+    if (!tmpl) return;
+    const actions = Array.isArray(tmpl.actions) ? tmpl.actions : (typeof tmpl.actions === "string" ? JSON.parse(tmpl.actions) : []);
+    if (actions.length !== 2) return;
+    const promptText = (actions.find(a => a.type === "customize") || {}).text || "";
+    if (!promptText) return;
+    await sb("video_requests", {
+      method: "POST",
+      prefer: "resolution=merge-duplicates,return=minimal",
+      body: [{ topic_id: topicId, profile_id: PROFILE.id, prompt_text: promptText, status: "pending", video_url: null, error_message: null, requested_at: new Date().toISOString(), completed_at: null }]
+    });
+  } catch(e) { /* best-effort — never block flagging on this */ }
 }
 
 function actionHTML(a){
@@ -971,6 +998,7 @@ async function renderChapter(){
         prefer: "resolution=merge-duplicates,return=minimal",
         body: [{ topic_id: state.topicId, profile_id: PROFILE.id, flag_type: "revise", updated_at: new Date().toISOString() }]
       });
+      if (topic) maybeAutoQueueVideo(state.topicId, topic.subject_id);
       state.view = "dashboard";
       await renderDashboard();
       window.scrollTo({ top: 0, behavior: "smooth" });
