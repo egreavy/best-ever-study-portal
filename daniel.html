@@ -179,6 +179,15 @@
   .prompt-text{font-size:13.5px;line-height:1.55;color:var(--ink);}
   .copy-btn{flex:0 0 auto;border:none;background:var(--accent-soft);color:var(--accent);font-size:12px;font-weight:700;padding:6px 10px;border-radius:9px;cursor:pointer;}
   .copy-btn.copied{background:var(--green);color:#fff;}
+  .make-video-btn{
+    border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:700;
+    padding:9px 18px;border-radius:999px;cursor:pointer;
+  }
+  .make-video-btn.queued{background:var(--track);color:var(--sub);cursor:default;}
+  .cancel-video-btn{
+    border:none;background:none;color:var(--sub);font-size:12px;text-decoration:underline;
+    cursor:pointer;margin-left:10px;padding:0;
+  }
   .done-link{margin-top:8px;font-size:13px;}
   .done-link a{color:var(--accent);font-weight:700;text-decoration:none;}
   .done-link .change-btn{margin-left:8px;border:none;background:none;color:var(--sub);font-size:11.5px;text-decoration:underline;cursor:pointer;padding:0;}
@@ -692,6 +701,11 @@ async function renderChapter(){
   const flagRows = await sb(`topic_flags?select=flag_type,note&topic_id=eq.${state.topicId}&profile_id=eq.${PROFILE.id}`);
   const currentFlag = flagRows[0] ? { flagType: flagRows[0].flag_type, note: flagRows[0].note || "" } : { flagType: null, note: "" };
 
+  const videoRequestRows = topic
+    ? await sb(`video_requests?select=status,video_url,error_message&topic_id=eq.${state.topicId}&profile_id=eq.${PROFILE.id}`)
+    : [];
+  let videoRequest = videoRequestRows[0] || null;
+
   const doneMap = {};
   progressRows.forEach(r => { doneMap[r.step_order] = { done: !!r.done, resourceUrl: r.resource_url || "" }; });
   const confidenceRating = confidenceRows[0] ? parseInt(confidenceRows[0].rating, 10) : null;
@@ -726,15 +740,37 @@ async function renderChapter(){
         </div>`;
     }
 
+    const isAutoVideo = t.title === "Video Overview" && actions.length === 2;
+
     let linkLine = "";
-    if (entry.resourceUrl) {
-      linkLine = `<div class="done-link"><a href="${esc(entry.resourceUrl)}" target="_blank" rel="noopener">Open saved link for this step</a><button class="change-btn" data-step="${t.step_order}" data-action="change-link">change</button></div>`;
-    } else {
-      linkLine = `
-        <div class="link-form" data-step="${t.step_order}">
-          <input type="url" placeholder="Paste a link to the resource you generated for this step" data-role="link-input" />
-          <button data-action="save-link" data-step="${t.step_order}">Save link</button>
+    let actionsHtml = "";
+    if (isAutoVideo && !entry.resourceUrl) {
+      const vr = videoRequest;
+      const isQueued = vr && (vr.status === "pending" || vr.status === "processing");
+      const statusLine = isQueued
+        ? "Queued — a video will be generated automatically next time the automation runs, and the link will appear here."
+        : (vr && vr.status === "error")
+          ? `Something went wrong last time${vr.error_message ? ": " + esc(vr.error_message) : "."} You can try again.`
+          : "Generate this chapter's video automatically — no copying prompts needed.";
+      actionsHtml = `
+        <div class="action">
+          <p class="action-instruction" style="margin-bottom:10px;">${statusLine}</p>
+          ${isQueued
+            ? `<button class="make-video-btn queued" disabled>&#9203; Queued</button><button class="cancel-video-btn" data-topic="${state.topicId}">Cancel request</button>`
+            : `<button class="make-video-btn" data-topic="${state.topicId}" data-prompt="${encodeURIComponent((actions.find(a => a.type === "customize") || {}).text || "")}">&#127916; Make video</button>`}
         </div>`;
+      linkLine = "";
+    } else {
+      actionsHtml = `<div class="actions">${actions.map(a => actionHTML(a)).join("")}</div>`;
+      if (entry.resourceUrl) {
+        linkLine = `<div class="done-link"><a href="${esc(entry.resourceUrl)}" target="_blank" rel="noopener">Open saved link for this step</a><button class="change-btn" data-step="${t.step_order}" data-action="change-link">change</button></div>`;
+      } else {
+        linkLine = `
+          <div class="link-form" data-step="${t.step_order}">
+            <input type="url" placeholder="Paste a link to the resource you generated for this step" data-role="link-input" />
+            <button data-action="save-link" data-step="${t.step_order}">Save link</button>
+          </div>`;
+      }
     }
     const nextStep = templateRows[i + 1] ? templateRows[i + 1].step_order : null;
     return `
@@ -746,7 +782,7 @@ async function renderChapter(){
           </div>
           <div class="check" data-step="${t.step_order}" data-done="${isDone}">&#10003;</div>
         </div>
-        <div class="actions">${actions.map(a => actionHTML(a)).join("")}</div>
+        ${actionsHtml}
         ${linkLine}
         ${nextStep !== null ? `<span class="skip-link" data-skip-to="${nextStep}">Skip for now, go to next step</span>` : ""}
       </div>`;
@@ -843,6 +879,35 @@ async function renderChapter(){
         }
         btn.textContent = "Copied!"; btn.classList.add("copied");
         setTimeout(() => { btn.textContent = "Copy"; btn.classList.remove("copied"); }, 1300);
+      });
+    });
+
+    stepsEl.querySelectorAll(".make-video-btn:not(.queued)").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        btn.disabled = true;
+        btn.textContent = "Queuing...";
+        const topicId = btn.dataset.topic;
+        const promptText = decodeURIComponent(btn.dataset.prompt || "");
+        await sb("video_requests", {
+          method: "POST",
+          prefer: "resolution=merge-duplicates,return=minimal",
+          body: [{ topic_id: topicId, profile_id: PROFILE.id, prompt_text: promptText, status: "pending", video_url: null, error_message: null, requested_at: new Date().toISOString(), completed_at: null }]
+        });
+        videoRequest = { status: "pending", video_url: null, error_message: null };
+        refreshSteps();
+      });
+    });
+
+    stepsEl.querySelectorAll(".cancel-video-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        btn.disabled = true;
+        const topicId = btn.dataset.topic;
+        await sb(`video_requests?topic_id=eq.${topicId}&profile_id=eq.${PROFILE.id}`, {
+          method: "DELETE",
+          prefer: "return=minimal"
+        });
+        videoRequest = null;
+        refreshSteps();
       });
     });
   }
