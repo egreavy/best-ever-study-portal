@@ -29,9 +29,12 @@
   .pr-pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;margin:0 0 10px}
   .pr-pair>:empty{display:none}
   .pr-pair .pr-paper{height:100%;box-sizing:border-box}
+  .pr-side{gap:6px}
+  .pr-side .pr-side-btn{margin-top:auto;padding-top:6px}
+  .pr-mix{font-size:13px;color:#5B6470}
+  .pr-mix summary{cursor:pointer;font-weight:400;font-size:13px}
   .pr-pair>.pr-card,.pr-pair>*{margin:0}
-  .pr-paper{border:2px solid #1F2328}
-  .pr-eyebrow{font-size:12px;font-weight:700;color:#5B6470;text-transform:uppercase;letter-spacing:.06em}
+    .pr-eyebrow{font-size:12px;font-weight:700;color:#5B6470;text-transform:uppercase;letter-spacing:.06em}
   .pr-choose-label{font-size:14px;font-weight:700;color:#5B6470;margin:4px 0 6px}
   .pr-choices{background:#fff;border-radius:14px;padding:2px 20px;margin:0 0 10px;display:flex;flex-direction:column}
   .pr-choice{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:11px 0;border:none;border-bottom:1px solid #DDE1E5;background:none;text-align:left;font:inherit;color:inherit;cursor:pointer;width:100%}
@@ -181,9 +184,9 @@
           <div class="pr-step"><div class="pr-bar"><i style="width:${Math.round(tried / questions.length * 100)}%"></i></div><b>2. Test it</b><span>${testWord}</span></div>
           <div class="pr-step"><div class="pr-bar"><i style="width:${Math.round(knowRatio * 100)}%"></i></div><b>3. Know it</b><span>${knowWord}</span></div>
         </div>
-        <div class="pr-headrow"><p class="pr-next">${esc(next)}</p><button type="button" class="pr-btn" data-go>${goLearn ? "Go to Learn" : "Start today's 10 minutes"}</button></div>
+        <div class="pr-headrow"><p class="pr-next">${esc(next)}</p><button type="button" class="pr-btn" data-go>${goLearn ? "Go to Learn" : "Start my 10 minutes"}</button></div>
       </div>`);
-      card.querySelector("[data-go]").onclick = () => { if (goLearn) goTo("learn"); else { goTo("test"); start("Today's 10 minutes", todaysPick()); } };
+      card.querySelector("[data-go]").onclick = () => { if (goLearn) goTo("learn"); else { goTo("test"); start("Your Daily Practice", todaysPick()); } };
 
       const fixCard = h(`<div class="pr-card"><div style="display:flex;flex-direction:column;gap:2px"><h3>Try Again</h3><p class="pr-sub">${fx.length ? "Get one right and it comes off this list." : tried ? "Nothing to try again right now. Nice work." : "Questions you get wrong or half right will show up here."}</p></div></div>`);
       if (fx.length) {
@@ -210,17 +213,22 @@
       session = null; setChrome(true);
       const pick = todaysPick(), fx = fixes();
       const hero = h(`<div class="pr-card pr-hero">
-        <div class="pr-hero-text"><span class="pr-li-title" style="font-size:17px">Start here: today's 10 minutes</span><span class="pr-small">${esc(todaysCaption(pick))}</span></div>
-        <button type="button" class="pr-btn big" data-today>Start</button></div>`);
-      hero.querySelector("[data-today]").onclick = () => start("Today's 10 minutes", pick);
+        <div class="pr-hero-text">
+          <span class="pr-eyebrow">Recommended · 10 minutes</span>
+          <span class="pr-li-title" style="font-size:18px">Your Daily Practice</span>
+          <span class="pr-small">A 10-minute mix of questions to refresh your knowledge and work on weaker areas.</span>
+          <details class="pr-mix"><summary>What's in today's mix</summary>${esc(todaysCaption(pick))}</details>
+        </div>
+        <button type="button" class="pr-btn big" data-today>Start my 10 minutes</button></div>`);
+      hero.querySelector("[data-today]").onclick = () => start("Your Daily Practice", pick);
       const nodes = [hero];
       if (ex.length) {
-        const paper = h(`<div class="pr-card pr-paper">
-          <span class="pr-eyebrow">Leaving Cert past papers</span>
-          <span class="pr-li-title">Past paper questions</span>
-          <span class="pr-li-note">${plural(ex.length, "real exam question", "real exam questions")} from this chapter. Write, type or photo your answer and get a mark with tips.</span>
-          <div><button type="button" class="pr-btn dark">Open</button></div></div>`);
-        paper.querySelector("button").onclick = () => start("Past paper questions", ex.slice());
+        const paper = h(`<div class="pr-card pr-paper pr-side">
+          <span class="pr-eyebrow">${plural(ex.length, "question", "questions")} available</span>
+          <span class="pr-li-title">Exam Question Practice</span>
+          <span class="pr-li-note">Answer real Leaving Cert questions. Type, write or upload a photo of your answer for marks and feedback.</span>
+          <div class="pr-side-btn"><button type="button" class="pr-btn ghost">Practise exam questions</button></div></div>`);
+        paper.querySelector("button").onclick = () => start("Exam Question Practice", ex.slice());
         if (paperSlot) paperSlot.replaceChildren(paper); else nodes.push(paper);
       }
       slot.replaceChildren(...nodes);
@@ -367,7 +375,7 @@
 
     paintProgress();
     home();
-    return { refresh: paintProgress, startToday: () => start("Today's 10 minutes", todaysPick()) };
+    return { refresh: paintProgress, startToday: () => start("Your Daily Practice", todaysPick()) };
   }
   window.mountPractice = mountPractice;
 })();

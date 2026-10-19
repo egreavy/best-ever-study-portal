@@ -18,11 +18,13 @@
   }
 
   const css = `
-  .tutor-card{background:#fff;border-radius:14px;padding:16px 20px;margin:0 0 10px;display:flex;flex-direction:column;gap:8px;height:100%;box-sizing:border-box}
-  .tutor-top{display:flex;flex-direction:column;gap:2px}
-  .tutor-card h3{margin:0;font-size:16px;font-weight:700}
+  .tutor-card{background:#fff;border-radius:14px;padding:16px 20px;margin:0;display:flex;flex-direction:column;gap:6px;height:100%;box-sizing:border-box}
+  .tutor-top{display:flex;flex-direction:column;gap:6px}
+  .tutor-eyebrow{font-size:12px;font-weight:700;color:#5B6470;text-transform:uppercase;letter-spacing:.06em}
+  .tutor-btnrow{margin-top:auto;padding-top:6px}
+  .tutor-card h3{margin:0;font-size:16px;font-weight:700;line-height:1.4}
   .tutor-card .tutor-sub{margin:0;color:#5B6470;font-size:14px;line-height:1.45}
-  .tutor-orb{align-self:flex-start;border:2px solid #1F6F5C;background:#fff;color:#1F6F5C;font:inherit;font-size:15px;font-weight:700;padding:8px 18px;border-radius:999px;cursor:pointer;min-height:40px;white-space:nowrap}
+  .tutor-orb{border:2px solid #1F6F5C;background:#fff;color:#1F6F5C;font:inherit;font-size:15px;font-weight:700;padding:8px 18px;border-radius:999px;cursor:pointer;min-height:40px;white-space:nowrap}
   .tutor-orb:focus-visible{outline:3px solid #1F6F5C;outline-offset:3px}
   .tutor-orb[disabled]{opacity:.7;cursor:default}
   .tutor-orb.listening,.tutor-orb.speaking{background:#1F6F5C;color:#fff}
@@ -112,9 +114,10 @@ ${questions.map(fmt).join("\n")}`;
     card.className = "tutor-card";
     card.innerHTML = `
       <div class="tutor-top">
-        <h3>Talk it through with your tutor</h3><p class="tutor-sub">Just talk. It asks you questions out loud and picks up where you left off.</p>
+        <span class="tutor-eyebrow">Spoken practice</span>
+        <h3>Practise with Your Tutor</h3><p class="tutor-sub">Talk through this topic with your AI tutor. Answer questions aloud, ask for explanations and get help when you're stuck.</p>
       </div>
-      <button class="tutor-orb" type="button" id="tutorOrb">Start talking</button>
+      <div class="tutor-btnrow"><button class="tutor-orb" type="button" id="tutorOrb">Start talking</button></div>
       <p class="tutor-status" id="tutorStatus" aria-live="polite"></p>
       <button class="tutor-end" type="button" id="tutorEnd" hidden>End session</button>
       <p class="tutor-err" id="tutorErr" hidden></p>
