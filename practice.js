@@ -152,7 +152,7 @@
       const f = pick.filter(q => fixes().includes(q)).length;
       const m = pick.filter(q => q.qtype === "mcq" && !fixes().includes(q)).length;
       const parts = [];
-      if (f) parts.push(plural(f, "question to fix", "questions to fix"));
+      if (f) parts.push(`${f} to try again`);
       if (m) parts.push(`${m} new multiple choice`);
       if (pick.some(q => q.qtype === "recall" && !fixes().includes(q))) parts.push("1 short answer");
       if (pick.some(q => q.qtype === "exam" && !fixes().includes(q))) parts.push("1 past paper question");
@@ -170,7 +170,7 @@
       let next;
       const learnPart = l.total && l.done >= l.total ? "You've finished the learning. " : l.total && l.done / l.total >= 0.5 ? "You've read and watched most of it. " : "";
       if (!tried && l.total && l.done < l.total) next = "Start with Learn: read, watch or listen. Then test yourself to see what stuck.";
-      else if (fx.length) next = `${learnPart}Next, fix the ${plural(fx.length, "question", "questions")} below and try some new ones.`;
+      else if (fx.length) next = `${learnPart}Next, try the ${fx.length === 1 ? "question" : fx.length + " questions"} below again, then some new ones.`;
       else if (untried().length) next = `${learnPart}Next, try some new questions to see what's stuck.`;
       else next = "You know this chapter well. A quick go now and then keeps it fresh.";
       const goLearn = !tried && l.total && l.done < l.total;
@@ -185,7 +185,7 @@
       </div>`);
       card.querySelector("[data-go]").onclick = () => { if (goLearn) goTo("learn"); else { goTo("test"); start("Today's 10 minutes", todaysPick()); } };
 
-      const fixCard = h(`<div class="pr-card"><div style="display:flex;flex-direction:column;gap:2px"><h3>Questions to fix</h3><p class="pr-sub">${fx.length ? "Get one right and it comes off this list." : tried ? "Nothing to fix right now. Nice work." : "Questions you get wrong or half right will show up here."}</p></div></div>`);
+      const fixCard = h(`<div class="pr-card"><div style="display:flex;flex-direction:column;gap:2px"><h3>Try Again</h3><p class="pr-sub">${fx.length ? "Get one right and it comes off this list." : tried ? "Nothing to try again right now. Nice work." : "Questions you get wrong or half right will show up here."}</p></div></div>`);
       if (fx.length) {
         const list = h(`<div class="pr-list"></div>`);
         fx.slice(0, 8).forEach(q => {
@@ -350,8 +350,8 @@
     function finish(){
       const R = session.results, good = R.filter(r => r.v >= 1), gaps = R.filter(r => r.v < 1);
       const card = h(`<div class="pr-card"><h3>${esc(session.name)}: done</h3>
-        <p class="pr-next">${R.length ? `You answered ${plural(R.length, "question", "questions")}. ${plural(good.length, "was", "were")} right${gaps.length ? `, and ${plural(gaps.length, "goes", "go")} on your list to fix` : ""}.` : "No answers saved this time."}</p>
-        ${gaps.length ? `<div class="pr-fb"><h4>To fix next time</h4><ul>${gaps.map(r=>`<li>${esc(shortTitle(r.q))}</li>`).join("")}</ul><span class="pr-tip">Your tutor will start with these too.</span></div>` : ""}
+        <p class="pr-next">${R.length ? `You answered ${plural(R.length, "question", "questions")}. ${plural(good.length, "was", "were")} right${gaps.length ? `, and ${plural(gaps.length, "goes", "go")} on your Try Again list` : ""}.` : "No answers saved this time."}</p>
+        ${gaps.length ? `<div class="pr-fb"><h4>To try again next time</h4><ul>${gaps.map(r=>`<li>${esc(shortTitle(r.q))}</li>`).join("")}</ul><span class="pr-tip">Your tutor will start with these too.</span></div>` : ""}
         <div class="pr-row"><button type="button" class="pr-btn" data-home>Back to Test</button><button type="button" class="pr-btn ghost" data-prog>See my progress</button></div></div>`);
       card.querySelector("[data-home]").onclick = () => home();
       card.querySelector("[data-prog]").onclick = () => { home(); goTo("progress"); };
