@@ -237,6 +237,18 @@
 
   .loading{color:var(--sub);text-align:center;padding:40px 0;}
 
+  /* ---- Chapter phases: Learn / Test / Track ---- */
+  .phase{margin-top:26px;}
+  .phase-head{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;}
+  .phase-num{flex:0 0 auto;width:34px;height:34px;border-radius:50%;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;}
+  .phase-head h3{margin:0;font-size:19px;font-weight:800;}
+  .phase-head p{margin:2px 0 0;color:var(--sub);font-size:13.5px;}
+  .phase-empty{background:#fff;border:1px dashed var(--card-border);border-radius:16px;padding:16px 18px;color:var(--sub);font-size:14px;}
+  .extra-practice{margin-top:12px;background:#fff;border:1px solid var(--card-border);border-radius:16px;padding:14px 18px;}
+  .extra-practice summary{cursor:pointer;font-weight:800;font-size:14.5px;}
+  .extra-practice .steps{margin-top:12px;}
+  .progress-top .count.know{color:var(--green);}
+
   /* ---- Up Next (flagged chapters) ---- */
   .upnext-wrap{margin-bottom:22px;display:flex;flex-direction:column;gap:14px;}
   .upnext-group h4{margin:0 0 8px;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--sub);}
@@ -729,6 +741,10 @@ async function renderChapter(){
     : [];
   const disabledSet = new Set(disabledRows.map(r => r.template_id));
   const templateRows = templateRowsAll.filter(r => !disabledSet.has(r.id));
+  const PRACTICE_TITLES = ["Flashcards Review", "Quiz Yourself", "Exam Practice"];
+  const learnRows = templateRows.filter(t => !PRACTICE_TITLES.includes(t.title));
+  const extraRows = templateRows.filter(t => PRACTICE_TITLES.includes(t.title));
+  let knowStats = null;
   const progressRows = await sb(`nlm_progress?select=step_order,done,resource_url&topic_id=eq.${state.topicId}&profile_id=eq.${PROFILE.id}`);
   const confidenceRows = await sb(`nlm_confidence?select=rating&topic_id=eq.${state.topicId}&profile_id=eq.${PROFILE.id}`);
   const flagRows = await sb(`topic_flags?select=flag_type,note&topic_id=eq.${state.topicId}&profile_id=eq.${PROFILE.id}`);
@@ -745,14 +761,15 @@ async function renderChapter(){
 
   const stepOrders = templateRows.map(t => t.step_order);
   if (state.expandedStep === null || !stepOrders.includes(state.expandedStep)) {
-    const firstNotDone = templateRows.find(t => !(doneMap[t.step_order] || {}).done);
-    state.expandedStep = firstNotDone ? firstNotDone.step_order : (stepOrders[stepOrders.length - 1] ?? null);
+    const firstNotDone = learnRows.find(t => !(doneMap[t.step_order] || {}).done);
+    state.expandedStep = firstNotDone ? firstNotDone.step_order : (learnRows.length ? learnRows[learnRows.length - 1].step_order : (stepOrders[0] ?? null));
   }
 
-  function totalSteps(){ return templateRows.length || 10; }
-  function doneCount(){ return Object.values(doneMap).filter(v => v.done).length; }
+  function totalSteps(){ return learnRows.length || 1; }
+  function doneCount(){ return learnRows.filter(t => (doneMap[t.step_order] || {}).done).length; }
 
-  function stepHTML(t, i){
+  function stepHTML(t, i, list){
+    list = list || templateRows;
     const actions = Array.isArray(t.actions) ? t.actions : (typeof t.actions === "string" ? JSON.parse(t.actions) : []);
     const entry = doneMap[t.step_order] || { done: false, resourceUrl: "" };
     const isDone = entry.done;
@@ -822,7 +839,7 @@ async function renderChapter(){
           <button data-action="save-link" data-step="${t.step_order}">Save link</button>
         </div>`;
     }
-    const nextStep = templateRows[i + 1] ? templateRows[i + 1].step_order : null;
+    const nextStep = list[i + 1] ? list[i + 1].step_order : null;
     return `
       <div class="step expanded ${isDone ? "done" : ""}" style="--stepcolor:${stepColor}">
         <div class="step-head">
@@ -843,13 +860,19 @@ async function renderChapter(){
     const countEl = document.getElementById("doneCount");
     const fillEl = document.getElementById("fill");
     const celebrateEl = document.getElementById("celebrate");
-    if (countEl) countEl.textContent = `${dc}/${ts} complete`;
+    if (countEl) countEl.textContent = `${dc} of ${ts} done`;
     if (fillEl) fillEl.style.width = `${dc / ts * 100}%`;
-    if (celebrateEl) celebrateEl.classList.toggle("show", dc === ts && ts > 0);
+    const knowEl = document.getElementById("knowCount"), knowFill = document.getElementById("knowFill");
+    if (knowEl) knowEl.textContent = knowStats ? `${knowStats.good} of ${knowStats.total} questions` : "Not started";
+    if (knowFill) knowFill.style.width = knowStats && knowStats.total ? `${knowStats.good / knowStats.total * 100}%` : "0%";
+    const mastered = dc === ts && ts > 0 && knowStats && knowStats.total && knowStats.good / knowStats.total >= 0.8;
+    if (celebrateEl) celebrateEl.classList.toggle("show", !!mastered);
   }
 
   function bindStepEvents(){
-    const stepsEl = document.getElementById("stepsContainer");
+    ["stepsContainer", "stepsContainer2"].forEach(cid => bindStepsIn(document.getElementById(cid)));
+  }
+  function bindStepsIn(stepsEl){
     if (!stepsEl) return;
 
     stepsEl.querySelectorAll("[data-expand]").forEach(el => {
@@ -965,7 +988,10 @@ async function renderChapter(){
   function refreshSteps(){
     const stepsEl = document.getElementById("stepsContainer");
     if (!stepsEl) return;
-    stepsEl.innerHTML = templateRows.map((t, i) => stepHTML(t, i)).join("");
+    stepsEl.innerHTML = learnRows.length ? learnRows.map((t, i) => stepHTML(t, i, learnRows)).join("") : `<div class="phase-empty">No learning materials set up for this chapter yet.</div>`;
+    const extraEl = document.getElementById("stepsContainer2"), extraBox = document.getElementById("extraPractice");
+    if (extraEl) extraEl.innerHTML = extraRows.map((t, i) => stepHTML(t, i, extraRows)).join("");
+    if (extraBox) extraBox.hidden = !extraRows.length;
     bindStepEvents();
     updateProgressUI();
   }
@@ -985,13 +1011,25 @@ async function renderChapter(){
           <input type="text" id="chapNoteInput" placeholder="Add a note, e.g. test on Tue 29/09" value="${esc(currentFlag.note)}" />
           <button id="chapNoteSave">Save</button>
         </div>` : ""}
-      <div class="progress-top"><span>Progress</span><span class="count" id="doneCount">${doneCount()}/${totalSteps()} complete</span></div>
+      <div class="progress-top"><span>1 · Learn it: materials</span><span class="count" id="doneCount">${doneCount()} of ${totalSteps()} done</span></div>
       <div class="track"><div class="fill" id="fill" style="width:${doneCount()/totalSteps()*100}%"></div></div>
-      <div class="celebrate ${doneCount() === totalSteps() ? "show" : ""}" id="celebrate">Chapter mastered!</div>
+      <div class="progress-top"><span>2 · Test yourself: questions you know well</span><span class="count know" id="knowCount">Not started</span></div>
+      <div class="track"><div class="fill" id="knowFill" style="width:0%;background:var(--green)"></div></div>
+      <div class="celebrate" id="celebrate">Chapter mastered! Keep it fresh with a quick quiz now and then.</div>
     </div>
-    <div id="practiceSlot"></div>
-    <div id="tutorSlot"></div>
-    <div class="steps" id="stepsContainer"></div>
+    <div class="phase">
+      <div class="phase-head"><span class="phase-num">1</span><div><h3>Learn it</h3><p>Read, watch and listen. Tick each one off when you've done it.</p></div></div>
+      <div class="steps" id="stepsContainer"></div>
+    </div>
+    <div class="phase">
+      <div class="phase-head"><span class="phase-num">2</span><div><h3>Test yourself</h3><p>Notes closed. Quizzes, exam questions and your tutor all keep track of what you know.</p></div></div>
+      <div id="practiceSlot"><div class="phase-empty">Quizzes for this chapter are coming soon. Use the practice below for now.</div></div>
+      <div id="tutorSlot"></div>
+      <details class="extra-practice" id="extraPractice"><summary>More practice: NotebookLM and printable sheets</summary><div class="steps" id="stepsContainer2"></div></details>
+    </div>
+    <div class="phase">
+      <div class="phase-head"><span class="phase-num">3</span><div><h3>Track it</h3><p>What you know well and what still needs study, updated as you go.</p></div></div>
+      <div id="summarySlot"><div class="phase-empty">Your progress table will appear here once this chapter has quizzes.</div></div>
     <div class="confidence-card reveal">
       <h3>How confident do you feel about this chapter?</h3>
       <p class="sub">1 means still shaky, 10 means you could teach it. Drag the slider - it saves automatically.</p>
@@ -1002,9 +1040,16 @@ async function renderChapter(){
       <div class="confidence-labels"><span>1 &middot; Not confident</span><span>10 &middot; Very confident</span></div>
       <div class="confidence-saved" id="confSaved">Saved</div>
     </div>
+    </div>
   `;
 
-  if (topic && window.mountPractice) window.mountPractice(document.getElementById("practiceSlot"), { topic, profile: PROFILE, sb });
+  const chapToken = (window.__chapToken = (window.__chapToken || 0) + 1);
+  const onStats = (e) => {
+    if (window.__chapToken !== chapToken) { window.removeEventListener("study-stats", onStats); return; }
+    if (e.detail && e.detail.topicId === state.topicId) { knowStats = e.detail; updateProgressUI(); }
+  };
+  window.addEventListener("study-stats", onStats);
+  if (topic && window.mountPractice) window.mountPractice(document.getElementById("practiceSlot"), { topic, profile: PROFILE, sb, summarySlot: document.getElementById("summarySlot") });
   if (topic && window.mountTutor) window.mountTutor(document.getElementById("tutorSlot"), { topic, profile: PROFILE, sb });
 
   document.getElementById("backBtn").addEventListener("click", () => {

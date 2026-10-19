@@ -50,6 +50,15 @@
   .pr-rate .g{border-color:#1a7d4a;color:#1a7d4a}.pr-rate .p{border-color:#a8670d;color:#a8670d}.pr-rate .n{border-color:#b91c1c;color:#b91c1c}
   .pr-score{font-size:40px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
   .pr-err{color:#b91c1c;font-size:14px;margin:0}
+  .pr-tablewrap{overflow-x:auto}
+  .pr-table{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}
+  .pr-table th{text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--sub,#6b6b64);padding:8px 10px;border-bottom:2px solid var(--card-border,#e6e3da);white-space:nowrap}
+  .pr-table td{padding:10px;border-bottom:1px solid var(--card-border,#e6e3da);vertical-align:middle}
+  .pr-table td.n{text-align:center;font-weight:800}
+  .pr-table th.n{text-align:center}
+  .pr-table tr:last-child td{border-bottom:none}
+  .pr-status{display:inline-block;font-size:12px;font-weight:800;padding:3px 10px;border-radius:99px;white-space:nowrap}
+  .pr-updated{font-size:12px;color:var(--sub,#6b6b64);margin:0}
   `;
   function addCss(){ if (document.getElementById("pr-css")) return; const s=document.createElement("style"); s.id="pr-css"; s.textContent=css; document.head.appendChild(s); }
   const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -91,47 +100,55 @@
     });
   }
 
-  // ---- summary ----
+  // ---- live summary table ----
   function summaryCard(questions, prog){
     const { latest, src } = prog;
+    const card = h(`<div class="pr-card" id="prSummary"><h3>What you know so far</h3><p class="pr-sub">Updates live from your quizzes, exam answers and tutor sessions.</p></div>`);
     const tried = questions.filter(q => latest[q.id] !== undefined);
-    const good = tried.filter(q => latest[q.id] >= 1), part = tried.filter(q => latest[q.id] > 0 && latest[q.id] < 1), miss = tried.filter(q => latest[q.id] === 0);
-    const card = h(`<div class="pr-card" id="prSummary"><h3>How you're doing on this chapter</h3></div>`);
     if (!tried.length) {
-      card.append(h(`<p class="pr-sub">Nothing yet. Do a quiz or talk to your tutor and your strengths and gaps will show up here.</p>`));
+      card.append(h(`<p class="pr-sub">Nothing yet. Start with "Test yourself" above and this table will fill in.</p>`));
       return card;
     }
-    card.append(h(`<div class="pr-stats">
-      <div class="pr-stat pr-g"><b>${good.length}</b><span>Answered well</span></div>
-      <div class="pr-stat pr-p"><b>${part.length}</b><span>Nearly there</span></div>
-      <div class="pr-stat pr-n"><b>${miss.length}</b><span>To study</span></div>
-      <div class="pr-stat pr-u"><b>${questions.length - tried.length}</b><span>Not tried yet</span></div></div>`));
-    const by = {};
-    tried.forEach(q => { (by[q.topic_label] = by[q.topic_label] || []).push(latest[q.id]); });
-    const rows = Object.entries(by).map(([t,v]) => ({ t, p: Math.round(v.reduce((a,b)=>a+b,0)/v.length*100) })).sort((a,b)=>a.p-b.p);
-    const col = p => p>=80 ? "#1a7d4a" : p>=50 ? "#c98a1b" : "#c0392b", cls = p => p>=80 ? "pr-g" : p>=50 ? "pr-p" : "pr-n";
-    const strong = rows.filter(r => r.p >= 80).map(r => r.t);
-    if (strong.length) card.append(h(`<p class="pr-sub"><strong style="color:#1a6b42">Strong on:</strong> ${esc(strong.join(", "))}.</p>`));
-    const tl = h(`<div class="pr-topics"></div>`);
-    rows.forEach(r => tl.append(h(`<div class="pr-trow"><span>${esc(r.t)}</span><span class="pr-pill ${cls(r.p)}">${r.p}%</span><div class="pr-bar"><i style="width:${Math.max(r.p,3)}%;background:${col(r.p)}"></i></div></div>`)));
-    card.append(tl);
-    const gaps = [...miss, ...part];
+    const topics = [];
+    questions.forEach(q => { if (!topics.includes(q.topic_label)) topics.push(q.topic_label); });
+    const rows = topics.map(t => {
+      const qs = questions.filter(q => q.topic_label === t);
+      const g = qs.filter(q => latest[q.id] >= 1).length, p = qs.filter(q => latest[q.id] > 0 && latest[q.id] < 1).length,
+            n = qs.filter(q => latest[q.id] === 0).length, u = qs.filter(q => latest[q.id] === undefined).length;
+      const triedN = g + p + n;
+      const pct = triedN ? Math.round((g + p * 0.5) / triedN * 100) : null;
+      let status, cls;
+      if (!triedN) { status = "Not started"; cls = "pr-u"; }
+      else if (n || (p && pct < 60)) { status = "Needs study"; cls = "pr-n"; }
+      else if (u || p) { status = "Getting there"; cls = "pr-p"; }
+      else { status = "Know it well"; cls = "pr-g"; }
+      const order = { "pr-n": 0, "pr-p": 1, "pr-u": 2, "pr-g": 3 }[cls];
+      return { t, g, p, n, u, status, cls, order };
+    }).sort((a, b) => a.order - b.order);
+    const total = { g:0, p:0, n:0, u:0 }; rows.forEach(r => { total.g += r.g; total.p += r.p; total.n += r.n; total.u += r.u; });
+    card.append(h(`<div class="pr-tablewrap"><table class="pr-table">
+      <thead><tr><th>Topic</th><th class="n">Know well</th><th class="n">Nearly</th><th class="n">To study</th><th class="n">Not tried</th><th>Status</th></tr></thead>
+      <tbody>${rows.map(r => `<tr><td>${esc(r.t)}</td><td class="n" style="color:#1a6b42">${r.g || "–"}</td><td class="n" style="color:#8a5a12">${r.p || "–"}</td><td class="n" style="color:#9b2c2c">${r.n || "–"}</td><td class="n" style="color:var(--sub,#6b6b64)">${r.u || "–"}</td><td><span class="pr-status ${r.cls}">${r.status}</span></td></tr>`).join("")}
+      <tr><td><strong>Whole chapter</strong></td><td class="n" style="color:#1a6b42">${total.g}</td><td class="n" style="color:#8a5a12">${total.p}</td><td class="n" style="color:#9b2c2c">${total.n}</td><td class="n" style="color:var(--sub,#6b6b64)">${total.u}</td><td></td></tr>
+      </tbody></table></div>`));
+    const gaps = questions.filter(q => latest[q.id] !== undefined && latest[q.id] < 1).sort((a, b) => latest[a.id] - latest[b.id]);
     if (gaps.length) {
-      const d = h(`<details ${gaps.length <= 6 ? "open" : ""}><summary>Gaps to study (${gaps.length})</summary><ol class="pr-list" style="margin-top:10px"></ol></details>`);
-      const ol = d.querySelector("ol");
-      gaps.forEach(q => ol.append(h(`<li>${esc(q.prompt)}<span class="pr-why">${latest[q.id] === 0 ? "Missed" : "Partly right"} ${SRC[src[q.id]] || ""} · ${esc(q.topic_label)}</span></li>`)));
+      const d = h(`<details ${gaps.length <= 6 ? "open" : ""}><summary>Questions to study (${gaps.length})</summary><ol class="pr-list" style="margin-top:10px"></ol></details>`);
+      gaps.forEach(q => d.querySelector("ol").append(h(`<li>${esc(q.prompt)}<span class="pr-why">${latest[q.id] === 0 ? "Missed" : "Partly right"} ${SRC[src[q.id]] || ""} · ${esc(q.topic_label)}</span></li>`)));
       card.append(d);
     }
+    const good = questions.filter(q => latest[q.id] >= 1);
     if (good.length) {
-      const d = h(`<details><summary>Answered well (${good.length})</summary><ol class="pr-list" style="margin-top:10px"></ol></details>`);
+      const d = h(`<details><summary>Questions you know well (${good.length})</summary><ol class="pr-list" style="margin-top:10px"></ol></details>`);
       good.forEach(q => d.querySelector("ol").append(h(`<li>${esc(q.prompt)}</li>`)));
       card.append(d);
     }
+    card.append(h(`<p class="pr-updated">Last updated ${new Date().toLocaleTimeString("en-IE", { hour: "2-digit", minute: "2-digit" })}</p>`));
     return card;
   }
 
   // ---- mount ----
-  async function mountPractice(slot, { topic, profile, sb }){
+  async function mountPractice(slot, { topic, profile, sb, summarySlot }){
     if (!slot || !topic) return;
     addCss();
     const questions = await sb(`quiz_questions?select=id,qtype,topic_label,difficulty,prompt,options,answer_index,explanation,model_answer,marking_scheme,source,marks&topic_id=eq.${topic.id}&order=id.asc`);
@@ -140,8 +157,15 @@
     const wrap = h(`<div></div>`);
     slot.replaceChildren(wrap);
 
-    async function refresh(){ prog = await loadProgress(sb, profile, questions); home(); }
-    window.addEventListener("study-progress", () => { if (wrap.isConnected && !session) refresh(); });
+    function paintSummary(){
+      const g = questions.filter(q => prog.latest[q.id] >= 1).length;
+      window.dispatchEvent(new CustomEvent("study-stats", { detail: { topicId: topic.id, good: g, total: questions.length } }));
+      if (summarySlot) summarySlot.replaceChildren(summaryCard(questions, prog));
+    }
+    async function refreshSummary(){ prog = await loadProgress(sb, profile, questions); paintSummary(); }
+    async function refresh(){ prog = await loadProgress(sb, profile, questions); paintSummary(); if (!session) home(); }
+    window.addEventListener("study-progress", () => { if (wrap.isConnected) refresh(); });
+    const save = async (qid, v, source) => { await record(sb, profile, qid, v, source); refreshSummary(); };
 
     let session = null;
     const mcq = questions.filter(q => q.qtype === "mcq"), rec = questions.filter(q => q.qtype === "recall"), ex = questions.filter(q => q.qtype === "exam");
@@ -150,7 +174,7 @@
       session = null;
       const weak = questions.filter(q => prog.latest[q.id] !== undefined && prog.latest[q.id] < 1);
       const untried = questions.filter(q => prog.latest[q.id] === undefined);
-      const card = h(`<div class="pr-card"><h3>Practise this chapter</h3><p class="pr-sub">Test yourself first. Getting things wrong is how you find what to revise.</p><div class="pr-modes"></div></div>`);
+      const card = h(`<div class="pr-card"><h3>Quizzes and exam questions</h3><p class="pr-sub">Close your notes first. Getting things wrong is how you find what to study.</p><div class="pr-modes"></div></div>`);
       const modes = card.querySelector(".pr-modes");
       const add = (title, sub, list, main) => { const b = h(`<button type="button" class="pr-mode${main?" main":""}"><strong>${esc(title)}</strong><span>${esc(sub)}</span></button>`); b.onclick = () => start(title, list()); modes.append(b); };
       add("Start today's 10 minutes", weak.length ? "Your gaps first, then new questions" : "8 quick questions, 1 say-it-out-loud, 1 exam question", () => {
@@ -165,7 +189,7 @@
       add("Multiple choice", `${mcq.length} quick questions`, () => shuffle(mcq));
       if (rec.length) add("Say it out loud", `${rec.length} questions. Answer, then check`, () => shuffle(rec));
       if (ex.length) add("Exam questions", `${ex.length} past-paper questions. Write, type or photo your answer for feedback`, () => ex.slice());
-      wrap.replaceChildren(summaryCard(questions, prog), card);
+      wrap.replaceChildren(card);
     }
 
     function start(name, list){
@@ -201,7 +225,7 @@
           const ok = oi === q.answer_index;
           opts.querySelectorAll(".pr-opt").forEach((x,p) => { x.disabled = true; if (order[p] === q.answer_index) x.classList.add("right"); });
           if (!ok) b.classList.add("wrong");
-          if (!retry) { session.results.push({ q, v: ok?1:0 }); record(sb, profile, q.id, ok?1:0, "quiz"); }
+          if (!retry) { session.results.push({ q, v: ok?1:0 }); save(q.id, ok?1:0, "quiz"); }
           if (!ok && !retry) session.queue.push({ q, retry:true });
           card.append(h(`<div class="pr-fb ${ok?"good":"bad"}"><strong>${ok?"Correct.":"Not this time."}</strong><span>${esc(q.explanation||"")}</span>${!ok&&!retry?`<span class="pr-tip">This one will come back at the end.</span>`:""}</div>`));
           nextBtn(card);
@@ -233,7 +257,7 @@
         }
         file.value = "";
       };
-      const done = (v, source) => { if (!retry) { session.results.push({ q, v }); record(sb, profile, q.id, v, source); } };
+      const done = (v, source) => { if (!retry) { session.results.push({ q, v }); save(q.id, v, source); } };
 
       fbBtn.onclick = async () => {
         const text = ta.value.trim();
@@ -277,7 +301,7 @@
     async function finish(){
       const R = session.results, pct = R.length ? Math.round(R.reduce((a,r)=>a+r.v,0)/R.length*100) : 0;
       const good = R.filter(r => r.v >= 1), gaps = R.filter(r => r.v < 1);
-      prog = await loadProgress(sb, profile, questions);
+      await refreshSummary();
       const card = h(`<div class="pr-card"><span class="pr-tag" style="align-self:flex-start">${esc(session.name)} · done</span>
         <div class="pr-row" style="gap:16px"><span class="pr-score">${pct}%</span><span>${R.length} question${R.length===1?"":"s"} answered. ${pct>=80?"Strong. Come back tomorrow to make it stick.":pct>=50?"Good start. Your gaps are below.":"This chapter needs another look. Start with the gaps below."}</span></div>
         ${good.length ? `<div class="pr-fb good"><h4>Answered well (${good.length})</h4><ul>${good.map(r=>`<li>${esc(r.q.prompt)}</li>`).join("")}</ul></div>` : ""}
@@ -290,6 +314,7 @@
       card.scrollIntoView({ block:"start", behavior:"smooth" });
     }
 
+    paintSummary();
     home();
   }
   window.mountPractice = mountPractice;
