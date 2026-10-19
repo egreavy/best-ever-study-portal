@@ -29,10 +29,17 @@
   .pr-pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;margin:0 0 10px}
   .pr-pair>:empty{display:none}
   .pr-pair[hidden]{display:none}
-  .pr-mic{border-color:#1F2328;color:#1F2328;background:#fff}
-  .pr-mic.on{background:#1F2328;color:#fff;animation:prPulse 1.6s ease-out infinite}
+  .pr-answer{position:relative}
+  .pr-answer textarea{padding-bottom:52px}
+  .pr-tools{position:absolute;right:10px;bottom:12px;display:flex;gap:8px}
+  .pr-icon{width:40px;height:40px;border-radius:50%;border:2px solid #1F2328;background:#fff;color:#1F2328;display:grid;place-items:center;cursor:pointer;padding:0}
+  .pr-icon svg{width:20px;height:20px}
+  .pr-icon:focus-visible{outline:3px solid #1F6F5C;outline-offset:2px}
+  .pr-icon:hover{background:#EEF0F2}
+  .pr-icon.on{background:#1F2328;color:#fff;animation:prPulse 1.6s ease-out infinite}
+  .pr-icon input{display:none}
   @keyframes prPulse{0%{box-shadow:0 0 0 0 rgba(31,35,40,.3)}100%{box-shadow:0 0 0 10px rgba(31,35,40,0)}}
-  @media (prefers-reduced-motion:reduce){.pr-mic.on{animation:none}}
+  @media (prefers-reduced-motion:reduce){.pr-icon.on{animation:none}}
   .pr-pair .pr-paper{height:100%;box-sizing:border-box}
   .pr-side{gap:6px}
   .pr-side .pr-side-btn{margin-top:auto;padding-top:6px}
@@ -87,9 +94,11 @@
   const speakTip = () => `<p class="pr-tip">To speak instead of typing: ${isTouch ? "tap the microphone on your keyboard" : isMac ? "press the Fn (Globe) key twice" : "press Windows + H"}.</p>`;
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   // Adds a Speak my answer button that types what he says into the box (Chrome, Edge, Safari)
+  const MIC_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v5"/></svg>';
+  const CAM_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>';
   function attachMic(row, ta, status){
     if (!SR) return false;
-    const btn = h(`<button type="button" class="pr-btn pr-mic" aria-pressed="false">Speak my answer</button>`);
+    const btn = h(`<button type="button" class="pr-icon" aria-pressed="false" aria-label="Speak your answer" title="Speak your answer">${MIC_SVG}</button>`);
     row.prepend(btn);
     let rec = null, base = "";
     const stop = () => { if (rec) { try { rec.stop(); } catch (e) {} } };
@@ -105,13 +114,13 @@
       rec.onerror = (e) => {
         status.textContent = e.error === "not-allowed" || e.error === "service-not-allowed"
           ? "The browser blocked the microphone. Allow it for this site (the icon in the address bar), then try again."
-          : e.error === "no-speech" ? "Didn't hear anything. Tap Speak my answer and try again." : "Speaking didn't work this time. Try again, or type your answer.";
+          : e.error === "no-speech" ? "Didn't hear anything. Tap the microphone and try again." : "Speaking didn't work this time. Try again, or type your answer.";
         status.hidden = false;
       };
-      rec.onend = () => { rec = null; btn.classList.remove("on"); btn.textContent = "Speak my answer"; btn.setAttribute("aria-pressed", "false"); base = ta.value; };
+      rec.onend = () => { rec = null; btn.classList.remove("on"); btn.setAttribute("aria-label", "Speak your answer"); btn.title = "Speak your answer"; btn.setAttribute("aria-pressed", "false"); base = ta.value; };
       try {
         rec.start(); status.hidden = true;
-        btn.classList.add("on"); btn.textContent = "Stop speaking"; btn.setAttribute("aria-pressed", "true");
+        btn.classList.add("on"); btn.setAttribute("aria-label", "Stop speaking"); btn.title = "Stop speaking"; btn.setAttribute("aria-pressed", "true");
       } catch (e) { rec = null; }
     };
     row._stopMic = stop;
@@ -333,19 +342,20 @@
 
     function writtenView(card, q, retry){
       const images = [], isExam = q.qtype === "exam";
-      const box = h(`<div style="display:flex;flex-direction:column;gap:12px">
-        <p class="pr-tip">${isExam ? "Write your answer on paper and add a photo, speak it, or type it here." : "Speak or type your answer, then check it."}</p>
+      const box = h(`<div style="display:flex;flex-direction:column;gap:10px">
+        <p class="pr-tip">Type your answer, tap the microphone to speak it, or add a photo of a written answer.</p>
         ${SR ? "" : speakTip()}
-        <textarea aria-label="Your answer" placeholder="${isExam ? "Type your answer (or add a photo below)" : "Type your answer (optional)"}"></textarea>
+        <div class="pr-answer">
+          <textarea aria-label="Your answer" placeholder="Your answer"></textarea>
+          <div class="pr-tools" data-inputs><label class="pr-icon" title="Add a photo of your answer" aria-label="Add a photo of your answer">${CAM_SVG}<input type="file" accept="image/*" multiple></label></div>
+        </div>
         <div class="pr-thumbs"></div>
-        <div class="pr-row" data-inputs>${isExam ? `<label class="pr-btn ghost">Add a photo or screenshot<input type="file" accept="image/*" multiple hidden></label>` : ""}</div>
-        <div class="pr-row"><button type="button" class="pr-btn" data-fb>${isExam ? "Mark my answer" : "Check my answer"}</button><button type="button" class="pr-btn ghost" data-self>Just show the answer</button></div>
+        <div class="pr-row"><button type="button" class="pr-btn" data-fb>Check my answer</button><button type="button" class="pr-btn ghost" data-self>Just show the answer</button></div>
         <p class="pr-err" hidden></p></div>`);
       const ta = box.querySelector("textarea"), thumbs = box.querySelector(".pr-thumbs"), file = box.querySelector("input[type=file]"), err = box.querySelector(".pr-err");
       const fbBtn = box.querySelector("[data-fb]"), selfBtn = box.querySelector("[data-self]");
       const inputsRow = box.querySelector("[data-inputs]");
       attachMic(inputsRow, ta, err);
-      if (!inputsRow.children.length) inputsRow.remove();
       const stopMic = () => { if (inputsRow._stopMic) inputsRow._stopMic(); };
       if (file) file.onchange = async () => {
         err.hidden = true;
@@ -361,7 +371,7 @@
       fbBtn.onclick = async () => {
         stopMic();
         const text = ta.value.trim();
-        if (!text && !images.length) { err.textContent = isExam ? "Type an answer or add a photo first." : "Type your answer first, or use Just show the answer."; err.hidden = false; return; }
+        if (!text && !images.length) { err.textContent = "Type, speak or add a photo of your answer first, or use Just show the answer."; err.hidden = false; return; }
         fbBtn.disabled = selfBtn.disabled = true; fbBtn.textContent = "Reading your answer…"; err.hidden = true;
         try {
           const r = await fetch("/api/mark-answer", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ question_id: q.id, answer_text: text, images }) });
@@ -383,7 +393,7 @@
           nextBtn(card);
         } catch (e) {
           err.textContent = e.message + " You can still check it yourself with Just show the answer."; err.hidden = false;
-          fbBtn.disabled = selfBtn.disabled = false; fbBtn.textContent = isExam ? "Mark my answer" : "Check my answer";
+          fbBtn.disabled = selfBtn.disabled = false; fbBtn.textContent = "Check my answer";
         }
       };
 
