@@ -587,7 +587,7 @@ async function renderChapter(){
   const templateRows = templateRowsAll.filter(r => !disabledSet.has(r.id));
   const PRACTICE_TITLES = ["Flashcards Review", "Quiz Yourself", "Exam Practice"];
   const learnRows = templateRows.filter(t => !PRACTICE_TITLES.includes(t.title));
-  const extraRows = templateRows.filter(t => PRACTICE_TITLES.includes(t.title));
+  const extraRows = templateRows.filter(t => PRACTICE_TITLES.includes(t.title) && t.title !== "Quiz Yourself");
   let knowStats = null;
   const progressRows = await sb(`nlm_progress?select=step_order,done,resource_url&topic_id=eq.${state.topicId}&profile_id=eq.${PROFILE.id}`);
   const confidenceRows = await sb(`nlm_confidence?select=rating&topic_id=eq.${state.topicId}&profile_id=eq.${PROFILE.id}`);
