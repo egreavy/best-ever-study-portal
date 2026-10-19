@@ -1002,8 +1002,12 @@ async function renderChapter(){
     updateProgressUI();
   }
 
-  const TABS = [["progress", "Progress"], ["learn", "Learn"], ["test", "Test"]];
-  if (!state.chapterTab || state.chapterTabTopic !== state.topicId) { state.chapterTab = "progress"; state.chapterTabTopic = state.topicId; }
+  const TABS = [["learn", "Learn"], ["test", "Test"], ["progress", "Progress"]];
+  // Open where he's most likely to start: Learn if he hasn't done any materials yet, otherwise Test
+  if (!state.chapterTab || state.chapterTabTopic !== state.topicId) {
+    state.chapterTab = learnRows.length && doneCount() === 0 ? "learn" : "test";
+    state.chapterTabTopic = state.topicId;
+  }
 
   document.getElementById("view").innerHTML = `
   <div class="cv">
