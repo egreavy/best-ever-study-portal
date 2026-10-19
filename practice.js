@@ -190,11 +190,11 @@
         const list = h(`<div class="pr-list"></div>`);
         fx.slice(0, 8).forEach(q => {
           const li = h(`<div class="pr-li"><div class="pr-li-body"><span class="pr-li-title">${esc(shortTitle(q))}</span><span class="pr-li-note">${esc(fixNote(q, prog))}</span></div><button type="button" class="pr-btn ghost">${prog.reviews[q.id] ? "Try again" : "Try it"}</button></div>`);
-          li.querySelector("button").onclick = () => { goTo("test"); start("Questions to fix", [q, ...fixes().filter(x => x !== q)]); };
+          li.querySelector("button").onclick = () => { goTo("test"); start("Try Again", [q, ...fixes().filter(x => x !== q)]); };
           list.append(li);
         });
         fixCard.append(list);
-        if (fx.length > 8) fixCard.append(h(`<p class="pr-small">And ${fx.length - 8} more. "Questions to fix" on the Test tab goes through them all.</p>`));
+        if (fx.length > 8) fixCard.append(h(`<p class="pr-small">And ${fx.length - 8} more. "Try Again" on the Test tab goes through them all.</p>`));
       }
       if (kn.length) {
         const d = h(`<details><summary>Questions you've got right (${kn.length})</summary><ol></ol></details>`);
@@ -232,9 +232,9 @@
           const b = h(`<button type="button" class="pr-choice"${disabled ? " disabled" : ""}><span class="pr-li-body"><span class="pr-li-title">${esc(title)}</span><span class="pr-li-note">${esc(note)}</span></span><span class="pr-chev" aria-hidden="true">›</span></button>`);
           b.onclick = fn; list.append(b);
         };
-        add("Questions to fix", fx.length ? `Only the ${fx.length === 1 ? "one" : fx.length} you got wrong or half right` : "Nothing to fix right now", () => start("Questions to fix", fx), !fx.length);
-        add("Multiple choice", "Pick the right answer from four", () => start("Multiple choice", shuffle(mcq)), !mcq.length);
-        if (rec.length) add("Short answers", "Explain one idea in a sentence or two, then check it against a good answer", () => start("Short answers", shuffle(rec)));
+        add("Try Again", fx.length ? "Retry questions you got wrong or partly right and improve your answers." : "Nothing to retry right now. Questions you get wrong or partly right will appear here.", () => start("Try Again", fx), !fx.length);
+        add("Quick Quiz", "Choose the correct answer from four options and check what you know.", () => start("Quick Quiz", shuffle(mcq)), !mcq.length);
+        if (rec.length) add("Short Answer Practice", "Write a brief answer, then compare it with a model answer to see what you missed.", () => start("Short Answer Practice", shuffle(rec)));
         moreSlot.replaceChildren(box);
       }
     }
@@ -249,7 +249,7 @@
     function next(){
       if (session.i >= session.queue.length) return finish();
       const { q, retry } = session.queue[session.i];
-      const label = q.qtype === "exam" ? `Past paper · ${esc(q.source || "")} · ${q.marks || 5} marks` : q.qtype === "recall" ? "Short answer" : "Multiple choice";
+      const label = q.qtype === "exam" ? `Past paper · ${esc(q.source || "")} · ${q.marks || 5} marks` : q.qtype === "recall" ? "Short answer" : "Quick quiz";
       const card = h(`<div class="pr-card">
         <div class="pr-row" style="justify-content:space-between"><button type="button" class="pr-btn ghost" data-stop>Stop</button><span class="pr-small" style="font-variant-numeric:tabular-nums">${retry ? "Second try" : `Question ${session.i+1} of ${session.total}`}</span></div>
         <div class="pr-progress"><i style="width:${Math.min(session.i,session.total)/session.total*100}%"></i></div>
