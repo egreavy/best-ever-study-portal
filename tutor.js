@@ -42,7 +42,7 @@
   const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
   function buildPrompt(ctx){
-    const { name, subject, title, notes, questions, latest } = ctx;
+    const { name, subject, title, notes, questions, latest, lastSession } = ctx;
     const gaps = questions.filter(q => latest[q.id] !== undefined && latest[q.id] < 1);
     const tried = questions.filter(q => latest[q.id] !== undefined).length;
     const fmt = q => {
@@ -55,6 +55,12 @@
       ? `Start with the questions ${name} got wrong or only partly right last time (marked below), weakest topic first. Then mix in a few new ones.`
       : tried ? `${name} has done well so far. Ask harder "explain" and "apply it to Ireland" questions.`
       : `${name} hasn't practised this chapter yet. Start with an easy warm-up, then build up.`;
+    let resume = "";
+    if (lastSession && Array.isArray(lastSession.transcript) && lastSession.transcript.length) {
+      const when = new Date(lastSession.created_at).toLocaleDateString("en-IE", { weekday: "long", day: "numeric", month: "long" });
+      const tail = lastSession.transcript.slice(-40).map(l => `${l.role === "user" ? name : "Tutor"}: ${l.text}`).join("\n");
+      resume = `\n\nLast session (${when}): this is how your previous conversation with ${name} on this chapter went (the end of it). Pick up where you left off: in your first reply, remind ${name} in one sentence what you covered last time, then carry on. Don't re-ask questions ${name} got right last time unless revising.\n${tail}`;
+    }
     return `You are ${name}'s spoken revision tutor for Leaving Certificate Higher Level ${subject}, chapter "${title}". This is a live voice conversation. ${name} is dyslexic and can find it hard to get started, so be warm, encouraging and very clear.
 
 How to speak:
@@ -73,7 +79,7 @@ How to speak:
 
 Saving progress: each time you have judged ${name}'s answer to a question from the list, call record_result with that question's id and got_it, partly or missed. Do this silently and never mention it.
 
-Plan: ${plan}
+Plan: ${plan}${resume}
 
 Chapter notes (use only these facts; if unsure, say you'll check with the notes rather than guessing):
 ${notes || "(no notes for this chapter)"}
@@ -109,16 +115,31 @@ ${questions.map(fmt).join("\n")}`;
     const orb = card.querySelector("#tutorOrb"), status = card.querySelector("#tutorStatus"),
       endBtn = card.querySelector("#tutorEnd"), errEl = card.querySelector("#tutorErr"),
       log = card.querySelector("#tutorLog"), lines = card.querySelector("#tutorLines");
-    let convo = null, results = { got_it:0, partly:0, missed:0 }, active = false;
+    let convo = null, results = { got_it:0, partly:0, missed:0 }, active = false, transcript = [], saved = false;
 
     function setIdle(msg){
       active = false; convo = null;
       orb.disabled = false; orb.className = "tutor-orb"; orb.textContent = "Tap to start talking";
       endBtn.hidden = true; status.textContent = msg || "";
     }
+    function summaryText(){
+      const n = results.got_it + results.partly + results.missed;
+      if (!n) return transcript.length ? "Session saved. Next time the tutor will pick up where you left off." : "Session ended.";
+      const parts = [];
+      if (results.got_it) parts.push(`${results.got_it} right first time`);
+      if (results.partly) parts.push(`${results.partly} right with a hint`);
+      if (results.missed) parts.push(`${results.missed} to go over again`);
+      return `You answered ${n} question${n === 1 ? "" : "s"}: ${parts.join(", ")}. Next time the tutor will pick up from here.`;
+    }
+    function saveSession(){
+      if (saved || !transcript.length) return; saved = true;
+      sb("tutor_sessions", { method: "POST", prefer: "return=minimal",
+        body: [{ profile_id: profile.id, topic_id: topic.id, transcript: transcript.slice(-200), results }] });
+    }
     function showErr(m){ errEl.textContent = m; errEl.hidden = !m; }
     function addLine(role, text){
       if (!text) return; log.hidden = false;
+      transcript.push({ role: role === "user" ? "user" : "agent", text: String(text).slice(0, 2000) });
       const p = document.createElement("p"); if (role === "user") p.className = "me";
       p.textContent = (role === "user" ? "You: " : "Tutor: ") + text; lines.appendChild(p); lines.scrollTop = lines.scrollHeight;
     }
@@ -127,7 +148,7 @@ ${questions.map(fmt).join("\n")}`;
       if (active) return;
       active = true; showErr("");
       orb.disabled = true; orb.textContent = "Starting…"; status.textContent = "Allow the microphone if your browser asks.";
-      lines.replaceChildren(); log.hidden = true; results = { got_it:0, partly:0, missed:0 };
+      lines.replaceChildren(); log.hidden = true; results = { got_it:0, partly:0, missed:0 }; transcript = []; saved = false;
       try {
         const ids = questions.map(q => q.id);
         const attempts = ids.length
@@ -135,7 +156,13 @@ ${questions.map(fmt).join("\n")}`;
           : [];
         const latest = {};
         attempts.forEach(a => { if (latest[a.question_id] === undefined) latest[a.question_id] = Number(a.result); });
-        const prompt = buildPrompt({ name: profile.name, subject: topic.subject_title || "", title: topic.title, notes: (notesRow[0] || {}).notes || "", questions, latest });
+        const lastRows = await sb(`tutor_sessions?select=transcript,created_at&profile_id=eq.${profile.id}&topic_id=eq.${topic.id}&order=created_at.desc&limit=1`);
+        const lastSession = lastRows && lastRows[0] && (lastRows[0].transcript || []).length ? lastRows[0] : null;
+        const prompt = buildPrompt({ name: profile.name, subject: topic.subject_title || "", title: topic.title, notes: (notesRow[0] || {}).notes || "", questions, latest, lastSession });
+        const chapterName = topic.title.replace(/^Ch\s*\d+:\s*/i, "");
+        const firstMessage = lastSession
+          ? `Hi ${profile.name}, welcome back! Shall we pick up where we left off on ${chapterName}?`
+          : `Hi ${profile.name}! Let's go over ${chapterName}. Ready for your first question?`;
 
         const [lib, tokRes] = await Promise.all([ loadLib(), fetch("/api/tutor-token", { method: "POST" }) ]);
         const tok = await tokRes.json().catch(() => ({}));
@@ -144,7 +171,7 @@ ${questions.map(fmt).join("\n")}`;
         convo = await lib.Conversation.startSession({
           conversationToken: tok.token,
           connectionType: "webrtc",
-          overrides: { agent: { prompt: { prompt }, firstMessage: `Hi ${profile.name}! Let's go over ${topic.title.replace(/^Ch\s*\d+:\s*/i, "")}. Ready for your first question?` } },
+          overrides: { agent: { prompt: { prompt }, firstMessage } },
           clientTools: {
             record_result: async ({ question_id, result }) => {
               const map = { got_it: 1, partly: 0.5, missed: 0 };
@@ -166,8 +193,8 @@ ${questions.map(fmt).join("\n")}`;
           onMessage: ({ message, role, source }) => addLine(role || (source === "ai" ? "agent" : "user"), message),
           onError: (m) => { showErr("Something went wrong with the connection. Tap to try again."); console.warn("tutor error", m); },
           onDisconnect: () => {
-            const n = results.got_it + results.partly + results.missed;
-            setIdle(n ? `Session saved: ${results.got_it} got it, ${results.partly} partly, ${results.missed} to revise.` : "Session ended.");
+            saveSession();
+            setIdle(summaryText());
           }
         });
       } catch (e) {
@@ -180,12 +207,12 @@ ${questions.map(fmt).join("\n")}`;
 
     // End the call if the student leaves the chapter (the card is removed from the page)
     const watch = setInterval(() => {
-      if (!card.isConnected) { clearInterval(watch); if (convo) convo.endSession(); }
+      if (!card.isConnected) { clearInterval(watch); saveSession(); if (convo) convo.endSession(); }
     }, 1000);
 
     orb.addEventListener("keydown", e => { if (e.key === "Escape" && convo) convo.endSession(); });
     endBtn.addEventListener("click", async () => { if (convo) { endBtn.disabled = true; try { await convo.endSession(); } finally { endBtn.disabled = false; } } });
-    window.addEventListener("pagehide", () => { if (convo) convo.endSession(); }, { once: true });
+    window.addEventListener("pagehide", () => { saveSession(); if (convo) convo.endSession(); }, { once: true });
   }
 
   window.mountTutor = mountTutor;
