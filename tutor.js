@@ -18,27 +18,27 @@
   }
 
   const css = `
-  .tutor-card{background:#fff;border-radius:18px;padding:26px 28px;margin:0 0 16px;display:flex;flex-direction:column;gap:12px}
-  .tutor-top{display:flex;align-items:center;justify-content:space-between;gap:20px}
-  .tutor-card h3{margin:0;font-size:20px;font-weight:700}
-  .tutor-card .tutor-sub{margin:4px 0 0;color:#5B6470;font-size:17px;line-height:1.5}
-  .tutor-orb{flex:none;border:2px solid #1F6F5C;background:#fff;color:#1F6F5C;font:inherit;font-size:17px;font-weight:700;padding:13px 26px;border-radius:999px;cursor:pointer;min-height:50px;white-space:nowrap}
+  .tutor-card{background:#fff;border-radius:14px;padding:16px 20px;margin:0 0 10px;display:flex;flex-direction:column;gap:8px;height:100%;box-sizing:border-box}
+  .tutor-top{display:flex;flex-direction:column;gap:2px}
+  .tutor-card h3{margin:0;font-size:16px;font-weight:700}
+  .tutor-card .tutor-sub{margin:0;color:#5B6470;font-size:14px;line-height:1.45}
+  .tutor-orb{align-self:flex-start;border:2px solid #1F6F5C;background:#fff;color:#1F6F5C;font:inherit;font-size:15px;font-weight:700;padding:8px 18px;border-radius:999px;cursor:pointer;min-height:40px;white-space:nowrap}
   .tutor-orb:focus-visible{outline:3px solid #1F6F5C;outline-offset:3px}
   .tutor-orb[disabled]{opacity:.7;cursor:default}
   .tutor-orb.listening,.tutor-orb.speaking{background:#1F6F5C;color:#fff}
   .tutor-orb.listening{animation:tutorPulse 1.8s ease-out infinite}
-  @keyframes tutorPulse{0%{box-shadow:0 0 0 0 rgba(31,111,92,.35)}100%{box-shadow:0 0 0 14px rgba(31,111,92,0)}}
+  @keyframes tutorPulse{0%{box-shadow:0 0 0 0 rgba(31,111,92,.35)}100%{box-shadow:0 0 0 12px rgba(31,111,92,0)}}
   @media (prefers-reduced-motion:reduce){.tutor-orb.listening{animation:none}}
-  .tutor-status{font-size:17px;font-weight:700;color:#1F2328;margin:0}
+  .tutor-status{font-size:14px;font-weight:700;color:#1F2328;margin:0}
   .tutor-status:empty{display:none}
-  .tutor-end{align-self:flex-start;border:2px solid #1F2328;background:#fff;color:#1F2328;font:inherit;font-weight:700;font-size:16px;padding:10px 22px;border-radius:999px;cursor:pointer}
-  .tutor-err{color:#a32020;font-size:16px;margin:0}
-  .tutor-log summary{cursor:pointer;color:#5B6470;font-size:16px;font-weight:700}
-  .tutor-lines{display:flex;flex-direction:column;gap:6px;margin-top:8px;max-height:280px;overflow:auto;font-size:16px;line-height:1.5}
-  .tutor-lines p{margin:0;padding:8px 12px;border-radius:12px;background:#F4F5F6}
+  .tutor-end{align-self:flex-start;border:2px solid #1F2328;background:#fff;color:#1F2328;font:inherit;font-weight:700;font-size:14px;padding:6px 16px;border-radius:999px;cursor:pointer}
+  .tutor-err{color:#a32020;font-size:14px;margin:0}
+  .tutor-log summary{cursor:pointer;color:#5B6470;font-size:14px;font-weight:700}
+  .tutor-lines{display:flex;flex-direction:column;gap:6px;margin-top:6px;max-height:240px;overflow:auto;font-size:14px;line-height:1.45}
+  .tutor-lines p{margin:0;padding:6px 10px;border-radius:10px;background:#F4F5F6}
   .tutor-lines p.me{background:#EAF3F0}
-  @media (max-width:600px){.tutor-top{flex-direction:column;align-items:flex-start}}
   `;
+
 
   function addCss(){ if (document.getElementById("tutor-css")) return; const st=document.createElement("style"); st.id="tutor-css"; st.textContent=css; document.head.appendChild(st); }
   const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -112,9 +112,9 @@ ${questions.map(fmt).join("\n")}`;
     card.className = "tutor-card";
     card.innerHTML = `
       <div class="tutor-top">
-        <div><h3>Talk it through with your tutor</h3><p class="tutor-sub">Just talk. It asks you questions out loud and picks up where you left off.</p></div>
-        <button class="tutor-orb" type="button" id="tutorOrb">Start talking</button>
+        <h3>Talk it through with your tutor</h3><p class="tutor-sub">Just talk. It asks you questions out loud and picks up where you left off.</p>
       </div>
+      <button class="tutor-orb" type="button" id="tutorOrb">Start talking</button>
       <p class="tutor-status" id="tutorStatus" aria-live="polite"></p>
       <button class="tutor-end" type="button" id="tutorEnd" hidden>End session</button>
       <p class="tutor-err" id="tutorErr" hidden></p>

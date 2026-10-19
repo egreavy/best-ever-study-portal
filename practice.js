@@ -4,64 +4,71 @@
 // so each one picks up from the others.
 (function(){
   const css = `
-  .pr-card{background:#fff;border-radius:18px;padding:26px 28px;margin:0 0 16px;display:flex;flex-direction:column;gap:16px}
-  .pr-card h3{margin:0;font-size:22px;font-weight:700;line-height:1.3}
-  .pr-sub{margin:0;color:#5B6470;font-size:17px;line-height:1.5}
-  .pr-small{margin:0;color:#5B6470;font-size:16px;line-height:1.5}
+  .pr-card{background:#fff;border-radius:14px;padding:16px 20px;margin:0 0 10px;display:flex;flex-direction:column;gap:10px}
+  .pr-card h3{margin:0;font-size:17px;font-weight:700;line-height:1.3}
+  .pr-sub{margin:0;color:#5B6470;font-size:15px;line-height:1.45}
+  .pr-small{margin:0;color:#5B6470;font-size:14px;line-height:1.45}
   .pr-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
-  .pr-step{display:flex;flex-direction:column;gap:8px}
-  .pr-step b{font-size:17px}
-  .pr-step span{font-size:16px;color:#5B6470}
-  .pr-bar{height:10px;border-radius:99px;background:#DDE1E5;overflow:hidden}
+  .pr-step{display:flex;flex-direction:column;gap:4px}
+  .pr-step b{font-size:15px}
+  .pr-step span{font-size:14px;color:#5B6470}
+  .pr-bar{height:8px;border-radius:99px;background:#DDE1E5;overflow:hidden;margin-bottom:2px}
   .pr-bar i{display:block;height:100%;background:#1F2328;border-radius:99px}
-  .pr-next{margin:0;font-size:18px;line-height:1.55}
+  .pr-next{margin:0;font-size:15px;line-height:1.5}
+  .pr-headrow{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
   .pr-list{display:flex;flex-direction:column}
-  .pr-li{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 0;border-top:1px solid #DDE1E5}
+  .pr-li{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:10px 0;border-top:1px solid #DDE1E5}
   .pr-li:last-child{border-bottom:1px solid #DDE1E5}
-  .pr-li-body{display:flex;flex-direction:column;gap:6px;min-width:0}
-  .pr-li-title{font-size:19px;font-weight:700;line-height:1.4}
-  .pr-li-note{font-size:16px;color:#5B6470;line-height:1.45}
-  .pr-card details summary{cursor:pointer;font-weight:700;font-size:17px;padding:4px 0}
-  .pr-card details ol{margin:12px 0 0;padding-left:22px;display:flex;flex-direction:column;gap:8px;font-size:16px;line-height:1.5;color:#3d454f}
-  .pr-hero{align-items:center;text-align:center;padding:32px 28px}
-  .pr-paper{border:2px solid #1F2328;flex-direction:row;align-items:center;justify-content:space-between;gap:20px}
-  .pr-eyebrow{font-size:14px;font-weight:700;color:#5B6470;text-transform:uppercase;letter-spacing:.06em}
-  .pr-choose-label{font-size:17px;font-weight:700;color:#5B6470;margin:8px 0 10px}
-  .pr-choices{background:#fff;border-radius:18px;padding:4px 28px;margin:0 0 16px;display:flex;flex-direction:column}
-  .pr-choice{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px 0;border:none;border-bottom:1px solid #DDE1E5;background:none;text-align:left;font:inherit;color:inherit;cursor:pointer;width:100%}
+  .pr-li-body{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .pr-li-title{font-size:16px;font-weight:700;line-height:1.4}
+  .pr-li-note{font-size:14px;color:#5B6470;line-height:1.4}
+  .pr-card details summary{cursor:pointer;font-weight:700;font-size:15px;padding:2px 0}
+  .pr-card details ol{margin:8px 0 0;padding-left:22px;display:flex;flex-direction:column;gap:6px;font-size:14px;line-height:1.45;color:#3d454f}
+  .pr-hero{flex-direction:row;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  .pr-hero-text{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 260px}
+  .pr-pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;margin:0 0 10px}
+  .pr-pair>:empty{display:none}
+  .pr-pair .pr-paper{height:100%;box-sizing:border-box}
+  .pr-pair>.pr-card,.pr-pair>*{margin:0}
+  .pr-paper{border:2px solid #1F2328}
+  .pr-eyebrow{font-size:12px;font-weight:700;color:#5B6470;text-transform:uppercase;letter-spacing:.06em}
+  .pr-choose-label{font-size:14px;font-weight:700;color:#5B6470;margin:4px 0 6px}
+  .pr-choices{background:#fff;border-radius:14px;padding:2px 20px;margin:0 0 10px;display:flex;flex-direction:column}
+  .pr-choice{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:11px 0;border:none;border-bottom:1px solid #DDE1E5;background:none;text-align:left;font:inherit;color:inherit;cursor:pointer;width:100%}
   .pr-choice:last-child{border-bottom:none}
   .pr-choice:hover .pr-li-title{text-decoration:underline}
   .pr-choice[disabled]{opacity:.5;cursor:default}
-  .pr-chev{font-size:24px;color:#5B6470;flex:none}
-  .pr-btn{border:2px solid #1F6F5C;background:#1F6F5C;color:#fff;border-radius:999px;padding:13px 26px;font-weight:700;font-size:17px;cursor:pointer;font-family:inherit;min-height:50px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap}
-  .pr-btn.big{font-size:21px;padding:20px 40px}
+  .pr-chev{font-size:20px;color:#5B6470;flex:none}
+  .pr-btn{border:2px solid #1F6F5C;background:#1F6F5C;color:#fff;border-radius:999px;padding:8px 18px;font-weight:700;font-size:15px;cursor:pointer;font-family:inherit;min-height:40px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap}
+  .pr-btn.big{font-size:16px;padding:11px 24px;min-height:46px}
   .pr-btn.ghost{background:#fff;color:#1F6F5C}
   .pr-btn.dark{background:#1F2328;border-color:#1F2328}
   .pr-btn[disabled]{opacity:.6;cursor:default}
-  .pr-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-  .pr-q{font-size:21px;font-weight:700;line-height:1.5;margin:0}
-  .pr-meta{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:15px;color:#5B6470}
-  .pr-progress{height:8px;background:#DDE1E5;border-radius:99px;overflow:hidden}.pr-progress i{display:block;height:100%;background:#1F2328}
-  .pr-opts{display:flex;flex-direction:column;gap:10px}
-  .pr-opt{text-align:left;border:2px solid #DDE1E5;background:#fff;border-radius:14px;padding:15px 16px;min-height:56px;display:flex;gap:14px;align-items:flex-start;cursor:pointer;font:inherit;font-size:18px;color:inherit;line-height:1.45}
-  .pr-opt b{flex:none;width:28px;height:28px;border-radius:50%;background:#EEF0F2;display:grid;place-items:center;font-size:14px}
+  .pr-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .pr-q{font-size:18px;font-weight:700;line-height:1.5;margin:0}
+  .pr-meta{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:14px;color:#5B6470}
+  .pr-progress{height:6px;background:#DDE1E5;border-radius:99px;overflow:hidden}.pr-progress i{display:block;height:100%;background:#1F2328}
+  .pr-opts{display:flex;flex-direction:column;gap:8px}
+  .pr-opt{text-align:left;border:2px solid #DDE1E5;background:#fff;border-radius:12px;padding:10px 14px;min-height:46px;display:flex;gap:12px;align-items:flex-start;cursor:pointer;font:inherit;font-size:16px;color:inherit;line-height:1.45}
+  .pr-opt b{flex:none;width:24px;height:24px;border-radius:50%;background:#EEF0F2;display:grid;place-items:center;font-size:13px}
   .pr-opt:hover:not(:disabled){border-color:#1F2328}
   .pr-opt.right{border-color:#1F6F5C;background:#EAF3F0}.pr-opt.wrong{border-color:#1F2328;background:#F1F2F4}.pr-opt:disabled{cursor:default}
-  .pr-fb{border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:8px;font-size:17px;line-height:1.55;background:#F4F5F6}
+  .pr-fb{border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;font-size:15px;line-height:1.5;background:#F4F5F6}
   .pr-fb.good{background:#EAF3F0}
-  .pr-fb h4{margin:4px 0 0;font-size:17px}
-  .pr-fb ul{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:4px}
-  .pr-scheme{border-left:4px solid #DDE1E5;padding-left:12px;color:#5B6470;font-size:16px}
-  .pr-card textarea{width:100%;box-sizing:border-box;min-height:140px;font:inherit;font-size:18px;line-height:1.55;border:2px solid #DDE1E5;border-radius:14px;padding:14px;background:#F4F5F6;color:inherit;resize:vertical}
+  .pr-fb h4{margin:2px 0 0;font-size:15px}
+  .pr-fb ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:3px}
+  .pr-scheme{border-left:4px solid #DDE1E5;padding-left:10px;color:#5B6470;font-size:14px}
+  .pr-card textarea{width:100%;box-sizing:border-box;min-height:110px;font:inherit;font-size:16px;line-height:1.5;border:2px solid #DDE1E5;border-radius:12px;padding:10px 12px;background:#F4F5F6;color:inherit;resize:vertical}
   .pr-card textarea:focus{outline:3px solid #1F6F5C;outline-offset:1px}
-  .pr-tip{font-size:16px;color:#5B6470;margin:0;line-height:1.5}
-  .pr-thumbs{display:flex;gap:8px;flex-wrap:wrap}.pr-thumbs img{width:84px;height:84px;object-fit:cover;border-radius:10px;border:1px solid #DDE1E5}
-  .pr-rate{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-  .pr-rate button{border:2px solid #1F2328;background:#fff;border-radius:14px;padding:12px 6px;cursor:pointer;font:inherit;font-weight:700;font-size:17px;min-height:54px;color:#1F2328}
-  .pr-score{font-size:40px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
-  .pr-err{color:#a32020;font-size:16px;margin:0}
+  .pr-tip{font-size:14px;color:#5B6470;margin:0;line-height:1.45}
+  .pr-thumbs{display:flex;gap:8px;flex-wrap:wrap}.pr-thumbs img{width:72px;height:72px;object-fit:cover;border-radius:10px;border:1px solid #DDE1E5}
+  .pr-thumbs:empty{display:none}
+  .pr-rate{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .pr-rate button{border:2px solid #1F2328;background:#fff;border-radius:12px;padding:8px 6px;cursor:pointer;font:inherit;font-weight:700;font-size:15px;min-height:44px;color:#1F2328}
+  .pr-score{font-size:30px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+  .pr-err{color:#a32020;font-size:14px;margin:0}
   .pr-card button:focus-visible,.pr-choice:focus-visible,.pr-btn:focus-visible{outline:3px solid #1F6F5C;outline-offset:3px}
-  @media (max-width:600px){.pr-paper{flex-direction:column;align-items:flex-start}.pr-li{flex-direction:column;align-items:flex-start}.pr-card{padding:22px 20px}.pr-choices{padding:4px 20px}}
+  @media (max-width:600px){.pr-li{flex-direction:column;align-items:flex-start}.pr-card{padding:14px 16px}.pr-choices{padding:2px 16px}.pr-steps{gap:8px}}
   `;
   function addCss(){ if (document.getElementById("pr-css")) return; const s=document.createElement("style"); s.id="pr-css"; s.textContent=css; document.head.appendChild(s); }
   const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -118,7 +125,7 @@
 
   // ---- mount ----
   async function mountPractice(slot, opts){
-    const { topic, profile, sb, progressSlot, moreSlot, goTo = () => {}, learn = () => ({ done:0, total:0 }), hideDuring = [] } = opts;
+    const { topic, profile, sb, progressSlot, moreSlot, paperSlot, goTo = () => {}, learn = () => ({ done:0, total:0 }), hideDuring = [] } = opts;
     if (!slot || !topic) return null;
     addCss();
     const questions = await sb(`quiz_questions?select=id,qtype,topic_label,difficulty,prompt,options,answer_index,explanation,model_answer,marking_scheme,source,marks&topic_id=eq.${topic.id}&order=id.asc`);
@@ -174,12 +181,11 @@
           <div class="pr-step"><div class="pr-bar"><i style="width:${Math.round(tried / questions.length * 100)}%"></i></div><b>2. Test it</b><span>${testWord}</span></div>
           <div class="pr-step"><div class="pr-bar"><i style="width:${Math.round(knowRatio * 100)}%"></i></div><b>3. Know it</b><span>${knowWord}</span></div>
         </div>
-        <p class="pr-next">${esc(next)}</p>
-        <div><button type="button" class="pr-btn" data-go>${goLearn ? "Go to Learn" : "Start today's 10 minutes"}</button></div>
+        <div class="pr-headrow"><p class="pr-next">${esc(next)}</p><button type="button" class="pr-btn" data-go>${goLearn ? "Go to Learn" : "Start today's 10 minutes"}</button></div>
       </div>`);
       card.querySelector("[data-go]").onclick = () => { if (goLearn) goTo("learn"); else { goTo("test"); start("Today's 10 minutes", todaysPick()); } };
 
-      const fixCard = h(`<div class="pr-card"><div style="display:flex;flex-direction:column;gap:4px"><h3>Questions to fix</h3><p class="pr-sub">${fx.length ? "Get one right and it comes off this list." : tried ? "Nothing to fix right now. Nice work." : "Questions you get wrong or half right will show up here."}</p></div></div>`);
+      const fixCard = h(`<div class="pr-card"><div style="display:flex;flex-direction:column;gap:2px"><h3>Questions to fix</h3><p class="pr-sub">${fx.length ? "Get one right and it comes off this list." : tried ? "Nothing to fix right now. Nice work." : "Questions you get wrong or half right will show up here."}</p></div></div>`);
       if (fx.length) {
         const list = h(`<div class="pr-list"></div>`);
         fx.slice(0, 8).forEach(q => {
@@ -204,21 +210,18 @@
       session = null; setChrome(true);
       const pick = todaysPick(), fx = fixes();
       const hero = h(`<div class="pr-card pr-hero">
-        <p class="pr-sub">Notes closed. Best place to start:</p>
-        <button type="button" class="pr-btn big" data-today>Start today's 10 minutes</button>
-        <p class="pr-small">Made for you each day:<br>${esc(todaysCaption(pick))}</p></div>`);
+        <div class="pr-hero-text"><span class="pr-li-title" style="font-size:17px">Start here: today's 10 minutes</span><span class="pr-small">${esc(todaysCaption(pick))}</span></div>
+        <button type="button" class="pr-btn big" data-today>Start</button></div>`);
       hero.querySelector("[data-today]").onclick = () => start("Today's 10 minutes", pick);
       const nodes = [hero];
       if (ex.length) {
         const paper = h(`<div class="pr-card pr-paper">
-          <div style="display:flex;flex-direction:column;gap:6px;min-width:0">
-            <span class="pr-eyebrow">Leaving Cert past papers</span>
-            <span class="pr-li-title" style="font-size:22px">Past paper questions</span>
-            <span class="pr-li-note">${plural(ex.length, "real exam question", "real exam questions")} from this chapter. Write, type or photo your answer and get a mark with tips.</span>
-          </div>
-          <button type="button" class="pr-btn dark">Open</button></div>`);
+          <span class="pr-eyebrow">Leaving Cert past papers</span>
+          <span class="pr-li-title">Past paper questions</span>
+          <span class="pr-li-note">${plural(ex.length, "real exam question", "real exam questions")} from this chapter. Write, type or photo your answer and get a mark with tips.</span>
+          <div><button type="button" class="pr-btn dark">Open</button></div></div>`);
         paper.querySelector("button").onclick = () => start("Past paper questions", ex.slice());
-        nodes.push(paper);
+        if (paperSlot) paperSlot.replaceChildren(paper); else nodes.push(paper);
       }
       slot.replaceChildren(...nodes);
 
