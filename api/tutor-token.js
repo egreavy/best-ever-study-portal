@@ -105,7 +105,7 @@ module.exports = async (req, res) => {
     res.status(403).json({ error: "This link only works from the study portal." });
     return;
   }
-  const key = process.env.ELEVENLABS_API_KEY;
+  const key = (process.env.ELEVENLABS_API_KEY || "").trim().replace(/^["']|["']$/g, "");
   if (!key) {
     res.status(500).json({ error: "The voice tutor is not set up yet: ELEVENLABS_API_KEY is missing in Vercel." });
     return;
@@ -116,9 +116,11 @@ module.exports = async (req, res) => {
     res.status(200).json({ token: data.token });
   } catch (e) {
     console.error("tutor-token failed", e.status, JSON.stringify(e.detail || e.message));
-    const msg = e.status === 401
-      ? "ElevenLabs rejected the API key. Check ELEVENLABS_API_KEY in Vercel."
-      : "The voice tutor could not start. Try again in a minute.";
+    const d = e.detail && (e.detail.detail || e.detail);
+    const reason = String((d && (d.message || d.status)) || (typeof d === "string" ? d : "") || "").slice(0, 200);
+    const msg = e.status === 401 || e.status === 403
+      ? `ElevenLabs refused the key (${e.status}${reason ? ": " + reason : ""}).`
+      : `The voice tutor could not start (ElevenLabs ${e.status || "error"}${reason ? ": " + reason : ""}).`;
     res.status(502).json({ error: msg });
   }
 };
