@@ -1,5 +1,6 @@
 // Marks a student's typed or photographed answer against the question's marking scheme
-// and suggests improvements. Needs ANTHROPIC_API_KEY in Vercel's environment variables.
+// and suggests improvements. Needs ANTHROPIC_API_KEY in Vercel's environment variables
+// (plus ANTHROPIC_WORKSPACE_ID if the key isn't tied to a workspace).
 
 const SUPABASE_URL = "https://dhxwajidrtyukyxmiyml.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRoeHdhamlkcnR5dWt5eG1peW1sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYzMzYyNzQsImV4cCI6MjA1MTkxMjI3NH0.fnH1eI1vLtQASjII_6K0d6NZevD62tnthXe0uyMgh0s";
@@ -78,7 +79,10 @@ module.exports = async (req, res) => {
   try {
     const r = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
-      headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+      headers: Object.assign(
+        { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+        process.env.ANTHROPIC_WORKSPACE_ID ? { "anthropic-workspace-id": process.env.ANTHROPIC_WORKSPACE_ID.trim() } : {}
+      ),
       body: JSON.stringify({ model: MODEL, max_tokens: 1500, messages: [{ role: "user", content }] }),
     });
     const data = await r.json().catch(() => ({}));
