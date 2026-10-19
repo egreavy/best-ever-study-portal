@@ -834,7 +834,7 @@ async function renderChapter(){
     stepsEl.innerHTML = learnRows.length ? learnRows.map(t => stepHTML(t)).join("") : `<p class="cv-empty">No learning materials for this chapter yet.</p>`;
     const extraEl = document.getElementById("stepsContainer2"), extraBox = document.getElementById("extraPractice");
     if (extraEl) extraEl.innerHTML = extraRows.map(t => stepHTML(t)).join("");
-    if (extraBox && !extraRows.length) extraBox.hidden = true;
+    if (extraBox && !extraRows.length && !(document.getElementById("rightSlot") || {}).childElementCount) extraBox.hidden = true;
     bindStepEvents();
     updateProgressUI();
   }
@@ -875,7 +875,7 @@ async function renderChapter(){
       <div id="practiceSlot"><div class="cv-card cv-empty">Quizzes for this chapter are coming soon. Use the extra practice below for now.</div></div>
       <div class="pr-pair" id="pairRow"><div id="paperSlot"></div><div id="tutorSlot"></div></div>
       <div id="practiceMoreSlot"></div>
-      <details class="cv-card cv-more" id="extraPractice"><summary>More practice: flashcards and printable exam sheet</summary><div class="cv-list" id="stepsContainer2"></div></details>
+      <details class="cv-card cv-more" id="extraPractice"><summary>More: flashcards, print sheet, questions you've got right</summary><div class="cv-list" id="stepsContainer2"></div><div id="rightSlot"></div></details>
     </section>
 
     <section id="tab-refresh" role="tabpanel" aria-labelledby="tabbtn-refresh" hidden>
@@ -914,6 +914,7 @@ async function renderChapter(){
     moreSlot: document.getElementById("practiceMoreSlot"),
     paperSlot: document.getElementById("paperSlot"),
     refreshSlot: document.getElementById("refreshSlot"),
+    rightSlot: document.getElementById("rightSlot"),
     freshSince: () => freshSince,
     goTo: goTab,
     onStats: (st) => {

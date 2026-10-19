@@ -18,12 +18,18 @@
   }
 
   const css = `
-  .tutor-card{background:#fff;border-radius:14px;padding:16px 20px;margin:0;display:flex;flex-direction:column;gap:6px;height:100%;box-sizing:border-box}
-  .tutor-top{display:flex;flex-direction:column;gap:6px}
+  .tutor-card{background:#fff;border:2px solid #CFE4DC;border-radius:16px;padding:16px 18px;margin:0;display:flex;flex-direction:column;gap:8px;height:100%;box-sizing:border-box}
+  .tutor-top{display:flex;align-items:center;gap:14px}
+  .tutor-top .tutor-orb{flex:none;padding:8px 14px}
+  @media (max-width:420px){.tutor-top{flex-wrap:wrap}.tutor-top .tutor-orb{margin-left:64px}}
+  .tutor-icon{flex:none;width:50px;height:50px;border-radius:14px;background:#1F6F5C;color:#fff;display:grid;place-items:center}
+  .tutor-icon svg{width:24px;height:24px}
+  .tutor-body{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:2px}
+  .tutor-tag{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#1F6F5C}
   .tutor-eyebrow{font-size:12px;font-weight:700;color:#5B6470;text-transform:uppercase;letter-spacing:.06em}
   .tutor-btnrow{margin-top:auto;padding-top:6px}
-  .tutor-card h3{margin:0;font-size:16px;font-weight:700;line-height:1.4}
-  .tutor-card .tutor-sub{margin:0;color:#5B6470;font-size:14px;line-height:1.45}
+  .tutor-card h3{margin:0;font-size:17px;font-weight:700;line-height:1.25}
+  .tutor-card .tutor-sub{margin:0;color:#5B6470;font-size:14px;line-height:1.35}
   .tutor-orb{border:2px solid #1F6F5C;background:#fff;color:#1F6F5C;font:inherit;font-size:15px;font-weight:700;padding:8px 18px;border-radius:999px;cursor:pointer;min-height:40px;white-space:nowrap}
   .tutor-orb:focus-visible{outline:3px solid #1F6F5C;outline-offset:3px}
   .tutor-orb[disabled]{opacity:.7;cursor:default}
@@ -114,10 +120,10 @@ ${questions.map(fmt).join("\n")}`;
     card.className = "tutor-card";
     card.innerHTML = `
       <div class="tutor-top">
-        <span class="tutor-eyebrow">Spoken practice</span>
-        <h3>Practise with Your Tutor</h3><p class="tutor-sub">Talk through this topic with your AI tutor. Answer questions aloud, ask for explanations and get help when you're stuck.</p>
+        <span class="tutor-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v5"/></svg></span>
+        <span class="tutor-body"><span class="tutor-tag">Live voice tutor</span><h3>Practise with Your Tutor</h3><span class="tutor-sub">Talk it through and get help when stuck</span></span>
+        <button class="tutor-orb" type="button" id="tutorOrb">Start talking</button>
       </div>
-      <div class="tutor-btnrow"><button class="tutor-orb" type="button" id="tutorOrb">Start talking</button></div>
       <p class="tutor-status" id="tutorStatus" aria-live="polite"></p>
       <button class="tutor-end" type="button" id="tutorEnd" hidden>End session</button>
       <p class="tutor-err" id="tutorErr" hidden></p>

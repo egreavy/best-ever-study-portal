@@ -29,8 +29,20 @@
   .pr-pill{align-self:flex-start;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#1F6F5C;background:#E3F1EC;border-radius:999px;padding:3px 9px}
   .pr-right{background:#fff;border-radius:14px;padding:12px 20px;margin:0 0 10px}
   .pr-card details ol,.pr-right ol{margin:8px 0 0;padding-left:22px;display:flex;flex-direction:column;gap:6px;font-size:14px;line-height:1.45;color:#3d454f}
-  .pr-hero{flex-direction:row;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
-  .pr-hero-text{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 260px}
+  .pr-hero{align-items:center;text-align:center;gap:8px;padding:24px 20px}
+  .pr-hero-title{font-size:22px;font-weight:700;line-height:1.25}
+  .pr-hero .pr-btn.big{margin-top:6px;font-size:18px;padding:14px 36px;min-height:54px}
+  .ft{background:#fff;border:2px solid #CFE4DC;border-radius:16px;padding:16px 18px;display:flex;align-items:center;gap:14px;text-align:left;font:inherit;color:#1F2328;cursor:pointer;width:100%;box-sizing:border-box;height:100%}
+  .ft:hover{border-color:#1F6F5C}
+  .ft:focus-visible{outline:3px solid #1F6F5C;outline-offset:2px}
+  .ft-icon{flex:none;width:50px;height:50px;border-radius:14px;background:#1F6F5C;color:#fff;display:grid;place-items:center}
+  .ft-icon svg{width:24px;height:24px}
+  .ft-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+  .ft-tag{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#1F6F5C}
+  .ft-title{font-size:17px;font-weight:700;line-height:1.25}
+  .ft-line{font-size:14px;color:#5B6470;line-height:1.35}
+  .ft-chev{flex:none;font-size:22px;color:#1F6F5C}
+  .pr-badge{flex:none;font-size:14px;font-weight:700;color:#1F6F5C;background:#E3F1EC;border-radius:999px;padding:2px 10px}
   .pr-pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;margin:0 0 10px}
   .pr-pair>:empty{display:none}
   .pr-pair[hidden]{display:none}
@@ -54,8 +66,10 @@
     .pr-eyebrow{font-size:12px;font-weight:700;color:#5B6470;text-transform:uppercase;letter-spacing:.06em}
   .pr-choose-label{font-size:14px;font-weight:700;color:#5B6470;margin:4px 0 6px}
   .pr-choices{background:#fff;border-radius:14px;padding:2px 20px;margin:0 0 10px;display:flex;flex-direction:column}
+  .pr-choices .pr-choose-label{margin:12px 0 2px}
   .pr-choice{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:11px 0;border:none;border-bottom:1px solid #DDE1E5;background:none;text-align:left;font:inherit;color:inherit;cursor:pointer;width:100%}
   .pr-choice:last-child{border-bottom:none}
+  .pr-choice .pr-li-body{flex:1}
   .pr-choice:hover .pr-li-title{text-decoration:underline}
   .pr-choice[disabled]{opacity:.5;cursor:default}
   .pr-chev{font-size:20px;color:#5B6470;flex:none}
@@ -100,6 +114,7 @@
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   // Adds a Speak my answer button that types what he says into the box (Chrome, Edge, Safari)
   const MIC_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v5"/></svg>';
+  const PAPER_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M8 13h8M8 17h5"/></svg>';
   const CAM_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>';
   function attachMic(row, ta, status){
     if (!SR) return false;
@@ -186,7 +201,7 @@
 
   // ---- mount ----
   async function mountPractice(slot, opts){
-    const { topic, profile, sb, moreSlot, paperSlot, refreshSlot, goTo = () => {}, onStats = () => {}, onStartFresh = async () => {}, hideDuring = [] } = opts;
+    const { topic, profile, sb, moreSlot, paperSlot, refreshSlot, rightSlot, goTo = () => {}, onStats = () => {}, onStartFresh = async () => {}, hideDuring = [] } = opts;
     const freshSince = typeof opts.freshSince === "function" ? opts.freshSince : () => opts.freshSince || null;
     if (!slot || !topic) return null;
     addCss();
@@ -259,43 +274,41 @@
       session = null; setChrome(true);
       const pick = todaysPick(), fx = fixes();
       const hero = h(`<div class="pr-card pr-hero">
-        <div class="pr-hero-text">
-          <span class="pr-eyebrow">Recommended · 10 minutes</span>
-          <span class="pr-li-title" style="font-size:18px">Your Daily Practice</span>
-          <span class="pr-small">A 10-minute mix of questions to refresh your knowledge and work on weaker areas.</span>
-          <details class="pr-mix"><summary>What's in today's mix</summary>${esc(todaysCaption(pick))}</details>
-        </div>
-        <button type="button" class="pr-btn big" data-today>Start my 10 minutes</button></div>`);
+          <span class="pr-hero-title">Your Daily Practice</span>
+          <span class="pr-sub">10 minutes · ${esc(todaysCaption(pick))}</span>
+          <button type="button" class="pr-btn big" data-today>Start my 10 minutes</button></div>`);
       hero.querySelector("[data-today]").onclick = () => start("Your Daily Practice", pick);
       const nodes = [hero];
       if (ex.length) {
-        const paper = h(`<div class="pr-card pr-paper pr-side">
-          <span class="pr-eyebrow">${plural(ex.length, "question", "questions")} available</span>
-          <span class="pr-li-title">Exam Question Practice</span>
-          <span class="pr-li-note">Answer real Leaving Cert questions. Type, write or upload a photo of your answer for marks and feedback.</span>
-          <div class="pr-side-btn"><button type="button" class="pr-btn ghost">Practise exam questions</button></div></div>`);
-        paper.querySelector("button").onclick = () => start("Exam Question Practice", ex.slice());
+        const paper = h(`<button type="button" class="ft">
+          <span class="ft-icon">${PAPER_SVG}</span>
+          <span class="ft-body"><span class="ft-tag">Marked like the real exam</span><span class="ft-title">Exam Question Practice</span><span class="ft-line">${plural(ex.length, "past paper question", "past paper questions")}, with marks and tips</span></span>
+          <span class="ft-chev" aria-hidden="true">›</span></button>`);
+        paper.onclick = () => start("Exam Question Practice", ex.slice());
         if (paperSlot) paperSlot.replaceChildren(paper); else nodes.push(paper);
       }
       slot.replaceChildren(...nodes);
 
       if (moreSlot) {
-        const box = h(`<div><p class="pr-choose-label">Or choose</p><div class="pr-choices"></div></div>`);
-        const list = box.querySelector(".pr-choices");
-        const add = (title, note, fn, disabled) => {
-          const b = h(`<button type="button" class="pr-choice"${disabled ? " disabled" : ""}><span class="pr-li-body"><span class="pr-li-title">${esc(title)}</span><span class="pr-li-note">${esc(note)}</span></span><span class="pr-chev" aria-hidden="true">›</span></button>`);
-          b.onclick = fn; list.append(b);
+        const box = h(`<div class="pr-choices"><p class="pr-choose-label">Quick options</p></div>`);
+        const add = (title, note, fn, disabled, badge) => {
+          const b = h(`<button type="button" class="pr-choice"${disabled ? " disabled" : ""}><span class="pr-li-body"><span class="pr-li-title">${esc(title)}</span><span class="pr-li-note">${esc(note)}</span></span>${badge ? `<span class="pr-badge">${badge}</span>` : ""}<span class="pr-chev" aria-hidden="true">›</span></button>`);
+          b.onclick = fn; box.append(b);
         };
-        add("Try Again", fx.length ? "Retry questions you got wrong or partly right and improve your answers." : "Nothing to retry right now. Questions you get wrong or partly right will appear here.", () => start("Try Again", fx), !fx.length);
-        add("Quick Quiz", "Choose the correct answer from four options and check what you know.", () => start("Quick Quiz", shuffle(mcq)), !mcq.length);
-        if (rec.length) add("Short Answer Practice", "Write a brief answer, then compare it with a model answer to see what you missed.", () => start("Short Answer Practice", shuffle(rec)));
-        const kn = known();
-        if (kn.length) {
-          const d = h(`<details class="pr-right"><summary style="cursor:pointer;font-weight:700;font-size:15px;padding:4px 0">Questions you've got right (${kn.length})</summary><ol></ol></details>`);
-          kn.forEach(q => d.querySelector("ol").append(h(`<li>${esc(shortTitle(q))}</li>`)));
-          box.append(d);
-        }
+        add("Try Again", fx.length ? "Questions you got wrong last time" : "Nothing to fix right now", () => start("Try Again", fx), !fx.length, fx.length || "");
+        add("Quick Quiz", "Multiple choice, one tap answers", () => start("Quick Quiz", shuffle(mcq)), !mcq.length);
+        if (rec.length) add("Short Answer Practice", "Write a line or two, then compare", () => start("Short Answer Practice", shuffle(rec)));
         moreSlot.replaceChildren(box);
+      }
+      if (rightSlot) {
+        const kn = known();
+        rightSlot.replaceChildren();
+        if (kn.length) {
+          const d = h(`<div class="pr-right" style="padding:8px 0 0"><strong style="font-size:15px">Questions you've got right (${kn.length})</strong><ol></ol></div>`);
+          kn.forEach(q => d.querySelector("ol").append(h(`<li>${esc(shortTitle(q))}</li>`)));
+          rightSlot.append(d);
+          const box2 = rightSlot.closest("details"); if (box2 && !session) box2.hidden = false;
+        }
       }
     }
 
