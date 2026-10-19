@@ -355,6 +355,7 @@
   <div id="view"><div class="loading">Loading…</div></div>
 </div>
 
+<script src="practice.js"></script>
 <script src="tutor.js"></script>
 <script>
 const SUPABASE_URL = "https://dhxwajidrtyukyxmiyml.supabase.co";
@@ -988,6 +989,7 @@ async function renderChapter(){
       <div class="track"><div class="fill" id="fill" style="width:${doneCount()/totalSteps()*100}%"></div></div>
       <div class="celebrate ${doneCount() === totalSteps() ? "show" : ""}" id="celebrate">Chapter mastered!</div>
     </div>
+    <div id="practiceSlot"></div>
     <div id="tutorSlot"></div>
     <div class="steps" id="stepsContainer"></div>
     <div class="confidence-card reveal">
@@ -1002,6 +1004,7 @@ async function renderChapter(){
     </div>
   `;
 
+  if (topic && window.mountPractice) window.mountPractice(document.getElementById("practiceSlot"), { topic, profile: PROFILE, sb });
   if (topic && window.mountTutor) window.mountTutor(document.getElementById("tutorSlot"), { topic, profile: PROFILE, sb });
 
   document.getElementById("backBtn").addEventListener("click", () => {

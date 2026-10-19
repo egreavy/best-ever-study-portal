@@ -42,19 +42,25 @@
   const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
   function buildPrompt(ctx){
-    const { name, subject, title, notes, questions, latest, lastSession } = ctx;
+    const { name, subject, title, notes, questions, latest, lastSession, reviews = {}, src = {} } = ctx;
     const gaps = questions.filter(q => latest[q.id] !== undefined && latest[q.id] < 1);
     const tried = questions.filter(q => latest[q.id] !== undefined).length;
     const fmt = q => {
       const ans = q.qtype === "mcq" ? `${(q.options||[])[q.answer_index] || ""}. ${q.explanation || ""}` : (q.model_answer || "");
       const extra = q.qtype === "exam" ? ` (Past paper: ${q.source}, ${q.marks} marks. Marking: ${q.marking_scheme || ""})` : "";
-      const last = latest[q.id] === undefined ? "" : latest[q.id] >= 1 ? " [last time: got it]" : latest[q.id] > 0 ? " [last time: partly]" : " [last time: missed]";
+      const where = { quiz: " in a quiz", tutor: " with you", written: " in a written answer" }[src[q.id]] || "";
+      const last = latest[q.id] === undefined ? "" : latest[q.id] >= 1 ? ` [last time${where}: got it]` : latest[q.id] > 0 ? ` [last time${where}: partly]` : ` [last time${where}: missed]`;
       return `[${q.id}] (${q.topic_label}) ${q.prompt}${last} -> Answer: ${ans}${extra}`;
     };
     const plan = gaps.length
       ? `Start with the questions ${name} got wrong or only partly right last time (marked below), weakest topic first. Then mix in a few new ones.`
       : tried ? `${name} has done well so far. Ask harder "explain" and "apply it to Ireland" questions.`
       : `${name} hasn't practised this chapter yet. Start with an easy warm-up, then build up.`;
+    const revLines = Object.values(reviews).slice(0, 6).map(r => {
+      const q = questions.find(x => x.id === r.question_id); const f = r.feedback || {};
+      return q ? `- [${q.id}] ${q.prompt}: scored ${r.marks_awarded}/${r.marks_available}. To improve: ${(f.to_improve || []).join(" ")}` : "";
+    }).filter(Boolean);
+    const written = revLines.length ? `\n\nFeedback on ${name}'s recent written answers (help with these points when relevant):\n${revLines.join("\n")}` : "";
     let resume = "";
     if (lastSession && Array.isArray(lastSession.transcript) && lastSession.transcript.length) {
       const when = new Date(lastSession.created_at).toLocaleDateString("en-IE", { weekday: "long", day: "numeric", month: "long" });
@@ -79,7 +85,7 @@ How to speak:
 
 Saving progress: each time you have judged ${name}'s answer to a question from the list, call record_result with that question's id and got_it, partly or missed. Do this silently and never mention it.
 
-Plan: ${plan}${resume}
+Plan: ${plan}${written}${resume}
 
 Chapter notes (use only these facts; if unsure, say you'll check with the notes rather than guessing):
 ${notes || "(no notes for this chapter)"}
@@ -151,14 +157,17 @@ ${questions.map(fmt).join("\n")}`;
       lines.replaceChildren(); log.hidden = true; results = { got_it:0, partly:0, missed:0 }; transcript = []; saved = false;
       try {
         const ids = questions.map(q => q.id);
-        const attempts = ids.length
-          ? await sb(`quiz_attempts?select=question_id,result,created_at&profile_id=eq.${profile.id}&question_id=in.(${ids.map(encodeURIComponent).join(",")})&order=created_at.desc&limit=500`)
-          : [];
-        const latest = {};
-        attempts.forEach(a => { if (latest[a.question_id] === undefined) latest[a.question_id] = Number(a.result); });
+        const inIds = ids.map(encodeURIComponent).join(",");
+        const [attempts, revRows] = ids.length ? await Promise.all([
+          sb(`quiz_attempts?select=question_id,result,source,created_at&profile_id=eq.${profile.id}&question_id=in.(${inIds})&order=created_at.desc&limit=1000`),
+          sb(`answer_reviews?select=question_id,marks_awarded,marks_available,feedback,created_at&profile_id=eq.${profile.id}&question_id=in.(${inIds})&order=created_at.desc&limit=50`)
+        ]) : [[], []];
+        const latest = {}, src = {}, reviews = {};
+        (attempts || []).forEach(a => { if (latest[a.question_id] === undefined) { latest[a.question_id] = Number(a.result); src[a.question_id] = a.source; } });
+        (revRows || []).forEach(r => { if (!reviews[r.question_id]) reviews[r.question_id] = r; });
         const lastRows = await sb(`tutor_sessions?select=transcript,created_at&profile_id=eq.${profile.id}&topic_id=eq.${topic.id}&order=created_at.desc&limit=1`);
         const lastSession = lastRows && lastRows[0] && (lastRows[0].transcript || []).length ? lastRows[0] : null;
-        const prompt = buildPrompt({ name: profile.name, subject: topic.subject_title || "", title: topic.title, notes: (notesRow[0] || {}).notes || "", questions, latest, lastSession });
+        const prompt = buildPrompt({ name: profile.name, subject: topic.subject_title || "", title: topic.title, notes: (notesRow[0] || {}).notes || "", questions, latest, lastSession, reviews, src });
         const chapterName = topic.title.replace(/^Ch\s*\d+:\s*/i, "");
         const firstMessage = lastSession
           ? `Hi ${profile.name}, welcome back! Shall we pick up where we left off on ${chapterName}?`
@@ -195,6 +204,7 @@ ${questions.map(fmt).join("\n")}`;
           onDisconnect: () => {
             saveSession();
             setIdle(summaryText());
+            window.dispatchEvent(new CustomEvent("study-progress"));
           }
         });
       } catch (e) {
