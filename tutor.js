@@ -143,10 +143,16 @@ ${questions.map(fmt).join("\n")}`;
       if (results.missed) parts.push(`${results.missed} to go over again`);
       return `You answered ${n} question${n === 1 ? "" : "s"}: ${parts.join(", ")}. Next time the tutor will pick up from here.`;
     }
+    let callStart = 0;
     function saveSession(){
       if (saved || !transcript.length) return; saved = true;
       sb("tutor_sessions", { method: "POST", prefer: "return=minimal",
         body: [{ profile_id: profile.id, topic_id: topic.id, transcript: transcript.slice(-200), results }] });
+      if (callStart) {
+        const sec = Math.min(Math.round((Date.now() - callStart) / 1000), 7200);
+        callStart = 0;
+        if (sec > 0) sb("study_time", { method: "POST", prefer: "return=minimal", body: [{ profile_id: profile.id, topic_id: topic.id, kind: "test", seconds: sec }] });
+      }
     }
     function showErr(m){ errEl.textContent = m; errEl.hidden = !m; }
     function addLine(role, text){
@@ -199,7 +205,7 @@ ${questions.map(fmt).join("\n")}`;
               return "saved";
             }
           },
-          onConnect: () => { orb.disabled = false; endBtn.hidden = false; status.textContent = "Connected. Just talk."; },
+          onConnect: () => { callStart = Date.now(); orb.disabled = false; endBtn.hidden = false; status.textContent = "Connected. Just talk."; },
           onModeChange: ({ mode }) => {
             orb.className = "tutor-orb " + (mode === "speaking" ? "speaking" : "listening");
             orb.textContent = mode === "speaking" ? "Tutor talking" : "Listening…";

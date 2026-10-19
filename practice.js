@@ -1,5 +1,5 @@
-// Chapter Progress and Test tabs: progress steps, questions to fix, quizzes,
-// short answers and past paper questions with marking.
+// Chapter Test and Refresh tabs: quizzes, short answers and past paper questions
+// with marking, the questions to fix, and the two ways to refresh before exams.
 // All results go to quiz_attempts, which the voice tutor also reads and writes,
 // so each one picks up from the others.
 (function(){
@@ -23,7 +23,12 @@
   .pr-li-title{font-size:16px;font-weight:700;line-height:1.4}
   .pr-li-note{font-size:14px;color:#5B6470;line-height:1.4}
   .pr-card details summary{cursor:pointer;font-weight:700;font-size:15px;padding:2px 0}
-  .pr-card details ol{margin:8px 0 0;padding-left:22px;display:flex;flex-direction:column;gap:6px;font-size:14px;line-height:1.45;color:#3d454f}
+  .pr-refresh{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;margin:0 0 10px}
+  .pr-refresh .pr-card{margin:0}
+  .pr-refresh .pr-side-btn{margin-top:auto;padding-top:6px}
+  .pr-pill{align-self:flex-start;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#1F6F5C;background:#E3F1EC;border-radius:999px;padding:3px 9px}
+  .pr-right{background:#fff;border-radius:14px;padding:12px 20px;margin:0 0 10px}
+  .pr-card details ol,.pr-right ol{margin:8px 0 0;padding-left:22px;display:flex;flex-direction:column;gap:6px;font-size:14px;line-height:1.45;color:#3d454f}
   .pr-hero{flex-direction:row;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
   .pr-hero-text{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 260px}
   .pr-pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;margin:0 0 10px}
@@ -129,18 +134,25 @@
   const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
   // ---- data ----
-  async function loadProgress(sb, profile, questions){
+  async function loadProgress(sb, profile, questions, freshSince){
     const ids = questions.map(q => q.id);
-    if (!ids.length) return { latest:{}, src:{}, reviews:{} };
+    if (!ids.length) return { latest:{}, src:{}, reviews:{}, when:{}, everWeak:new Set(), lastAt:null };
     const inIds = ids.map(encodeURIComponent).join(",");
     const [att, rev] = await Promise.all([
       sb(`quiz_attempts?select=question_id,result,source,created_at&profile_id=eq.${profile.id}&question_id=in.(${inIds})&order=created_at.desc&limit=1000`),
       sb(`answer_reviews?select=question_id,marks_awarded,marks_available,feedback,created_at&profile_id=eq.${profile.id}&question_id=in.(${inIds})&order=created_at.desc&limit=200`)
     ]);
-    const latest = {}, src = {}, when = {}, reviews = {};
-    (att||[]).forEach(a => { if (latest[a.question_id] === undefined) { latest[a.question_id] = Number(a.result); src[a.question_id] = a.source; when[a.question_id] = a.created_at; } });
+    const latest = {}, src = {}, when = {}, reviews = {}, everWeak = new Set(), ever = new Set();
+    const fresh = freshSince ? new Date(freshSince) : null;
+    (att||[]).forEach(a => {
+      ever.add(a.question_id);
+      if (Number(a.result) < 1) everWeak.add(a.question_id);
+      if (fresh && new Date(a.created_at) < fresh) return;
+      if (latest[a.question_id] === undefined) { latest[a.question_id] = Number(a.result); src[a.question_id] = a.source; when[a.question_id] = a.created_at; }
+    });
     (rev||[]).forEach(r => { if (!reviews[r.question_id]) reviews[r.question_id] = r; });
-    return { latest, src, when, reviews };
+    const lastAt = att && att[0] ? new Date(att[0].created_at) : null;
+    return { latest, src, when, reviews, everWeak, ever, lastAt };
   }
   async function record(sb, profile, qid, result, source){
     await sb("quiz_attempts", { method:"POST", prefer:"return=minimal", body:[{ profile_id: profile.id, question_id: qid, result, source }] });
@@ -174,12 +186,13 @@
 
   // ---- mount ----
   async function mountPractice(slot, opts){
-    const { topic, profile, sb, progressSlot, moreSlot, paperSlot, goTo = () => {}, learn = () => ({ done:0, total:0 }), hideDuring = [] } = opts;
+    const { topic, profile, sb, moreSlot, paperSlot, refreshSlot, goTo = () => {}, onStats = () => {}, onStartFresh = async () => {}, hideDuring = [] } = opts;
+    const freshSince = typeof opts.freshSince === "function" ? opts.freshSince : () => opts.freshSince || null;
     if (!slot || !topic) return null;
     addCss();
     const questions = await sb(`quiz_questions?select=id,qtype,topic_label,difficulty,prompt,options,answer_index,explanation,model_answer,marking_scheme,source,marks&topic_id=eq.${topic.id}&order=id.asc`);
     if (!questions || !questions.length) return null;
-    let prog = await loadProgress(sb, profile, questions);
+    let prog = await loadProgress(sb, profile, questions, freshSince());
     let session = null;
 
     const mcq = questions.filter(q => q.qtype === "mcq"), rec = questions.filter(q => q.qtype === "recall"), ex = questions.filter(q => q.qtype === "exam");
@@ -208,49 +221,36 @@
       return parts.join(" · ");
     }
 
-    // ---- Progress tab ----
-    function paintProgress(){
-      if (!progressSlot) return;
-      const l = learn(), fx = fixes(), kn = known(), tried = questions.length - untried().length;
-      const learnWord = !l.total ? "Nothing to learn yet" : l.done === 0 ? "Not started" : l.done >= l.total ? "Done" : l.done / l.total >= 0.5 ? "Nearly done" : "Started";
-      const testWord = tried === 0 ? "Not started" : tried >= questions.length ? "All tried" : tried / questions.length >= 0.5 ? "Well under way" : "Started";
-      const knowRatio = kn.length / questions.length;
-      const knowWord = knowRatio >= 0.8 ? "You know it" : knowRatio >= 0.4 ? "Getting there" : "Not yet";
-      let next;
-      const learnPart = l.total && l.done >= l.total ? "You've finished the learning. " : l.total && l.done / l.total >= 0.5 ? "You've read and watched most of it. " : "";
-      if (!tried && l.total && l.done < l.total) next = "Start with Learn: read, watch or listen. Then test yourself to see what stuck.";
-      else if (fx.length) next = `${learnPart}Next, try the ${fx.length === 1 ? "question" : fx.length + " questions"} below again, then some new ones.`;
-      else if (untried().length) next = `${learnPart}Next, try some new questions to see what's stuck.`;
-      else next = "You know this chapter well. A quick go now and then keeps it fresh.";
-      const goLearn = !tried && l.total && l.done < l.total;
-      const card = h(`<div class="pr-card">
-        <h3>Where you are with this chapter</h3>
-        <div class="pr-steps">
-          <div class="pr-step"><div class="pr-bar"><i style="width:${l.total ? Math.round(l.done / l.total * 100) : 0}%"></i></div><b>1. Learn it</b><span>${learnWord}</span></div>
-          <div class="pr-step"><div class="pr-bar"><i style="width:${Math.round(tried / questions.length * 100)}%"></i></div><b>2. Test it</b><span>${testWord}</span></div>
-          <div class="pr-step"><div class="pr-bar"><i style="width:${Math.round(knowRatio * 100)}%"></i></div><b>3. Know it</b><span>${knowWord}</span></div>
-        </div>
-        <div class="pr-headrow"><p class="pr-next">${esc(next)}</p><button type="button" class="pr-btn" data-go>${goLearn ? "Go to Learn" : "Start my 10 minutes"}</button></div>
-      </div>`);
-      card.querySelector("[data-go]").onclick = () => { if (goLearn) goTo("learn"); else { goTo("test"); start("Your Daily Practice", todaysPick()); } };
-
-      const fixCard = h(`<div class="pr-card"><div style="display:flex;flex-direction:column;gap:2px"><h3>Try Again</h3><p class="pr-sub">${fx.length ? "Get one right and it comes off this list." : tried ? "Nothing to try again right now. Nice work." : "Questions you get wrong or half right will show up here."}</p></div></div>`);
-      if (fx.length) {
-        const list = h(`<div class="pr-list"></div>`);
-        fx.slice(0, 8).forEach(q => {
-          const li = h(`<div class="pr-li"><div class="pr-li-body"><span class="pr-li-title">${esc(shortTitle(q))}</span><span class="pr-li-note">${esc(fixNote(q, prog))}</span></div><button type="button" class="pr-btn ghost">${prog.reviews[q.id] ? "Try again" : "Try it"}</button></div>`);
-          li.querySelector("button").onclick = () => { goTo("test"); start("Try Again", [q, ...fixes().filter(x => x !== q)]); };
-          list.append(li);
-        });
-        fixCard.append(list);
-        if (fx.length > 8) fixCard.append(h(`<p class="pr-small">And ${fx.length - 8} more. "Try Again" on the Test tab goes through them all.</p>`));
-      }
-      if (kn.length) {
-        const d = h(`<details><summary>Questions you've got right (${kn.length})</summary><ol></ol></details>`);
-        kn.forEach(q => d.querySelector("ol").append(h(`<li>${esc(shortTitle(q))}</li>`)));
-        fixCard.append(d);
-      }
-      progressSlot.replaceChildren(card, fixCard);
+    // ---- numbers for the tabs, and the Refresh tab ----
+    const weakSpots = () => questions.filter(q => prog.everWeak.has(q.id) || !prog.ever.has(q.id));
+    function paintStats(){
+      const fx = fixes(), kn = known(), un = untried();
+      onStats({ total: questions.length, tried: questions.length - un.length, fixes: fx.length, right: kn.length, triedEver: prog.ever.size, lastAt: prog.lastAt });
+      paintRefresh();
+    }
+    function paintRefresh(){
+      if (!refreshSlot) return;
+      const ws = weakSpots(), hard = ws.filter(q => prog.everWeak.has(q.id)).length, never = ws.length - hard;
+      const fresh = freshSince();
+      const parts = [];
+      if (hard) parts.push(`the ${plural(hard, "question", "questions")} you found hard before`);
+      if (never) parts.push(`${plural(never, "question", "questions")} you never tried`);
+      const weakDesc = parts.length ? parts.join(", plus ").replace(/^t/, "T") + "." + (ws.length > 15 ? " Up to 15 at a time, hardest first." : "") : "You've never got one wrong here. Try Start from scratch instead.";
+      const wrap = h(`<div><p class="pr-choose-label" style="font-size:18px;color:#1F2328;margin:2px 0 8px">How do you want to refresh?</p><div class="pr-refresh">
+        <div class="pr-card"><span class="pr-pill">Best when exams are close</span><h3 style="font-size:20px">Focus on weak spots</h3><p class="pr-sub">${esc(weakDesc)}</p><div class="pr-side-btn"><button type="button" class="pr-btn big" data-weak${ws.length ? "" : " disabled"}>Start</button></div></div>
+        <div class="pr-card"><span class="pr-pill" style="visibility:hidden">.</span><h3 style="font-size:20px">Start from scratch</h3><p class="pr-sub">Every question comes back as new. Your first results are kept, so you'll see how much stuck.</p>${fresh ? `<p class="pr-small">You started fresh on ${esc(new Date(fresh).toLocaleDateString("en-IE", { day:"numeric", month:"short" }))}: ${plural(known().length, "right", "right")} so far, ${fixes().length} to fix, ${untried().length} to go.</p>` : ""}<div class="pr-side-btn"><button type="button" class="pr-btn big ghost" data-fresh>${fresh ? "Start fresh again" : "Start fresh"}</button></div></div>
+      </div></div>`);
+      wrap.querySelector("[data-weak]").onclick = () => {
+        const hardOnes = shuffle(ws.filter(q => prog.everWeak.has(q.id))), newOnes = shuffle(ws.filter(q => !prog.everWeak.has(q.id)));
+        goTo("test"); start("Weak Spots", hardOnes.concat(newOnes).slice(0, 15));
+      };
+      wrap.querySelector("[data-fresh]").onclick = async (e) => {
+        e.target.disabled = true; e.target.textContent = "Starting…";
+        await onStartFresh();
+        prog = await loadProgress(sb, profile, questions, freshSince());
+        paintStats(); home(); goTo("test"); start("Your Daily Practice", todaysPick());
+      };
+      refreshSlot.replaceChildren(wrap);
     }
 
     // ---- Test tab ----
@@ -289,13 +289,19 @@
         add("Try Again", fx.length ? "Retry questions you got wrong or partly right and improve your answers." : "Nothing to retry right now. Questions you get wrong or partly right will appear here.", () => start("Try Again", fx), !fx.length);
         add("Quick Quiz", "Choose the correct answer from four options and check what you know.", () => start("Quick Quiz", shuffle(mcq)), !mcq.length);
         if (rec.length) add("Short Answer Practice", "Write a brief answer, then compare it with a model answer to see what you missed.", () => start("Short Answer Practice", shuffle(rec)));
+        const kn = known();
+        if (kn.length) {
+          const d = h(`<details class="pr-right"><summary style="cursor:pointer;font-weight:700;font-size:15px;padding:4px 0">Questions you've got right (${kn.length})</summary><ol></ol></details>`);
+          kn.forEach(q => d.querySelector("ol").append(h(`<li>${esc(shortTitle(q))}</li>`)));
+          box.append(d);
+        }
         moreSlot.replaceChildren(box);
       }
     }
 
     function start(name, list){
       if (!list || !list.length) return;
-      session = { name, queue: list.map(q => ({ q, retry:false })), i:0, results:[], total:list.length };
+      session = { name, queue: list.map(q => ({ q, retry:false })), i:0, results:[], total:list.length, t0: Date.now() };
       setChrome(false);
       next();
     }
@@ -310,6 +316,7 @@
         <div class="pr-meta"><span>${label}</span></div>
         <p class="pr-q">${esc(q.prompt)}</p></div>`);
       card.querySelector("[data-stop]").onclick = () => session.results.length ? finish() : home();
+      session.t0 = session.t0 || Date.now();
       if (q.qtype === "mcq") mcqView(card, q, retry); else writtenView(card, q, retry);
       slot.replaceChildren(card);
       card.scrollIntoView({ block:"start", behavior:"smooth" });
@@ -320,7 +327,12 @@
       b.querySelector("button").onclick = () => { session.i++; next(); };
       card.append(b); b.querySelector("button").focus({ preventScroll:true });
     }
-    const save = async (qid, v, source) => { await record(sb, profile, qid, v, source); prog = await loadProgress(sb, profile, questions); paintProgress(); };
+    const save = async (qid, v, source) => { await record(sb, profile, qid, v, source); prog = await loadProgress(sb, profile, questions, freshSince()); paintStats(); };
+    function logTime(s){
+      if (!s || !s.results.length) return;
+      const sec = Math.min(Math.round((Date.now() - s.t0) / 1000), s.results.length * 300 + 60, 7200);
+      if (sec > 0) sb("study_time", { method:"POST", prefer:"return=minimal", body:[{ profile_id: profile.id, topic_id: topic.id, kind:"test", seconds: sec }] });
+    }
 
     function mcqView(card, q, retry){
       const opts = h(`<div class="pr-opts"></div>`), order = shuffle((q.options||[]).map((o,i)=>i));
@@ -413,9 +425,9 @@
       const card = h(`<div class="pr-card"><h3>${esc(session.name)}: done</h3>
         <p class="pr-next">${R.length ? `You answered ${plural(R.length, "question", "questions")}. ${plural(good.length, "was", "were")} right${gaps.length ? `, and ${plural(gaps.length, "goes", "go")} on your Try Again list` : ""}.` : "No answers saved this time."}</p>
         ${gaps.length ? `<div class="pr-fb"><h4>To try again next time</h4><ul>${gaps.map(r=>`<li>${esc(shortTitle(r.q))}</li>`).join("")}</ul><span class="pr-tip">Your tutor will start with these too.</span></div>` : ""}
-        <div class="pr-row"><button type="button" class="pr-btn" data-home>Back to Test</button><button type="button" class="pr-btn ghost" data-prog>See my progress</button></div></div>`);
+        <div class="pr-row"><button type="button" class="pr-btn" data-home>Back to Test</button></div></div>`);
       card.querySelector("[data-home]").onclick = () => home();
-      card.querySelector("[data-prog]").onclick = () => { home(); goTo("progress"); };
+      logTime(session);
       session = null;
       slot.replaceChildren(card);
       card.scrollIntoView({ block:"start", behavior:"smooth" });
@@ -423,12 +435,12 @@
 
     window.addEventListener("study-progress", async () => {
       if (!slot.isConnected) return;
-      prog = await loadProgress(sb, profile, questions); paintProgress(); if (!session) home();
+      prog = await loadProgress(sb, profile, questions, freshSince()); paintStats(); if (!session) home();
     });
 
-    paintProgress();
+    paintStats();
     home();
-    return { refresh: paintProgress, startToday: () => start("Your Daily Practice", todaysPick()) };
+    return { refresh: paintStats, startToday: () => start("Your Daily Practice", todaysPick()) };
   }
   window.mountPractice = mountPractice;
 })();

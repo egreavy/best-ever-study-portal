@@ -366,6 +366,15 @@
   .cv-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;background:#E6E9EC;padding:4px;border-radius:12px;margin-bottom:14px;}
   .cv-tab{border:none;background:none;font:inherit;font-size:16px;font-weight:700;color:#5B6470;padding:8px 0;border-radius:9px;cursor:pointer;min-height:40px;}
   .cv-tab[aria-selected="true"]{background:#fff;color:#1F2328;box-shadow:0 1px 2px rgba(0,0,0,.08);}
+  .cv-tab{display:flex;flex-direction:column;align-items:center;gap:1px;line-height:1.2;padding:7px 2px}
+  .cv-tab-l{display:inline-flex;align-items:center;gap:7px}
+  .cv-tab-s{font-size:12px;font-weight:700;color:#5B6470}
+  .cv-tab-s.now{color:#1F6F5C}
+  .cv-tick{width:18px;height:18px;border-radius:50%;background:#1F6F5C;color:#fff;display:inline-grid;place-items:center;font-size:11px}
+  .cv-now{width:9px;height:9px;border-radius:50%;background:#1F6F5C;display:inline-block}
+  .cv-class-done{color:#5B6470}
+  .cv-back-learn{background:none;border:none;padding:4px 0;font:inherit;font-size:15px;font-weight:700;color:#1F6F5C;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+  #examSlot{margin-bottom:12px}
   .cv-tab:focus-visible,.cv-btn:focus-visible,.cv-check:focus-visible,.cv-flag:focus-visible{outline:3px solid #1F6F5C;outline-offset:2px;}
   .cv-card{background:#fff;border-radius:14px;padding:16px 20px;margin:0 0 10px;}
   .cv-empty{color:#5B6470;font-size:15px;line-height:1.5;}
@@ -415,6 +424,7 @@
   <div id="view"><div class="loading">Loading…</div></div>
 </div>
 
+<script src="stages.js"></script>
 <script src="practice.js"></script>
 <script src="tutor.js"></script>
 <script>
@@ -481,253 +491,39 @@ function confColor(rating){
   return "#b91c1c";
 }
 
+async function loadModel(){
+  const raw = await Stages.loadOverview(sb, PROFILE);
+  return { raw, err: lastError, model: Stages.buildModel(raw) };
+}
+function errorBox(err, retry){
+  const v = document.getElementById("view");
+  v.innerHTML = `<div class="error-box"><strong>Couldn't load your subjects</strong>The connection may have dropped. It's worth trying again.<code>${esc(err || "")}</code><button class="retry-btn" id="retryLoad">Try again</button></div>`;
+  document.getElementById("retryLoad").addEventListener("click", retry);
+}
+function openChapter(topicId, subjectId, tab){
+  state.topicId = topicId; state.subjectId = subjectId; state.view = "chapter";
+  state.chapterTab = tab || null; state.chapterTabTopic = tab ? topicId : null; state.expandedStep = null;
+  render(); window.scrollTo({ top: 0 });
+}
+function openSubject(subjectId){ state.view = "subject"; state.subjectId = subjectId; render(); window.scrollTo({ top: 0 }); }
+function goHome(){ state.view = "dashboard"; render(); window.scrollTo({ top: 0 }); }
+
 async function renderDashboard(){
-  document.getElementById("view").innerHTML = `<div class="loading">Loading your subjects…</div>`;
+  const v = document.getElementById("view");
+  v.innerHTML = `<div class="loading">Loading your subjects…</div>`;
+  const { raw, err, model } = await loadModel();
+  if (!raw.subjects.length && err) return errorBox(err, renderDashboard);
+  state.model = model;
+  Stages.renderHome(v, model, { profile: PROFILE, openChapter, openSubject, state });
+}
 
-  const subjects = await sb(`subjects?select=id,title,description&user_id=eq.${PROFILE.id}&order=title.asc`);
-  const dashboardError = lastError;
-
-  const subjectIds = subjects.map(s => s.id);
-  const topics = subjectIds.length
-    ? await sb(`topics?select=id,title,order_num,notebook_url,subject_id&subject_id=in.${inList(subjectIds)}&order=order_num.asc`)
-    : [];
-
-  const templateRowsAll = subjectIds.length
-    ? await sb(`nlm_checklist_templates?select=id,subject_id,step_order&subject_id=in.${inList(subjectIds)}`)
-    : [];
-  const disabledRows = await sb(`nlm_disabled_steps?select=template_id&profile_id=eq.${PROFILE.id}`);
-  const disabledSet = new Set(disabledRows.map(r => r.template_id));
-  const templateRows = templateRowsAll.filter(r => !disabledSet.has(r.id));
-  const stepCountMap = {};
-  templateRows.forEach(r => { stepCountMap[r.subject_id] = (stepCountMap[r.subject_id] || 0) + 1; });
-
-  const disabledStepOrdersBySubject = {};
-  templateRowsAll.forEach(r => {
-    if (disabledSet.has(r.id)) {
-      (disabledStepOrdersBySubject[r.subject_id] = disabledStepOrdersBySubject[r.subject_id] || new Set()).add(r.step_order);
-    }
-  });
-  const topicSubjectMap = {};
-  topics.forEach(t => { topicSubjectMap[t.id] = t.subject_id; });
-
-  const doneRows = await sb(`nlm_progress?select=topic_id,step_order&profile_id=eq.${PROFILE.id}&done=eq.true`);
-  const doneCountMap = {};
-  doneRows.forEach(r => {
-    const subjId = topicSubjectMap[r.topic_id];
-    const disabledOrders = disabledStepOrdersBySubject[subjId];
-    if (disabledOrders && disabledOrders.has(r.step_order)) return;
-    doneCountMap[r.topic_id] = (doneCountMap[r.topic_id] || 0) + 1;
-  });
-
-  const flagRows = await sb(`topic_flags?select=topic_id,flag_type,note&profile_id=eq.${PROFILE.id}`);
-  const flagMap = {};
-  flagRows.forEach(r => { flagMap[r.topic_id] = { flagType: r.flag_type, note: r.note || "" }; });
-
-  const bySubject = {};
-  subjects.forEach(s => { bySubject[s.id] = { title: s.title, desc: s.description, chapters: [] }; });
-  topics.forEach(t => { if (bySubject[t.subject_id]) bySubject[t.subject_id].chapters.push(t); });
-
-  const html = subjectIds.length === 0
-    ? (dashboardError
-        ? `<div class="error-box">
-             <strong>Couldn't load subjects</strong>
-             The database call didn't return the expected data. This usually means the connection failed or timed out — it's worth trying again.
-             <code>${esc(dashboardError)}</code>
-             <button class="retry-btn" id="retryLoad">Try again</button>
-           </div>`
-        : `<div class="empty">No subjects yet.</div>`)
-    : subjectIds.map((sid, si) => {
-        const s = bySubject[sid];
-        const totalSteps = stepCountMap[sid] || 10;
-        const flaggedInSubject = s.chapters.filter(c => flagMap[c.id]);
-        const orderedChapters = s.chapters.slice().sort((a, b) => {
-          const af = flagMap[a.id] ? 1 : 0;
-          const bf = flagMap[b.id] ? 1 : 0;
-          return bf - af;
-        });
-        const chapters = s.chapters.length
-          ? orderedChapters.map(c => {
-              const done = doneCountMap[c.id] || 0;
-              const pct = Math.round(done / totalSteps * 100);
-              const flag = flagMap[c.id] || { flagType: null, note: "" };
-              const isFlagged = !!flag.flagType;
-              return `
-                <div class="chapter-row${isFlagged ? " flagged" : ""}" data-topic="${c.id}" data-subject="${sid}">
-                  <div class="left">
-                    <div class="chapter-num">${c.order_num ?? "-"}</div>
-                    <div class="chapter-title">${esc(c.title)}</div>
-                  </div>
-                  <div class="row-right">
-                    <div class="mini-track"><div class="mini-fill" style="width:${pct}%"></div></div>
-                    <span class="mini-count">${done}/${totalSteps}</span>
-                    <button class="flag-icon-btn${isFlagged ? " active" : ""}" data-topic="${c.id}" data-subject="${sid}" data-state="${flag.flagType || ""}" title="${isFlagged ? "Remove from revision list" : "Add to revision list"}" aria-label="${isFlagged ? "Remove from revision list" : "Add to revision list"}">${isFlagged ? "&check;" : "&#43;"}</button>
-                  </div>
-                  ${isFlagged ? `<input type="text" class="chapter-note-input" data-topic="${c.id}" placeholder="Add a note or deadline" value="${esc(flag.note)}" />` : ""}
-                </div>`;
-            }).join("")
-          : `<div class="empty">No chapters yet.</div>`;
-        const flagBadge = flaggedInSubject.length
-          ? `<span class="subject-flag-badge">${flaggedInSubject.length} to revise</span>`
-          : "";
-        return `
-          <div class="subject-card reveal${state.expandedSubjects.has(sid) ? " expanded" : ""}" data-subject-card="${sid}" style="transition-delay:${si * 60}ms">
-            <div class="subject-head" data-toggle-subject="${sid}">
-              <div class="subject-head-left">
-                <span class="subject-chevron">&#9654;</span>
-                <div>
-                  <h3>${esc(s.title)}</h3>
-                  <p>${esc(s.desc || "")}</p>
-                </div>
-              </div>
-              <div class="row-right">
-                ${flagBadge}
-                <span class="subject-count">${s.chapters.length} ${s.chapters.length === 1 ? "chapter" : "chapters"}</span>
-              </div>
-            </div>
-            <div class="subject-chapters">${chapters}</div>
-          </div>`;
-      }).join("");
-
-  function upnextCard(t, subjectTitle, flag){
-    const done = doneCountMap[t.id] || 0;
-    const totalSteps = stepCountMap[t.subject_id] || 10;
-    const pct = Math.round(done / totalSteps * 100);
-    return `
-      <div class="upnext-card" data-topic="${t.id}" data-subject="${t.subject_id}">
-        <div class="upnext-main">
-          <p class="upnext-title">${esc(t.title)}</p>
-          <p class="upnext-sub">${esc(subjectTitle)} &middot; Chapter ${esc(String(t.order_num ?? ""))}</p>
-          <input type="text" class="upnext-note-input" data-topic="${t.id}" placeholder="Add a note or deadline" value="${esc(flag.note)}" />
-        </div>
-        <div class="upnext-meta">
-          <div class="mini-track"><div class="mini-fill" style="width:${pct}%"></div></div>
-          <span class="mini-count">${done}/${totalSteps}</span>
-          <button class="upnext-remove" data-topic="${t.id}" title="Remove from this list" aria-label="Remove from this list">&times;</button>
-        </div>
-      </div>`;
-  }
-
-  const flaggedTopics = topics.filter(t => flagMap[t.id]);
-
-  const upnextHtml = flaggedTopics.length === 0 ? "" : `
-    <div class="upnext-wrap">
-      <div class="upnext-group">
-        <h4>For Revision</h4>
-        ${flaggedTopics.map(t => upnextCard(t, bySubject[t.subject_id] ? bySubject[t.subject_id].title : "", flagMap[t.id])).join("")}
-      </div>
-    </div>`;
-
-  document.getElementById("view").innerHTML = `
-    <div class="section-head">
-      <div class="section-title">${esc(PROFILE.name)}'s subjects</div>
-      <button class="refresh-btn" id="refreshBtn">&#8635; Refresh</button>
-    </div>
-    ${upnextHtml}
-    ${html}
-  `;
-
-  const refreshBtn = document.getElementById("refreshBtn");
-  if(refreshBtn) refreshBtn.addEventListener("click", renderDashboard);
-  const retryBtn = document.getElementById("retryLoad");
-  if(retryBtn) retryBtn.addEventListener("click", renderDashboard);
-
-  document.querySelectorAll("[data-toggle-subject]").forEach(el => {
-    el.addEventListener("click", () => {
-      const sid = el.dataset.toggleSubject;
-      if (state.expandedSubjects.has(sid)) state.expandedSubjects.delete(sid);
-      else state.expandedSubjects.add(sid);
-      el.closest(".subject-card").classList.toggle("expanded");
-    });
-  });
-
-  document.querySelectorAll(".chapter-row").forEach(el => {
-    el.addEventListener("click", (ev) => {
-      ev.stopPropagation();
-      state.topicId = el.dataset.topic;
-      state.subjectId = el.dataset.subject;
-      state.view = "chapter";
-      state.expandedStep = null;
-      render();
-    });
-  });
-
-  document.querySelectorAll(".upnext-card").forEach(el => {
-    el.addEventListener("click", () => {
-      state.topicId = el.dataset.topic;
-      state.subjectId = el.dataset.subject;
-      state.view = "chapter";
-      state.expandedStep = null;
-      render();
-    });
-  });
-
-  document.querySelectorAll(".upnext-remove").forEach(el => {
-    el.addEventListener("click", async (ev) => {
-      ev.stopPropagation();
-      const topicId = el.dataset.topic;
-      await sb(`topic_flags?topic_id=eq.${topicId}&profile_id=eq.${PROFILE.id}`, {
-        method: "DELETE",
-        prefer: "return=minimal"
-      });
-      renderDashboard();
-    });
-  });
-
-  document.querySelectorAll(".upnext-note-input").forEach(el => {
-    el.addEventListener("click", (ev) => ev.stopPropagation());
-    el.addEventListener("keydown", (ev) => { if (ev.key === "Enter") el.blur(); });
-    el.addEventListener("blur", async () => {
-      const topicId = el.dataset.topic;
-      const note = (el.value || "").trim();
-      await sb(`topic_flags?topic_id=eq.${topicId}&profile_id=eq.${PROFILE.id}`, {
-        method: "PATCH",
-        prefer: "return=minimal",
-        body: { note: note, updated_at: new Date().toISOString() }
-      });
-    });
-  });
-
-  document.querySelectorAll(".flag-icon-btn").forEach(el => {
-    el.addEventListener("click", async (ev) => {
-      ev.stopPropagation();
-      const topicId = el.dataset.topic;
-      const isFlagged = !!el.dataset.state;
-      if (isFlagged) {
-        await sb(`topic_flags?topic_id=eq.${topicId}&profile_id=eq.${PROFILE.id}`, {
-          method: "DELETE",
-          prefer: "return=minimal"
-        });
-        await renderDashboard();
-      } else {
-        const subjectId = el.dataset.subject;
-        await sb("topic_flags", {
-          method: "POST",
-          prefer: "resolution=merge-duplicates,return=minimal",
-          body: [{ topic_id: topicId, profile_id: PROFILE.id, flag_type: "revise", updated_at: new Date().toISOString() }]
-        });
-        maybeAutoQueueVideo(topicId, subjectId);
-        await renderDashboard();
-        const noteInput = document.querySelector(`.chapter-note-input[data-topic="${topicId}"]`);
-        if (noteInput) noteInput.focus();
-      }
-    });
-  });
-
-  document.querySelectorAll(".chapter-note-input").forEach(el => {
-    el.addEventListener("click", (ev) => ev.stopPropagation());
-    el.addEventListener("keydown", (ev) => { if (ev.key === "Enter") el.blur(); });
-    el.addEventListener("blur", async () => {
-      const topicId = el.dataset.topic;
-      const note = (el.value || "").trim();
-      await sb(`topic_flags?topic_id=eq.${topicId}&profile_id=eq.${PROFILE.id}`, {
-        method: "PATCH",
-        prefer: "return=minimal",
-        body: { note: note, updated_at: new Date().toISOString() }
-      });
-    });
-  });
-
-  observeReveal(".subject-card");
+async function renderSubjectPage(){
+  const v = document.getElementById("view");
+  if (!v.querySelector(".hs")) v.innerHTML = `<div class="loading">Loading…</div>`;
+  const { raw, err, model } = await loadModel();
+  if (!raw.subjects.length && err) return errorBox(err, renderSubjectPage);
+  state.model = model;
+  Stages.renderSubject(v, model, state.subjectId, { sb, profile: PROFILE, openChapter, goHome, reload: renderSubjectPage, state });
 }
 
 async function maybeAutoQueueVideo(topicId, subjectId){
@@ -797,6 +593,15 @@ async function renderChapter(){
   const confidenceRows = await sb(`nlm_confidence?select=rating&topic_id=eq.${state.topicId}&profile_id=eq.${PROFILE.id}`);
   const flagRows = await sb(`topic_flags?select=flag_type,note&topic_id=eq.${state.topicId}&profile_id=eq.${PROFILE.id}`);
   const currentFlag = flagRows[0] ? { flagType: flagRows[0].flag_type, note: flagRows[0].note || "" } : { flagType: null, note: "" };
+
+  const [statusRows, examRows] = topic ? await Promise.all([
+    sb(`chapter_status?select=class_done_at,fresh_since&topic_id=eq.${state.topicId}&profile_id=eq.${PROFILE.id}`),
+    sb(`exam_dates?select=label,exam_date&subject_id=eq.${topic.subject_id}&profile_id=eq.${PROFILE.id}`)
+  ]) : [[], []];
+  let classDoneAt = statusRows[0] ? statusRows[0].class_done_at : null;
+  let freshSince = statusRows[0] ? statusRows[0].fresh_since : null;
+  let exam = examRows[0] || null;
+  let chapterStats = null;
 
   const videoRequestRows = topic
     ? await sb(`video_requests?select=status,video_url,error_message&topic_id=eq.${state.topicId}&profile_id=eq.${PROFILE.id}`)
@@ -869,10 +674,42 @@ async function renderChapter(){
 
   let practiceApi = null;
   function updateProgressUI(){
-    const el = document.getElementById("learnSummary");
-    const dc = doneCount(), ts = totalSteps();
-    if (el) el.textContent = !ts ? "" : dc >= ts ? "All done. Check what stuck." : "Finished learning? Check what stuck.";
-    if (practiceApi) practiceApi.refresh();
+    paintClassFoot();
+    paintTabs();
+  }
+  function stageInfo(){
+    return Stages.chapterStage({ learnDone: doneCount(), learnTotal: totalSteps(), classDone: !!classDoneAt, freshSince, exam, stats: chapterStats || {} });
+  }
+  function paintTabs(){
+    const info = stageInfo();
+    const set = (k, icon, sub, now) => {
+      const b = document.getElementById("tabbtn-" + k); if (!b) return;
+      b.querySelector(".cv-tab-i").innerHTML = icon === "tick" ? `<span class="cv-tick" aria-hidden="true">&#10003;</span>` : icon === "now" ? `<span class="cv-now" aria-hidden="true"></span>` : "";
+      const se = b.querySelector(".cv-tab-s"); se.textContent = sub; se.classList.toggle("now", !!now);
+    };
+    const learnDoneAll = info.learnTotal > 0 && info.learnDone >= info.learnTotal;
+    if (info.stage === "learn" || info.stage === "none") set("learn", learnDoneAll ? "tick" : "now", "Before class · " + (learnDoneAll ? "done" : info.learnDone ? "started" : "start here"), !learnDoneAll);
+    else set("learn", learnDoneAll || info.classDone ? "tick" : "", "Before class" + (learnDoneAll ? " · done" : ""), false);
+    if (info.stage === "test") set("test", info.done ? "tick" : "now", "After class · " + (info.done ? "done" : "now"), !info.done);
+    else if (info.tested || (info.stage === "refresh" && (info.stats.triedEver || 0) >= Math.ceil((info.stats.total || 1) * 0.8))) set("test", "tick", "After class · done", false);
+    else set("test", "", "After class", false);
+    if (info.stage === "refresh") set("refresh", info.done ? "tick" : "now", "Before exams · " + (info.done ? "done" : "now"), !info.done);
+    else set("refresh", "", info.refreshOpen ? "Before exams · open" : info.opensOn && info.examDate >= new Date(new Date().setHours(0,0,0,0)) ? "Before exams · from " + Stages.fmtDate(info.opensOn) : "Before exams", false);
+    return info;
+  }
+  function paintClassFoot(){
+    const el = document.getElementById("classFoot"); if (!el) return;
+    if (classDoneAt) {
+      el.innerHTML = `<span class="cv-class-done">Done in class on ${esc(Stages.fmtDate(new Date(classDoneAt)))}. Now test yourself.</span><span style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="cv-btn ghost" data-undo-class>Undo</button><button type="button" class="cv-btn" data-goto2="test">Go to Test</button></span>`;
+    } else {
+      el.innerHTML = `<span>Done this chapter in class? Tap here and it moves on to Test.</span><button type="button" class="cv-btn" data-class-done>We've done this in class</button>`;
+    }
+    const d = el.querySelector("[data-class-done]");
+    if (d) d.onclick = async () => { d.disabled = true; d.textContent = "Saving…"; await Stages.markClassDone(sb, PROFILE, state.topicId, true); classDoneAt = new Date().toISOString(); paintClassFoot(); paintTabs(); };
+    const u = el.querySelector("[data-undo-class]");
+    if (u) u.onclick = async () => { u.disabled = true; await Stages.markClassDone(sb, PROFILE, state.topicId, false); classDoneAt = null; paintClassFoot(); paintTabs(); };
+    const g = el.querySelector("[data-goto2]");
+    if (g) g.onclick = () => goTab("test");
   }
 
   function bindStepEvents(){
@@ -1002,16 +839,18 @@ async function renderChapter(){
     updateProgressUI();
   }
 
-  const TABS = [["learn", "Learn"], ["test", "Test"], ["progress", "Progress"]];
-  // Open where he's most likely to start: Learn if he hasn't done any materials yet, otherwise Test
+  const TABS = [["learn", "Learn"], ["test", "Test"], ["refresh", "Refresh"]];
+  // Open on the step he's at (worked out again once the questions have loaded)
+  let autoTab = false;
   if (!state.chapterTab || state.chapterTabTopic !== state.topicId) {
-    state.chapterTab = learnRows.length && doneCount() === 0 ? "learn" : "test";
+    state.chapterTab = classDoneAt ? "test" : "learn";
     state.chapterTabTopic = state.topicId;
+    autoTab = true;
   }
 
   document.getElementById("view").innerHTML = `
   <div class="cv">
-    <div class="crumb"><span id="backBtn">&larr; ${esc(topic && topic.subject_title ? topic.subject_title : "Back to subjects")}</span></div>
+    <div class="crumb"><span id="backBtn" role="button" tabindex="0">&larr; ${esc(topic && topic.subject_title ? topic.subject_title : "Back to subjects")}</span></div>
     <h2 class="cv-title">${esc(topic ? topic.title : "")}</h2>
     <div class="cv-meta">
       <button type="button" class="cv-flag${currentFlag.flagType ? " active" : ""}" id="chapFlagToggle">${currentFlag.flagType ? "&check; On my revision list" : "+ Add to revision list"}</button>
@@ -1023,26 +862,13 @@ async function renderChapter(){
         <button id="chapNoteSave">Save</button>
       </div>` : ""}
     <div class="cv-tabs" role="tablist" aria-label="Chapter sections">
-      ${TABS.map(([k, l]) => `<button type="button" role="tab" class="cv-tab" id="tabbtn-${k}" data-tab="${k}" aria-controls="tab-${k}">${l}</button>`).join("")}
+      ${TABS.map(([k, l]) => `<button type="button" role="tab" class="cv-tab" id="tabbtn-${k}" data-tab="${k}" aria-controls="tab-${k}"><span class="cv-tab-l"><span class="cv-tab-i"></span>${l}</span><span class="cv-tab-s"></span></button>`).join("")}
     </div>
-
-    <section id="tab-progress" role="tabpanel" aria-labelledby="tabbtn-progress">
-      <div id="progressSlot"><div class="cv-card cv-empty">Your progress will show here once this chapter has questions. For now, start with Learn.</div></div>
-      <details class="cv-card cv-conf">
-        <summary>How confident do you feel about this chapter?</summary>
-        <p class="sub">1 means still shaky, 10 means you could teach it. It saves when you let go.</p>
-        <div class="confidence-row">
-          <input type="range" min="1" max="10" step="1" value="${confidenceRating || 5}" class="confidence-slider" id="confSlider" aria-label="Confidence out of 10" />
-          <div class="confidence-value"><span id="confValue">${confidenceRating || 5}</span><span class="max">/10</span></div>
-        </div>
-        <div class="confidence-saved" id="confSaved">Saved</div>
-      </details>
-    </section>
 
     <section id="tab-learn" role="tabpanel" aria-labelledby="tabbtn-learn" hidden>
       <div class="cv-intro"><b>Read, watch or listen</b><span>Do them in order, or pick what suits you today. Tick each one when you've finished.</span></div>
       <div class="cv-card cv-list" id="stepsContainer"></div>
-      <div class="cv-card cv-foot"><span id="learnSummary"></span><button type="button" class="cv-btn ghost" data-goto="test">Go to Test</button></div>
+      <div class="cv-card cv-foot" id="classFoot"></div>
     </section>
 
     <section id="tab-test" role="tabpanel" aria-labelledby="tabbtn-test" hidden>
@@ -1050,6 +876,12 @@ async function renderChapter(){
       <div class="pr-pair" id="pairRow"><div id="paperSlot"></div><div id="tutorSlot"></div></div>
       <div id="practiceMoreSlot"></div>
       <details class="cv-card cv-more" id="extraPractice"><summary>More practice: flashcards and printable exam sheet</summary><div class="cv-list" id="stepsContainer2"></div></details>
+    </section>
+
+    <section id="tab-refresh" role="tabpanel" aria-labelledby="tabbtn-refresh" hidden>
+      <div id="examSlot"></div>
+      <div id="refreshSlot"><div class="cv-card cv-empty">Refresh needs questions for this chapter. They're coming soon.</div></div>
+      <button type="button" class="cv-back-learn" data-goto="learn">Need a reminder first? Go back to Learn &rsaquo;</button>
     </section>
   </div>
   `;
@@ -1073,22 +905,34 @@ async function renderChapter(){
   const goTab = (t) => { showTab(t); const tabs = document.querySelector(".cv-tabs"); if (tabs) tabs.scrollIntoView({ block: "start", behavior: "smooth" }); };
   document.querySelectorAll("[data-goto]").forEach(b => b.addEventListener("click", () => goTab(b.dataset.goto)));
   showTab(state.chapterTab);
+  document.querySelectorAll(".cv-tab").forEach(b => b.addEventListener("click", () => { autoTab = false; }));
+
+  if (topic) Stages.examBox(document.getElementById("examSlot"), { sb, profile: PROFILE, subjectId: topic.subject_id, exam, onChange: (e) => { exam = e; paintTabs(); if (practiceApi) practiceApi.refresh(); } });
 
   if (topic && window.mountPractice) window.mountPractice(document.getElementById("practiceSlot"), {
     topic, profile: PROFILE, sb,
-    progressSlot: document.getElementById("progressSlot"),
     moreSlot: document.getElementById("practiceMoreSlot"),
     paperSlot: document.getElementById("paperSlot"),
+    refreshSlot: document.getElementById("refreshSlot"),
+    freshSince: () => freshSince,
     goTo: goTab,
-    learn: () => ({ done: doneCount(), total: totalSteps() }),
+    onStats: (st) => {
+      chapterStats = st;
+      const info = paintTabs();
+      if (autoTab) { autoTab = false; const t = { learn: "learn", none: "learn", test: "test", refresh: "refresh" }[info.stage]; if (t !== state.chapterTab) showTab(t); }
+    },
+    onStartFresh: async () => { freshSince = new Date().toISOString(); await Stages.startFresh(sb, PROFILE, state.topicId); },
     hideDuring: [document.getElementById("pairRow"), document.getElementById("practiceMoreSlot"), document.getElementById("extraPractice")]
-  }).then(api => { practiceApi = api; });
+  }).then(api => {
+    practiceApi = api;
+    if (!api && autoTab) { autoTab = false; paintTabs(); }
+  });
   if (topic && window.mountTutor) window.mountTutor(document.getElementById("tutorSlot"), { topic, profile: PROFILE, sb });
 
-  document.getElementById("backBtn").addEventListener("click", () => {
-    state.view = "dashboard";
-    render();
-  });
+  const backBtn = document.getElementById("backBtn");
+  const goBack = () => { state.view = "subject"; render(); window.scrollTo({ top: 0 }); };
+  backBtn.addEventListener("click", goBack);
+  backBtn.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); goBack(); } });
 
   async function setChapterFlag(){
     const isActive = !!currentFlag.flagType;
@@ -1170,7 +1014,7 @@ async function renderSettings(){
   templateRows.forEach(t => { if (bySubject[t.subject_id]) bySubject[t.subject_id].steps.push(t); });
 
   const html = `
-    <div class="crumb"><span id="settingsBack">&larr; Back to subjects</span></div>
+    <div class="crumb"><span id="settingsBack">&larr; Home</span></div>
     <div class="section-head"><h2 class="section-title">Settings</h2></div>
     <p class="settings-hint">Turn off any tasks ${esc(PROFILE.name)} doesn't want to see for a subject — like skipping the audio overview. Turned-off tasks won't count toward progress.</p>
     ${subjectIds.length === 0 ? `<div class="empty">No subjects yet.</div>` : subjects.map(s => {
@@ -1229,6 +1073,7 @@ async function renderSettings(){
 function render(){
   if(state.view === "chapter") { renderChapter(); return; }
   if(state.view === "settings") { renderSettings(); return; }
+  if(state.view === "subject") { renderSubjectPage(); return; }
   renderDashboard();
 }
 
