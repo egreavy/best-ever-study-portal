@@ -28,6 +28,11 @@
   .pr-hero-text{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 260px}
   .pr-pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;margin:0 0 10px}
   .pr-pair>:empty{display:none}
+  .pr-pair[hidden]{display:none}
+  .pr-mic{border-color:#1F2328;color:#1F2328;background:#fff}
+  .pr-mic.on{background:#1F2328;color:#fff;animation:prPulse 1.6s ease-out infinite}
+  @keyframes prPulse{0%{box-shadow:0 0 0 0 rgba(31,35,40,.3)}100%{box-shadow:0 0 0 10px rgba(31,35,40,0)}}
+  @media (prefers-reduced-motion:reduce){.pr-mic.on{animation:none}}
   .pr-pair .pr-paper{height:100%;box-sizing:border-box}
   .pr-side{gap:6px}
   .pr-side .pr-side-btn{margin-top:auto;padding-top:6px}
@@ -80,6 +85,38 @@
   const L = "ABCD";
   const isTouch = matchMedia("(pointer:coarse)").matches, isMac = /Mac/.test(navigator.platform||"");
   const speakTip = () => `<p class="pr-tip">To speak instead of typing: ${isTouch ? "tap the microphone on your keyboard" : isMac ? "press the Fn (Globe) key twice" : "press Windows + H"}.</p>`;
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  // Adds a Speak my answer button that types what he says into the box (Chrome, Edge, Safari)
+  function attachMic(row, ta, status){
+    if (!SR) return false;
+    const btn = h(`<button type="button" class="pr-btn pr-mic" aria-pressed="false">Speak my answer</button>`);
+    row.prepend(btn);
+    let rec = null, base = "";
+    const stop = () => { if (rec) { try { rec.stop(); } catch (e) {} } };
+    btn.onclick = () => {
+      if (rec) return stop();
+      rec = new SR(); rec.lang = "en-IE"; rec.continuous = true; rec.interimResults = true;
+      base = ta.value ? ta.value.replace(/\s*$/, " ") : "";
+      rec.onresult = (e) => {
+        let finalText = "", interim = "";
+        for (let i = 0; i < e.results.length; i++) { const r = e.results[i]; if (r.isFinal) finalText += r[0].transcript; else interim += r[0].transcript; }
+        ta.value = (base + finalText + interim).replace(/^\s+/, "");
+      };
+      rec.onerror = (e) => {
+        status.textContent = e.error === "not-allowed" || e.error === "service-not-allowed"
+          ? "The browser blocked the microphone. Allow it for this site (the icon in the address bar), then try again."
+          : e.error === "no-speech" ? "Didn't hear anything. Tap Speak my answer and try again." : "Speaking didn't work this time. Try again, or type your answer.";
+        status.hidden = false;
+      };
+      rec.onend = () => { rec = null; btn.classList.remove("on"); btn.textContent = "Speak my answer"; btn.setAttribute("aria-pressed", "false"); base = ta.value; };
+      try {
+        rec.start(); status.hidden = true;
+        btn.classList.add("on"); btn.textContent = "Stop speaking"; btn.setAttribute("aria-pressed", "true");
+      } catch (e) { rec = null; }
+    };
+    row._stopMic = stop;
+    return true;
+  }
   const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
   // ---- data ----
@@ -297,15 +334,19 @@
     function writtenView(card, q, retry){
       const images = [], isExam = q.qtype === "exam";
       const box = h(`<div style="display:flex;flex-direction:column;gap:12px">
-        <p class="pr-tip">${isExam ? "Write your answer on paper and add a photo, or type it here." : "Say your answer out loud or type it, then check it."}</p>
-        ${speakTip()}
+        <p class="pr-tip">${isExam ? "Write your answer on paper and add a photo, speak it, or type it here." : "Speak or type your answer, then check it."}</p>
+        ${SR ? "" : speakTip()}
         <textarea aria-label="Your answer" placeholder="${isExam ? "Type your answer (or add a photo below)" : "Type your answer (optional)"}"></textarea>
         <div class="pr-thumbs"></div>
-        ${isExam ? `<div class="pr-row"><label class="pr-btn ghost">Add a photo or screenshot<input type="file" accept="image/*" multiple hidden></label></div>` : ""}
+        <div class="pr-row" data-inputs>${isExam ? `<label class="pr-btn ghost">Add a photo or screenshot<input type="file" accept="image/*" multiple hidden></label>` : ""}</div>
         <div class="pr-row"><button type="button" class="pr-btn" data-fb>${isExam ? "Mark my answer" : "Check my answer"}</button><button type="button" class="pr-btn ghost" data-self>Just show the answer</button></div>
         <p class="pr-err" hidden></p></div>`);
       const ta = box.querySelector("textarea"), thumbs = box.querySelector(".pr-thumbs"), file = box.querySelector("input[type=file]"), err = box.querySelector(".pr-err");
       const fbBtn = box.querySelector("[data-fb]"), selfBtn = box.querySelector("[data-self]");
+      const inputsRow = box.querySelector("[data-inputs]");
+      attachMic(inputsRow, ta, err);
+      if (!inputsRow.children.length) inputsRow.remove();
+      const stopMic = () => { if (inputsRow._stopMic) inputsRow._stopMic(); };
       if (file) file.onchange = async () => {
         err.hidden = true;
         for (const f of Array.from(file.files || []).slice(0, 3 - images.length)) {
@@ -318,6 +359,7 @@
       const modelBlock = () => `<details><summary>${isExam ? "See the model answer and marking scheme" : "See a good answer"}</summary><div class="pr-fb" style="margin-top:8px"><span>${esc(q.model_answer||"")}</span>${q.marking_scheme?`<span class="pr-scheme"><strong>Marking scheme:</strong> ${esc(q.marking_scheme)}</span>`:""}</div></details>`;
 
       fbBtn.onclick = async () => {
+        stopMic();
         const text = ta.value.trim();
         if (!text && !images.length) { err.textContent = isExam ? "Type an answer or add a photo first." : "Type your answer first, or use Just show the answer."; err.hidden = false; return; }
         fbBtn.disabled = selfBtn.disabled = true; fbBtn.textContent = "Reading your answer…"; err.hidden = true;
@@ -346,6 +388,7 @@
       };
 
       selfBtn.onclick = () => {
+        stopMic();
         box.remove();
         card.append(h(`<div class="pr-fb"><strong>${isExam?"Model answer":"A good answer"}</strong><span>${esc(q.model_answer||"")}</span>${q.marking_scheme?`<span class="pr-scheme"><strong>Marking scheme:</strong> ${esc(q.marking_scheme)}</span>`:""}</div>`));
         const r = h(`<div style="display:flex;flex-direction:column;gap:10px"><strong style="font-size:17px">How did you do?</strong><div class="pr-rate"><button type="button">Got it</button><button type="button">Half right</button><button type="button">Not yet</button></div></div>`);
