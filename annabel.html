@@ -355,6 +355,7 @@
   <div id="view"><div class="loading">Loading…</div></div>
 </div>
 
+<script src="tutor.js"></script>
 <script>
 const SUPABASE_URL = "https://dhxwajidrtyukyxmiyml.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRoeHdhamlkcnR5dWt5eG1peW1sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYzMzYyNzQsImV4cCI6MjA1MTkxMjI3NH0.fnH1eI1vLtQASjII_6K0d6NZevD62tnthXe0uyMgh0s";
@@ -987,6 +988,7 @@ async function renderChapter(){
       <div class="track"><div class="fill" id="fill" style="width:${doneCount()/totalSteps()*100}%"></div></div>
       <div class="celebrate ${doneCount() === totalSteps() ? "show" : ""}" id="celebrate">Chapter mastered!</div>
     </div>
+    <div id="tutorSlot"></div>
     <div class="steps" id="stepsContainer"></div>
     <div class="confidence-card reveal">
       <h3>How confident do you feel about this chapter?</h3>
@@ -999,6 +1001,8 @@ async function renderChapter(){
       <div class="confidence-saved" id="confSaved">Saved</div>
     </div>
   `;
+
+  if (topic && window.mountTutor) window.mountTutor(document.getElementById("tutorSlot"), { topic, profile: PROFILE, sb });
 
   document.getElementById("backBtn").addEventListener("click", () => {
     state.view = "dashboard";
