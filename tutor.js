@@ -18,26 +18,28 @@
   }
 
   const css = `
-  .tutor-card{background:#fff;border:1px solid var(--card-border,#e6e3da);border-radius:18px;padding:20px;margin:16px 0;display:flex;flex-direction:column;gap:14px;align-items:center;text-align:center}
-  .tutor-card h3{margin:0;font-size:17px;font-weight:800}
-  .tutor-card .tutor-sub{margin:0;color:var(--sub,#6b6b64);font-size:14px;max-width:46ch}
-  .tutor-orb{width:112px;height:112px;border-radius:50%;border:none;cursor:pointer;background:var(--accent,#0f6e5c);color:#fff;font-weight:800;font-size:15px;display:flex;align-items:center;justify-content:center;text-align:center;padding:10px;line-height:1.25;box-shadow:0 0 0 0 rgba(15,110,92,.35);transition:transform .2s ease}
-  .tutor-orb:focus-visible{outline:3px solid #7c3aed;outline-offset:4px}
+  .tutor-card{background:#fff;border-radius:18px;padding:26px 28px;margin:0 0 16px;display:flex;flex-direction:column;gap:12px}
+  .tutor-top{display:flex;align-items:center;justify-content:space-between;gap:20px}
+  .tutor-card h3{margin:0;font-size:20px;font-weight:700}
+  .tutor-card .tutor-sub{margin:4px 0 0;color:#5B6470;font-size:17px;line-height:1.5}
+  .tutor-orb{flex:none;border:2px solid #1F6F5C;background:#fff;color:#1F6F5C;font:inherit;font-size:17px;font-weight:700;padding:13px 26px;border-radius:999px;cursor:pointer;min-height:50px;white-space:nowrap}
+  .tutor-orb:focus-visible{outline:3px solid #1F6F5C;outline-offset:3px}
   .tutor-orb[disabled]{opacity:.7;cursor:default}
+  .tutor-orb.listening,.tutor-orb.speaking{background:#1F6F5C;color:#fff}
   .tutor-orb.listening{animation:tutorPulse 1.8s ease-out infinite}
-  .tutor-orb.speaking{transform:scale(1.08);background:#0b5546}
-  @keyframes tutorPulse{0%{box-shadow:0 0 0 0 rgba(15,110,92,.35)}100%{box-shadow:0 0 0 22px rgba(15,110,92,0)}}
-  @media (prefers-reduced-motion:reduce){.tutor-orb.listening{animation:none;box-shadow:0 0 0 6px rgba(15,110,92,.25)}.tutor-orb{transition:none}}
-  .tutor-status{font-size:14px;font-weight:700;color:var(--accent,#0f6e5c);min-height:1.4em;margin:0}
-  .tutor-end{border:1px solid var(--card-border,#e6e3da);background:#fff;color:#b91c1c;font-weight:800;font-size:14px;padding:10px 22px;border-radius:999px;cursor:pointer}
-  .tutor-err{color:#b91c1c;font-size:13.5px;margin:0;max-width:46ch}
-  .tutor-log{width:100%;text-align:left}
-  .tutor-log summary{cursor:pointer;color:var(--sub,#6b6b64);font-size:13px;font-weight:700}
-  .tutor-lines{display:flex;flex-direction:column;gap:6px;margin-top:8px;max-height:260px;overflow:auto;font-size:14px}
-  .tutor-lines p{margin:0;padding:8px 12px;border-radius:12px;background:var(--bg,#f3f1ec)}
-  .tutor-lines p.me{background:#eef4ff}
-  .tutor-done{font-size:14px;color:var(--ink,#232323);margin:0}
+  @keyframes tutorPulse{0%{box-shadow:0 0 0 0 rgba(31,111,92,.35)}100%{box-shadow:0 0 0 14px rgba(31,111,92,0)}}
+  @media (prefers-reduced-motion:reduce){.tutor-orb.listening{animation:none}}
+  .tutor-status{font-size:17px;font-weight:700;color:#1F2328;margin:0}
+  .tutor-status:empty{display:none}
+  .tutor-end{align-self:flex-start;border:2px solid #1F2328;background:#fff;color:#1F2328;font:inherit;font-weight:700;font-size:16px;padding:10px 22px;border-radius:999px;cursor:pointer}
+  .tutor-err{color:#a32020;font-size:16px;margin:0}
+  .tutor-log summary{cursor:pointer;color:#5B6470;font-size:16px;font-weight:700}
+  .tutor-lines{display:flex;flex-direction:column;gap:6px;margin-top:8px;max-height:280px;overflow:auto;font-size:16px;line-height:1.5}
+  .tutor-lines p{margin:0;padding:8px 12px;border-radius:12px;background:#F4F5F6}
+  .tutor-lines p.me{background:#EAF3F0}
+  @media (max-width:600px){.tutor-top{flex-direction:column;align-items:flex-start}}
   `;
+
   function addCss(){ if (document.getElementById("tutor-css")) return; const st=document.createElement("style"); st.id="tutor-css"; st.textContent=css; document.head.appendChild(st); }
   const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
@@ -109,9 +111,10 @@ ${questions.map(fmt).join("\n")}`;
     const card = document.createElement("div");
     card.className = "tutor-card";
     card.innerHTML = `
-      <h3>Talk it through with your tutor</h3>
-      <p class="tutor-sub">Tap the button and just talk. Your tutor asks you questions out loud, listens, and helps with the bits you find tricky.</p>
-      <button class="tutor-orb" type="button" id="tutorOrb">Tap to start talking</button>
+      <div class="tutor-top">
+        <div><h3>Talk it through with your tutor</h3><p class="tutor-sub">Just talk. It asks you questions out loud and picks up where you left off.</p></div>
+        <button class="tutor-orb" type="button" id="tutorOrb">Start talking</button>
+      </div>
       <p class="tutor-status" id="tutorStatus" aria-live="polite"></p>
       <button class="tutor-end" type="button" id="tutorEnd" hidden>End session</button>
       <p class="tutor-err" id="tutorErr" hidden></p>
@@ -125,7 +128,7 @@ ${questions.map(fmt).join("\n")}`;
 
     function setIdle(msg){
       active = false; convo = null;
-      orb.disabled = false; orb.className = "tutor-orb"; orb.textContent = "Tap to start talking";
+      orb.disabled = false; orb.className = "tutor-orb"; orb.textContent = "Start talking";
       endBtn.hidden = true; status.textContent = msg || "";
     }
     function summaryText(){
@@ -196,7 +199,7 @@ ${questions.map(fmt).join("\n")}`;
           onConnect: () => { orb.disabled = false; endBtn.hidden = false; status.textContent = "Connected. Just talk."; },
           onModeChange: ({ mode }) => {
             orb.className = "tutor-orb " + (mode === "speaking" ? "speaking" : "listening");
-            orb.textContent = mode === "speaking" ? "Tutor is talking" : "Listening…";
+            orb.textContent = mode === "speaking" ? "Tutor talking" : "Listening…";
             status.textContent = mode === "speaking" ? "You can interrupt any time." : "Your turn. Just talk.";
           },
           onMessage: ({ message, role, source }) => addLine(role || (source === "ai" ? "agent" : "user"), message),

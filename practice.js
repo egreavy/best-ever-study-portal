@@ -1,64 +1,67 @@
-// Chapter practice: progress summary, quizzes, exam questions and answer feedback.
+// Chapter Progress and Test tabs: progress steps, questions to fix, quizzes,
+// short answers and past paper questions with marking.
 // All results go to quiz_attempts, which the voice tutor also reads and writes,
-// so each one picks up from the other.
+// so each one picks up from the others.
 (function(){
   const css = `
-  .pr-card{background:#fff;border:1px solid var(--card-border,#e6e3da);border-radius:18px;padding:20px;margin:16px 0;display:flex;flex-direction:column;gap:14px}
-  .pr-card h3{margin:0;font-size:17px;font-weight:800}
-  .pr-sub{margin:0;color:var(--sub,#6b6b64);font-size:14px}
-  .pr-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
-  .pr-stat{border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:2px}
-  .pr-stat b{font-size:24px;font-variant-numeric:tabular-nums;line-height:1.1}
-  .pr-stat span{font-size:13px;font-weight:700}
-  .pr-g{background:#e3f3ea;color:#1a6b42}.pr-p{background:#fbf0dd;color:#8a5a12}.pr-n{background:#fbe4e4;color:#9b2c2c}.pr-u{background:var(--bg,#f3f1ec);color:var(--sub,#6b6b64)}
-  .pr-topics{display:flex;flex-direction:column;gap:8px}
-  .pr-trow{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center;font-size:14px}
-  .pr-bar{grid-column:1/-1;height:8px;background:var(--track,#e6e1d2);border-radius:99px;overflow:hidden}
-  .pr-bar i{display:block;height:100%}
-  .pr-pill{font-size:12px;font-weight:800;padding:2px 10px;border-radius:99px;font-variant-numeric:tabular-nums}
-  .pr-list{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px;font-size:14.5px;line-height:1.5}
-  .pr-list .pr-why{display:block;color:var(--sub,#6b6b64);font-size:13px}
-  .pr-card details summary{cursor:pointer;font-weight:800;font-size:14.5px}
-  .pr-modes{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
-  .pr-mode{text-align:left;border:2px solid var(--card-border,#e6e3da);background:#fff;border-radius:14px;padding:14px 16px;cursor:pointer;display:flex;flex-direction:column;gap:3px;font:inherit;color:inherit}
-  .pr-mode:hover{border-color:var(--accent,#0f6e5c)}
-  .pr-mode.main{border-color:var(--accent,#0f6e5c);background:var(--accent-soft,#dcefe7)}
-  .pr-mode strong{font-size:15px}.pr-mode span{font-size:13px;color:var(--sub,#6b6b64)}
-  .pr-q{font-size:18px;font-weight:700;line-height:1.55;margin:0}
-  .pr-meta{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--sub,#6b6b64)}
-  .pr-tag{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--accent,#0f6e5c);background:var(--accent-soft,#dcefe7);padding:3px 10px;border-radius:99px}
-  .pr-progress{height:7px;background:var(--track,#e6e1d2);border-radius:99px;overflow:hidden}.pr-progress i{display:block;height:100%;background:var(--accent,#0f6e5c)}
-  .pr-opts{display:flex;flex-direction:column;gap:10px}
-  .pr-opt{text-align:left;border:2px solid var(--card-border,#e6e3da);background:#fff;border-radius:12px;padding:13px 15px;min-height:52px;display:flex;gap:12px;align-items:flex-start;cursor:pointer;font:inherit;font-size:16px;color:inherit;line-height:1.45}
-  .pr-opt b{flex:none;width:26px;height:26px;border-radius:50%;background:var(--accent-soft,#dcefe7);color:var(--accent,#0f6e5c);display:grid;place-items:center;font-size:13px}
-  .pr-opt:hover:not(:disabled){border-color:var(--accent,#0f6e5c)}
-  .pr-opt.right{border-color:#1a7d4a;background:#e3f3ea}.pr-opt.wrong{border-color:#b91c1c;background:#fbe4e4}.pr-opt:disabled{cursor:default}
-  .pr-fb{border-radius:12px;padding:13px 15px;display:flex;flex-direction:column;gap:6px;font-size:15px;line-height:1.5}
-  .pr-fb.good{background:#e3f3ea}.pr-fb.bad{background:#fbe4e4}.pr-fb.info{background:var(--accent-soft,#dcefe7)}
-  .pr-fb h4{margin:0;font-size:15px}
-  .pr-fb ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px}
-  .pr-scheme{border-left:4px solid var(--card-border,#e6e3da);padding-left:12px;color:var(--sub,#6b6b64);font-size:14px}
-  .pr-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-  .pr-btn{border:2px solid var(--accent,#0f6e5c);background:var(--accent,#0f6e5c);color:#fff;border-radius:999px;padding:10px 20px;font-weight:800;font-size:14.5px;cursor:pointer;font-family:inherit;min-height:46px}
-  .pr-btn.ghost{background:#fff;color:var(--accent,#0f6e5c)}
+  .pr-card{background:#fff;border-radius:18px;padding:26px 28px;margin:0 0 16px;display:flex;flex-direction:column;gap:16px}
+  .pr-card h3{margin:0;font-size:22px;font-weight:700;line-height:1.3}
+  .pr-sub{margin:0;color:#5B6470;font-size:17px;line-height:1.5}
+  .pr-small{margin:0;color:#5B6470;font-size:16px;line-height:1.5}
+  .pr-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+  .pr-step{display:flex;flex-direction:column;gap:8px}
+  .pr-step b{font-size:17px}
+  .pr-step span{font-size:16px;color:#5B6470}
+  .pr-bar{height:10px;border-radius:99px;background:#DDE1E5;overflow:hidden}
+  .pr-bar i{display:block;height:100%;background:#1F2328;border-radius:99px}
+  .pr-next{margin:0;font-size:18px;line-height:1.55}
+  .pr-list{display:flex;flex-direction:column}
+  .pr-li{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 0;border-top:1px solid #DDE1E5}
+  .pr-li:last-child{border-bottom:1px solid #DDE1E5}
+  .pr-li-body{display:flex;flex-direction:column;gap:6px;min-width:0}
+  .pr-li-title{font-size:19px;font-weight:700;line-height:1.4}
+  .pr-li-note{font-size:16px;color:#5B6470;line-height:1.45}
+  .pr-card details summary{cursor:pointer;font-weight:700;font-size:17px;padding:4px 0}
+  .pr-card details ol{margin:12px 0 0;padding-left:22px;display:flex;flex-direction:column;gap:8px;font-size:16px;line-height:1.5;color:#3d454f}
+  .pr-hero{align-items:center;text-align:center;padding:32px 28px}
+  .pr-paper{border:2px solid #1F2328;flex-direction:row;align-items:center;justify-content:space-between;gap:20px}
+  .pr-eyebrow{font-size:14px;font-weight:700;color:#5B6470;text-transform:uppercase;letter-spacing:.06em}
+  .pr-choose-label{font-size:17px;font-weight:700;color:#5B6470;margin:8px 0 10px}
+  .pr-choices{background:#fff;border-radius:18px;padding:4px 28px;margin:0 0 16px;display:flex;flex-direction:column}
+  .pr-choice{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px 0;border:none;border-bottom:1px solid #DDE1E5;background:none;text-align:left;font:inherit;color:inherit;cursor:pointer;width:100%}
+  .pr-choice:last-child{border-bottom:none}
+  .pr-choice:hover .pr-li-title{text-decoration:underline}
+  .pr-choice[disabled]{opacity:.5;cursor:default}
+  .pr-chev{font-size:24px;color:#5B6470;flex:none}
+  .pr-btn{border:2px solid #1F6F5C;background:#1F6F5C;color:#fff;border-radius:999px;padding:13px 26px;font-weight:700;font-size:17px;cursor:pointer;font-family:inherit;min-height:50px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap}
+  .pr-btn.big{font-size:21px;padding:20px 40px}
+  .pr-btn.ghost{background:#fff;color:#1F6F5C}
+  .pr-btn.dark{background:#1F2328;border-color:#1F2328}
   .pr-btn[disabled]{opacity:.6;cursor:default}
-  .pr-card textarea{width:100%;min-height:130px;font:inherit;font-size:16px;line-height:1.5;border:2px solid var(--card-border,#e6e3da);border-radius:12px;padding:12px;background:var(--bg,#f3f1ec);color:inherit;resize:vertical}
-  .pr-tip{font-size:13.5px;color:var(--sub,#6b6b64);margin:0}
-  .pr-thumbs{display:flex;gap:8px;flex-wrap:wrap}.pr-thumbs img{width:84px;height:84px;object-fit:cover;border-radius:10px;border:1px solid var(--card-border,#e6e3da)}
-  .pr-rate{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-  .pr-rate button{border:2px solid;background:#fff;border-radius:12px;padding:11px 6px;font-weight:800;cursor:pointer;font:inherit;font-weight:800;min-height:50px}
-  .pr-rate .g{border-color:#1a7d4a;color:#1a7d4a}.pr-rate .p{border-color:#a8670d;color:#a8670d}.pr-rate .n{border-color:#b91c1c;color:#b91c1c}
-  .pr-score{font-size:40px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
-  .pr-err{color:#b91c1c;font-size:14px;margin:0}
-  .pr-tablewrap{overflow-x:auto}
-  .pr-table{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}
-  .pr-table th{text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--sub,#6b6b64);padding:8px 10px;border-bottom:2px solid var(--card-border,#e6e3da);white-space:nowrap}
-  .pr-table td{padding:10px;border-bottom:1px solid var(--card-border,#e6e3da);vertical-align:middle}
-  .pr-table td.n{text-align:center;font-weight:800}
-  .pr-table th.n{text-align:center}
-  .pr-table tr:last-child td{border-bottom:none}
-  .pr-status{display:inline-block;font-size:12px;font-weight:800;padding:3px 10px;border-radius:99px;white-space:nowrap}
-  .pr-updated{font-size:12px;color:var(--sub,#6b6b64);margin:0}
+  .pr-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  .pr-q{font-size:21px;font-weight:700;line-height:1.5;margin:0}
+  .pr-meta{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:15px;color:#5B6470}
+  .pr-progress{height:8px;background:#DDE1E5;border-radius:99px;overflow:hidden}.pr-progress i{display:block;height:100%;background:#1F2328}
+  .pr-opts{display:flex;flex-direction:column;gap:10px}
+  .pr-opt{text-align:left;border:2px solid #DDE1E5;background:#fff;border-radius:14px;padding:15px 16px;min-height:56px;display:flex;gap:14px;align-items:flex-start;cursor:pointer;font:inherit;font-size:18px;color:inherit;line-height:1.45}
+  .pr-opt b{flex:none;width:28px;height:28px;border-radius:50%;background:#EEF0F2;display:grid;place-items:center;font-size:14px}
+  .pr-opt:hover:not(:disabled){border-color:#1F2328}
+  .pr-opt.right{border-color:#1F6F5C;background:#EAF3F0}.pr-opt.wrong{border-color:#1F2328;background:#F1F2F4}.pr-opt:disabled{cursor:default}
+  .pr-fb{border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:8px;font-size:17px;line-height:1.55;background:#F4F5F6}
+  .pr-fb.good{background:#EAF3F0}
+  .pr-fb h4{margin:4px 0 0;font-size:17px}
+  .pr-fb ul{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:4px}
+  .pr-scheme{border-left:4px solid #DDE1E5;padding-left:12px;color:#5B6470;font-size:16px}
+  .pr-card textarea{width:100%;box-sizing:border-box;min-height:140px;font:inherit;font-size:18px;line-height:1.55;border:2px solid #DDE1E5;border-radius:14px;padding:14px;background:#F4F5F6;color:inherit;resize:vertical}
+  .pr-card textarea:focus{outline:3px solid #1F6F5C;outline-offset:1px}
+  .pr-tip{font-size:16px;color:#5B6470;margin:0;line-height:1.5}
+  .pr-thumbs{display:flex;gap:8px;flex-wrap:wrap}.pr-thumbs img{width:84px;height:84px;object-fit:cover;border-radius:10px;border:1px solid #DDE1E5}
+  .pr-rate{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .pr-rate button{border:2px solid #1F2328;background:#fff;border-radius:14px;padding:12px 6px;cursor:pointer;font:inherit;font-weight:700;font-size:17px;min-height:54px;color:#1F2328}
+  .pr-score{font-size:40px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+  .pr-err{color:#a32020;font-size:16px;margin:0}
+  .pr-card button:focus-visible,.pr-choice:focus-visible,.pr-btn:focus-visible{outline:3px solid #1F6F5C;outline-offset:3px}
+  @media (max-width:600px){.pr-paper{flex-direction:column;align-items:flex-start}.pr-li{flex-direction:column;align-items:flex-start}.pr-card{padding:22px 20px}.pr-choices{padding:4px 20px}}
   `;
   function addCss(){ if (document.getElementById("pr-css")) return; const s=document.createElement("style"); s.id="pr-css"; s.textContent=css; document.head.appendChild(s); }
   const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -67,7 +70,7 @@
   const L = "ABCD";
   const isTouch = matchMedia("(pointer:coarse)").matches, isMac = /Mac/.test(navigator.platform||"");
   const speakTip = () => `<p class="pr-tip">To speak instead of typing: ${isTouch ? "tap the microphone on your keyboard" : isMac ? "press the Fn (Globe) key twice" : "press Windows + H"}.</p>`;
-  const SRC = { quiz: "in a quiz", tutor: "with the tutor", written: "in a written answer" };
+  const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
   // ---- data ----
   async function loadProgress(sb, profile, questions){
@@ -78,10 +81,10 @@
       sb(`quiz_attempts?select=question_id,result,source,created_at&profile_id=eq.${profile.id}&question_id=in.(${inIds})&order=created_at.desc&limit=1000`),
       sb(`answer_reviews?select=question_id,marks_awarded,marks_available,feedback,created_at&profile_id=eq.${profile.id}&question_id=in.(${inIds})&order=created_at.desc&limit=200`)
     ]);
-    const latest = {}, src = {}, reviews = {};
-    (att||[]).forEach(a => { if (latest[a.question_id] === undefined) { latest[a.question_id] = Number(a.result); src[a.question_id] = a.source; } });
+    const latest = {}, src = {}, when = {}, reviews = {};
+    (att||[]).forEach(a => { if (latest[a.question_id] === undefined) { latest[a.question_id] = Number(a.result); src[a.question_id] = a.source; when[a.question_id] = a.created_at; } });
     (rev||[]).forEach(r => { if (!reviews[r.question_id]) reviews[r.question_id] = r; });
-    return { latest, src, reviews };
+    return { latest, src, when, reviews };
   }
   async function record(sb, profile, qid, result, source){
     await sb("quiz_attempts", { method:"POST", prefer:"return=minimal", body:[{ profile_id: profile.id, question_id: qid, result, source }] });
@@ -100,114 +103,158 @@
     });
   }
 
-  // ---- live summary table ----
-  function summaryCard(questions, prog){
-    const { latest, src } = prog;
-    const card = h(`<div class="pr-card" id="prSummary"><h3>What you know so far</h3><p class="pr-sub">Updates live from your quizzes, exam answers and tutor sessions.</p></div>`);
-    const tried = questions.filter(q => latest[q.id] !== undefined);
-    if (!tried.length) {
-      card.append(h(`<p class="pr-sub">Nothing yet. Start with "Test yourself" above and this table will fill in.</p>`));
-      return card;
+  // What went wrong last time, in plain words
+  function fixNote(q, prog){
+    const r = prog.reviews[q.id];
+    const recentReview = r && prog.when[q.id] && Math.abs(new Date(r.created_at) - new Date(prog.when[q.id])) < 120000;
+    if (recentReview) {
+      const tip = ((r.feedback || {}).to_improve || [])[0];
+      return `${r.marks_awarded} out of ${r.marks_available} marks.${tip ? " " + tip : ""}`;
     }
-    const topics = [];
-    questions.forEach(q => { if (!topics.includes(q.topic_label)) topics.push(q.topic_label); });
-    const rows = topics.map(t => {
-      const qs = questions.filter(q => q.topic_label === t);
-      const g = qs.filter(q => latest[q.id] >= 1).length, p = qs.filter(q => latest[q.id] > 0 && latest[q.id] < 1).length,
-            n = qs.filter(q => latest[q.id] === 0).length, u = qs.filter(q => latest[q.id] === undefined).length;
-      const triedN = g + p + n;
-      const pct = triedN ? Math.round((g + p * 0.5) / triedN * 100) : null;
-      let status, cls;
-      if (!triedN) { status = "Not started"; cls = "pr-u"; }
-      else if (n || (p && pct < 60)) { status = "Needs study"; cls = "pr-n"; }
-      else if (u || p) { status = "Getting there"; cls = "pr-p"; }
-      else { status = "Know it well"; cls = "pr-g"; }
-      const order = { "pr-n": 0, "pr-p": 1, "pr-u": 2, "pr-g": 3 }[cls];
-      return { t, g, p, n, u, status, cls, order };
-    }).sort((a, b) => a.order - b.order);
-    const total = { g:0, p:0, n:0, u:0 }; rows.forEach(r => { total.g += r.g; total.p += r.p; total.n += r.n; total.u += r.u; });
-    card.append(h(`<div class="pr-tablewrap"><table class="pr-table">
-      <thead><tr><th>Topic</th><th class="n">Know well</th><th class="n">Nearly</th><th class="n">To study</th><th class="n">Not tried</th><th>Status</th></tr></thead>
-      <tbody>${rows.map(r => `<tr><td>${esc(r.t)}</td><td class="n" style="color:#1a6b42">${r.g || "–"}</td><td class="n" style="color:#8a5a12">${r.p || "–"}</td><td class="n" style="color:#9b2c2c">${r.n || "–"}</td><td class="n" style="color:var(--sub,#6b6b64)">${r.u || "–"}</td><td><span class="pr-status ${r.cls}">${r.status}</span></td></tr>`).join("")}
-      <tr><td><strong>Whole chapter</strong></td><td class="n" style="color:#1a6b42">${total.g}</td><td class="n" style="color:#8a5a12">${total.p}</td><td class="n" style="color:#9b2c2c">${total.n}</td><td class="n" style="color:var(--sub,#6b6b64)">${total.u}</td><td></td></tr>
-      </tbody></table></div>`));
-    const gaps = questions.filter(q => latest[q.id] !== undefined && latest[q.id] < 1).sort((a, b) => latest[a.id] - latest[b.id]);
-    if (gaps.length) {
-      const d = h(`<details ${gaps.length <= 6 ? "open" : ""}><summary>Questions to study (${gaps.length})</summary><ol class="pr-list" style="margin-top:10px"></ol></details>`);
-      gaps.forEach(q => d.querySelector("ol").append(h(`<li>${esc(q.prompt)}<span class="pr-why">${latest[q.id] === 0 ? "Missed" : "Partly right"} ${SRC[src[q.id]] || ""} · ${esc(q.topic_label)}</span></li>`)));
-      card.append(d);
-    }
-    const good = questions.filter(q => latest[q.id] >= 1);
-    if (good.length) {
-      const d = h(`<details><summary>Questions you know well (${good.length})</summary><ol class="pr-list" style="margin-top:10px"></ol></details>`);
-      good.forEach(q => d.querySelector("ol").append(h(`<li>${esc(q.prompt)}</li>`)));
-      card.append(d);
-    }
-    card.append(h(`<p class="pr-updated">Last updated ${new Date().toLocaleTimeString("en-IE", { hour: "2-digit", minute: "2-digit" })}</p>`));
-    return card;
+    const where = { quiz: "in a quiz", tutor: "with your tutor", written: "in a written answer" }[prog.src[q.id]] || "";
+    return prog.latest[q.id] === 0 ? `You didn't know this one yet${where ? " (" + where + ")" : ""}` : `Half right${where ? " " + where : ""}. Nearly there.`;
   }
+  const shortTitle = q => q.qtype === "exam" ? `Past paper: ${q.prompt}` : q.prompt;
 
   // ---- mount ----
-  async function mountPractice(slot, { topic, profile, sb, summarySlot }){
-    if (!slot || !topic) return;
+  async function mountPractice(slot, opts){
+    const { topic, profile, sb, progressSlot, moreSlot, goTo = () => {}, learn = () => ({ done:0, total:0 }), hideDuring = [] } = opts;
+    if (!slot || !topic) return null;
     addCss();
     const questions = await sb(`quiz_questions?select=id,qtype,topic_label,difficulty,prompt,options,answer_index,explanation,model_answer,marking_scheme,source,marks&topic_id=eq.${topic.id}&order=id.asc`);
-    if (!questions || !questions.length) return;
+    if (!questions || !questions.length) return null;
     let prog = await loadProgress(sb, profile, questions);
-    const wrap = h(`<div></div>`);
-    slot.replaceChildren(wrap);
-
-    function paintSummary(){
-      const g = questions.filter(q => prog.latest[q.id] >= 1).length;
-      window.dispatchEvent(new CustomEvent("study-stats", { detail: { topicId: topic.id, good: g, total: questions.length } }));
-      if (summarySlot) summarySlot.replaceChildren(summaryCard(questions, prog));
-    }
-    async function refreshSummary(){ prog = await loadProgress(sb, profile, questions); paintSummary(); }
-    async function refresh(){ prog = await loadProgress(sb, profile, questions); paintSummary(); if (!session) home(); }
-    window.addEventListener("study-progress", () => { if (wrap.isConnected) refresh(); });
-    const save = async (qid, v, source) => { await record(sb, profile, qid, v, source); refreshSummary(); };
-
     let session = null;
-    const mcq = questions.filter(q => q.qtype === "mcq"), rec = questions.filter(q => q.qtype === "recall"), ex = questions.filter(q => q.qtype === "exam");
 
+    const mcq = questions.filter(q => q.qtype === "mcq"), rec = questions.filter(q => q.qtype === "recall"), ex = questions.filter(q => q.qtype === "exam");
+    const fixes = () => questions.filter(q => prog.latest[q.id] !== undefined && prog.latest[q.id] < 1).sort((a, b) => prog.latest[a.id] - prog.latest[b.id]);
+    const known = () => questions.filter(q => prog.latest[q.id] >= 1);
+    const untried = () => questions.filter(q => prog.latest[q.id] === undefined);
+
+    function todaysPick(){
+      const pick = fixes().slice(0, 3);
+      const fill = (pool, n) => shuffle(pool.filter(q => !pick.includes(q))).slice(0, n).forEach(q => pick.push(q));
+      const newMcq = untried().filter(q => q.qtype === "mcq");
+      const mcqN = Math.max(0, 8 - pick.length - 2);
+      fill(newMcq.length >= mcqN ? newMcq : mcq, mcqN);
+      if (!pick.some(q => q.qtype === "recall")) fill(rec, 1);
+      if (!pick.some(q => q.qtype === "exam")) fill(ex, 1);
+      return pick;
+    }
+    function todaysCaption(pick){
+      const f = pick.filter(q => fixes().includes(q)).length;
+      const m = pick.filter(q => q.qtype === "mcq" && !fixes().includes(q)).length;
+      const parts = [];
+      if (f) parts.push(plural(f, "question to fix", "questions to fix"));
+      if (m) parts.push(`${m} new multiple choice`);
+      if (pick.some(q => q.qtype === "recall" && !fixes().includes(q))) parts.push("1 short answer");
+      if (pick.some(q => q.qtype === "exam" && !fixes().includes(q))) parts.push("1 past paper question");
+      return parts.join(" · ");
+    }
+
+    // ---- Progress tab ----
+    function paintProgress(){
+      if (!progressSlot) return;
+      const l = learn(), fx = fixes(), kn = known(), tried = questions.length - untried().length;
+      const learnWord = !l.total ? "Nothing to learn yet" : l.done === 0 ? "Not started" : l.done >= l.total ? "Done" : l.done / l.total >= 0.5 ? "Nearly done" : "Started";
+      const testWord = tried === 0 ? "Not started" : tried >= questions.length ? "All tried" : tried / questions.length >= 0.5 ? "Well under way" : "Started";
+      const knowRatio = kn.length / questions.length;
+      const knowWord = knowRatio >= 0.8 ? "You know it" : knowRatio >= 0.4 ? "Getting there" : "Not yet";
+      let next;
+      const learnPart = l.total && l.done >= l.total ? "You've finished the learning. " : l.total && l.done / l.total >= 0.5 ? "You've read and watched most of it. " : "";
+      if (!tried && l.total && l.done < l.total) next = "Start with Learn: read, watch or listen. Then test yourself to see what stuck.";
+      else if (fx.length) next = `${learnPart}Next, fix the ${plural(fx.length, "question", "questions")} below and try some new ones.`;
+      else if (untried().length) next = `${learnPart}Next, try some new questions to see what's stuck.`;
+      else next = "You know this chapter well. A quick go now and then keeps it fresh.";
+      const goLearn = !tried && l.total && l.done < l.total;
+      const card = h(`<div class="pr-card">
+        <h3>Where you are with this chapter</h3>
+        <div class="pr-steps">
+          <div class="pr-step"><div class="pr-bar"><i style="width:${l.total ? Math.round(l.done / l.total * 100) : 0}%"></i></div><b>1. Learn it</b><span>${learnWord}</span></div>
+          <div class="pr-step"><div class="pr-bar"><i style="width:${Math.round(tried / questions.length * 100)}%"></i></div><b>2. Test it</b><span>${testWord}</span></div>
+          <div class="pr-step"><div class="pr-bar"><i style="width:${Math.round(knowRatio * 100)}%"></i></div><b>3. Know it</b><span>${knowWord}</span></div>
+        </div>
+        <p class="pr-next">${esc(next)}</p>
+        <div><button type="button" class="pr-btn" data-go>${goLearn ? "Go to Learn" : "Start today's 10 minutes"}</button></div>
+      </div>`);
+      card.querySelector("[data-go]").onclick = () => { if (goLearn) goTo("learn"); else { goTo("test"); start("Today's 10 minutes", todaysPick()); } };
+
+      const fixCard = h(`<div class="pr-card"><div style="display:flex;flex-direction:column;gap:4px"><h3>Questions to fix</h3><p class="pr-sub">${fx.length ? "Get one right and it comes off this list." : tried ? "Nothing to fix right now. Nice work." : "Questions you get wrong or half right will show up here."}</p></div></div>`);
+      if (fx.length) {
+        const list = h(`<div class="pr-list"></div>`);
+        fx.slice(0, 8).forEach(q => {
+          const li = h(`<div class="pr-li"><div class="pr-li-body"><span class="pr-li-title">${esc(shortTitle(q))}</span><span class="pr-li-note">${esc(fixNote(q, prog))}</span></div><button type="button" class="pr-btn ghost">${prog.reviews[q.id] ? "Try again" : "Try it"}</button></div>`);
+          li.querySelector("button").onclick = () => { goTo("test"); start("Questions to fix", [q, ...fixes().filter(x => x !== q)]); };
+          list.append(li);
+        });
+        fixCard.append(list);
+        if (fx.length > 8) fixCard.append(h(`<p class="pr-small">And ${fx.length - 8} more. "Questions to fix" on the Test tab goes through them all.</p>`));
+      }
+      if (kn.length) {
+        const d = h(`<details><summary>Questions you've got right (${kn.length})</summary><ol></ol></details>`);
+        kn.forEach(q => d.querySelector("ol").append(h(`<li>${esc(shortTitle(q))}</li>`)));
+        fixCard.append(d);
+      }
+      progressSlot.replaceChildren(card, fixCard);
+    }
+
+    // ---- Test tab ----
+    function setChrome(show){ hideDuring.forEach(el => { if (el) el.hidden = !show; }); }
     function home(){
-      session = null;
-      const weak = questions.filter(q => prog.latest[q.id] !== undefined && prog.latest[q.id] < 1);
-      const untried = questions.filter(q => prog.latest[q.id] === undefined);
-      const card = h(`<div class="pr-card"><h3>Quizzes and exam questions</h3><p class="pr-sub">Close your notes first. Getting things wrong is how you find what to study.</p><div class="pr-modes"></div></div>`);
-      const modes = card.querySelector(".pr-modes");
-      const add = (title, sub, list, main) => { const b = h(`<button type="button" class="pr-mode${main?" main":""}"><strong>${esc(title)}</strong><span>${esc(sub)}</span></button>`); b.onclick = () => start(title, list()); modes.append(b); };
-      add("Start today's 10 minutes", weak.length ? "Your gaps first, then new questions" : "8 quick questions, 1 say-it-out-loud, 1 exam question", () => {
-        const pick = [...shuffle(weak).slice(0,4)];
-        const fill = (pool, n) => shuffle(pool.filter(q => !pick.includes(q))).slice(0, n).forEach(q => pick.push(q));
-        fill(untried.filter(q=>q.qtype==="mcq").length ? untried.filter(q=>q.qtype==="mcq") : mcq, Math.max(0, 8 - pick.length));
-        if (!pick.some(q=>q.qtype==="recall")) fill(rec, 1);
-        if (!pick.some(q=>q.qtype==="exam")) fill(ex, 1);
-        return pick;
-      }, true);
-      if (weak.length) add("Practise my gaps", `${weak.length} question${weak.length>1?"s":""} you missed or partly got`, () => shuffle(weak));
-      add("Multiple choice", `${mcq.length} quick questions`, () => shuffle(mcq));
-      if (rec.length) add("Say it out loud", `${rec.length} questions. Answer, then check`, () => shuffle(rec));
-      if (ex.length) add("Exam questions", `${ex.length} past-paper questions. Write, type or photo your answer for feedback`, () => ex.slice());
-      wrap.replaceChildren(card);
+      session = null; setChrome(true);
+      const pick = todaysPick(), fx = fixes();
+      const hero = h(`<div class="pr-card pr-hero">
+        <p class="pr-sub">Notes closed. Best place to start:</p>
+        <button type="button" class="pr-btn big" data-today>Start today's 10 minutes</button>
+        <p class="pr-small">Made for you each day:<br>${esc(todaysCaption(pick))}</p></div>`);
+      hero.querySelector("[data-today]").onclick = () => start("Today's 10 minutes", pick);
+      const nodes = [hero];
+      if (ex.length) {
+        const paper = h(`<div class="pr-card pr-paper">
+          <div style="display:flex;flex-direction:column;gap:6px;min-width:0">
+            <span class="pr-eyebrow">Leaving Cert past papers</span>
+            <span class="pr-li-title" style="font-size:22px">Past paper questions</span>
+            <span class="pr-li-note">${plural(ex.length, "real exam question", "real exam questions")} from this chapter. Write, type or photo your answer and get a mark with tips.</span>
+          </div>
+          <button type="button" class="pr-btn dark">Open</button></div>`);
+        paper.querySelector("button").onclick = () => start("Past paper questions", ex.slice());
+        nodes.push(paper);
+      }
+      slot.replaceChildren(...nodes);
+
+      if (moreSlot) {
+        const box = h(`<div><p class="pr-choose-label">Or choose</p><div class="pr-choices"></div></div>`);
+        const list = box.querySelector(".pr-choices");
+        const add = (title, note, fn, disabled) => {
+          const b = h(`<button type="button" class="pr-choice"${disabled ? " disabled" : ""}><span class="pr-li-body"><span class="pr-li-title">${esc(title)}</span><span class="pr-li-note">${esc(note)}</span></span><span class="pr-chev" aria-hidden="true">›</span></button>`);
+          b.onclick = fn; list.append(b);
+        };
+        add("Questions to fix", fx.length ? `Only the ${fx.length === 1 ? "one" : fx.length} you got wrong or half right` : "Nothing to fix right now", () => start("Questions to fix", fx), !fx.length);
+        add("Multiple choice", "Pick the right answer from four", () => start("Multiple choice", shuffle(mcq)), !mcq.length);
+        if (rec.length) add("Short answers", "Explain one idea in a sentence or two, then check it against a good answer", () => start("Short answers", shuffle(rec)));
+        moreSlot.replaceChildren(box);
+      }
     }
 
     function start(name, list){
+      if (!list || !list.length) return;
       session = { name, queue: list.map(q => ({ q, retry:false })), i:0, results:[], total:list.length };
+      setChrome(false);
       next();
     }
 
     function next(){
       if (session.i >= session.queue.length) return finish();
       const { q, retry } = session.queue[session.i];
+      const label = q.qtype === "exam" ? `Past paper · ${esc(q.source || "")} · ${q.marks || 5} marks` : q.qtype === "recall" ? "Short answer" : "Multiple choice";
       const card = h(`<div class="pr-card">
-        <div class="pr-row" style="justify-content:space-between"><button type="button" class="pr-btn ghost" data-stop>Stop</button><span class="pr-sub" style="font-variant-numeric:tabular-nums">${retry ? "Second try" : `Question ${session.i+1} of ${session.total}`}</span></div>
+        <div class="pr-row" style="justify-content:space-between"><button type="button" class="pr-btn ghost" data-stop>Stop</button><span class="pr-small" style="font-variant-numeric:tabular-nums">${retry ? "Second try" : `Question ${session.i+1} of ${session.total}`}</span></div>
         <div class="pr-progress"><i style="width:${Math.min(session.i,session.total)/session.total*100}%"></i></div>
-        <div class="pr-meta"><span class="pr-tag">${esc(q.topic_label)}</span>${q.qtype==="exam" ? `<span>${esc(q.source)} · ${q.marks} marks</span>` : ""}</div>
+        <div class="pr-meta"><span>${label}</span></div>
         <p class="pr-q">${esc(q.prompt)}</p></div>`);
       card.querySelector("[data-stop]").onclick = () => session.results.length ? finish() : home();
       if (q.qtype === "mcq") mcqView(card, q, retry); else writtenView(card, q, retry);
-      wrap.replaceChildren(card);
+      slot.replaceChildren(card);
       card.scrollIntoView({ block:"start", behavior:"smooth" });
     }
 
@@ -216,18 +263,19 @@
       b.querySelector("button").onclick = () => { session.i++; next(); };
       card.append(b); b.querySelector("button").focus({ preventScroll:true });
     }
+    const save = async (qid, v, source) => { await record(sb, profile, qid, v, source); prog = await loadProgress(sb, profile, questions); paintProgress(); };
 
     function mcqView(card, q, retry){
       const opts = h(`<div class="pr-opts"></div>`), order = shuffle((q.options||[]).map((o,i)=>i));
       order.forEach((oi, pos) => {
         const b = h(`<button type="button" class="pr-opt"><b>${L[pos]}</b><span>${esc(q.options[oi])}</span></button>`);
-        b.onclick = async () => {
+        b.onclick = () => {
           const ok = oi === q.answer_index;
           opts.querySelectorAll(".pr-opt").forEach((x,p) => { x.disabled = true; if (order[p] === q.answer_index) x.classList.add("right"); });
           if (!ok) b.classList.add("wrong");
           if (!retry) { session.results.push({ q, v: ok?1:0 }); save(q.id, ok?1:0, "quiz"); }
           if (!ok && !retry) session.queue.push({ q, retry:true });
-          card.append(h(`<div class="pr-fb ${ok?"good":"bad"}"><strong>${ok?"Correct.":"Not this time."}</strong><span>${esc(q.explanation||"")}</span>${!ok&&!retry?`<span class="pr-tip">This one will come back at the end.</span>`:""}</div>`));
+          card.append(h(`<div class="pr-fb ${ok?"good":""}"><strong>${ok?"Correct.":"Not this one."}</strong><span>${esc(q.explanation||"")}</span>${!ok&&!retry?`<span class="pr-tip">You'll get another go at the end.</span>`:""}</div>`));
           nextBtn(card);
         };
         opts.append(b);
@@ -236,20 +284,18 @@
     }
 
     function writtenView(card, q, retry){
-      const images = [];
-      const box = h(`<div style="display:flex;flex-direction:column;gap:10px">
-        <p class="pr-tip">${q.qtype==="exam" ? "Write your answer on paper and take a photo, or type it here." : "Say your answer out loud or type it, then check."}</p>
+      const images = [], isExam = q.qtype === "exam";
+      const box = h(`<div style="display:flex;flex-direction:column;gap:12px">
+        <p class="pr-tip">${isExam ? "Write your answer on paper and add a photo, or type it here." : "Say your answer out loud or type it, then check it."}</p>
         ${speakTip()}
-        <textarea aria-label="Your answer" placeholder="Type your answer (optional if you add a photo)"></textarea>
+        <textarea aria-label="Your answer" placeholder="${isExam ? "Type your answer (or add a photo below)" : "Type your answer (optional)"}"></textarea>
         <div class="pr-thumbs"></div>
-        <div class="pr-row">
-          <label class="pr-btn ghost" style="display:inline-flex;align-items:center;gap:6px">Add a photo or screenshot<input type="file" accept="image/*" multiple hidden></label>
-        </div>
-        <div class="pr-row"><button type="button" class="pr-btn" data-fb>Get feedback</button><button type="button" class="pr-btn ghost" data-self>Just show the answer</button></div>
+        ${isExam ? `<div class="pr-row"><label class="pr-btn ghost">Add a photo or screenshot<input type="file" accept="image/*" multiple hidden></label></div>` : ""}
+        <div class="pr-row"><button type="button" class="pr-btn" data-fb>${isExam ? "Mark my answer" : "Check my answer"}</button><button type="button" class="pr-btn ghost" data-self>Just show the answer</button></div>
         <p class="pr-err" hidden></p></div>`);
       const ta = box.querySelector("textarea"), thumbs = box.querySelector(".pr-thumbs"), file = box.querySelector("input[type=file]"), err = box.querySelector(".pr-err");
       const fbBtn = box.querySelector("[data-fb]"), selfBtn = box.querySelector("[data-self]");
-      file.onchange = async () => {
+      if (file) file.onchange = async () => {
         err.hidden = true;
         for (const f of Array.from(file.files || []).slice(0, 3 - images.length)) {
           try { const d = await shrink(f); images.push(d); thumbs.append(h(`<img alt="Your answer photo ${images.length}" src="${d}">`)); }
@@ -258,10 +304,11 @@
         file.value = "";
       };
       const done = (v, source) => { if (!retry) { session.results.push({ q, v }); save(q.id, v, source); } };
+      const modelBlock = () => `<details><summary>${isExam ? "See the model answer and marking scheme" : "See a good answer"}</summary><div class="pr-fb" style="margin-top:8px"><span>${esc(q.model_answer||"")}</span>${q.marking_scheme?`<span class="pr-scheme"><strong>Marking scheme:</strong> ${esc(q.marking_scheme)}</span>`:""}</div></details>`;
 
       fbBtn.onclick = async () => {
         const text = ta.value.trim();
-        if (!text && !images.length) { err.textContent = "Type an answer or add a photo first."; err.hidden = false; return; }
+        if (!text && !images.length) { err.textContent = isExam ? "Type an answer or add a photo first." : "Type your answer first, or use Just show the answer."; err.hidden = false; return; }
         fbBtn.disabled = selfBtn.disabled = true; fbBtn.textContent = "Reading your answer…"; err.hidden = true;
         try {
           const r = await fetch("/api/mark-answer", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ question_id: q.id, answer_text: text, images }) });
@@ -269,53 +316,55 @@
           if (!r.ok || !data.feedback) throw new Error(data.error || "Feedback couldn't be generated.");
           const f = data.feedback, frac = f.marks_available ? f.marks_awarded / f.marks_available : 0;
           const v = frac >= 0.8 ? 1 : frac >= 0.4 ? 0.5 : 0;
+          await sb("answer_reviews", { method:"POST", prefer:"return=minimal", body:[{ profile_id: profile.id, question_id: q.id, answer_text: text || f.transcription || null, marks_awarded: f.marks_awarded, marks_available: f.marks_available, feedback: f }] });
           done(v, "written");
-          sb("answer_reviews", { method:"POST", prefer:"return=minimal", body:[{ profile_id: profile.id, question_id: q.id, answer_text: text || f.transcription || null, marks_awarded: f.marks_awarded, marks_available: f.marks_available, feedback: f }] });
           box.remove();
           const list = a => a.length ? `<ul>${a.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "";
-          card.append(h(`<div class="pr-fb ${v===1?"good":v===0?"bad":"info"}">
-            <div class="pr-row" style="gap:14px"><span class="pr-score">${f.marks_awarded}/${f.marks_available}</span><span>${esc(f.summary||"")}</span></div>
-            ${f.went_well.length ? `<h4>What earned marks</h4>${list(f.went_well)}` : ""}
-            ${f.to_improve.length ? `<h4>How to get more marks</h4>${list(f.to_improve)}` : ""}
+          card.append(h(`<div class="pr-fb ${v===1?"good":""}">
+            <div class="pr-row" style="gap:16px">${isExam ? `<span class="pr-score">${f.marks_awarded}/${f.marks_available}</span>` : ""}<span>${esc(f.summary||"")}</span></div>
+            ${f.went_well.length ? `<h4>What you got right</h4>${list(f.went_well)}` : ""}
+            ${f.to_improve.length ? `<h4>${isExam ? "How to get more marks" : "To make it better"}</h4>${list(f.to_improve)}` : ""}
             ${f.example ? `<h4>For example</h4><span>${esc(f.example)}</span>` : ""}
-            ${f.next_step ? `<h4>Next</h4><span>${esc(f.next_step)}</span>` : ""}
           </div>`));
-          card.append(h(`<details><summary>See the model answer${q.marking_scheme?" and marking scheme":""}</summary><div class="pr-fb info" style="margin-top:8px"><span>${esc(q.model_answer||"")}</span>${q.marking_scheme?`<span class="pr-scheme"><strong>Marking scheme:</strong> ${esc(q.marking_scheme)}</span>`:""}</div></details>`));
+          card.append(h(modelBlock()));
           nextBtn(card);
         } catch (e) {
           err.textContent = e.message + " You can still check it yourself with Just show the answer."; err.hidden = false;
-          fbBtn.disabled = selfBtn.disabled = false; fbBtn.textContent = "Get feedback";
+          fbBtn.disabled = selfBtn.disabled = false; fbBtn.textContent = isExam ? "Mark my answer" : "Check my answer";
         }
       };
 
       selfBtn.onclick = () => {
         box.remove();
-        card.append(h(`<div class="pr-fb info"><strong>${q.qtype==="exam"?"Model answer":"A good answer"}</strong><span>${esc(q.model_answer||"")}</span>${q.marking_scheme?`<span class="pr-scheme"><strong>Marking scheme:</strong> ${esc(q.marking_scheme)}</span>`:""}</div>`));
-        const r = h(`<div style="display:flex;flex-direction:column;gap:8px"><strong>How did you do?</strong><div class="pr-rate"><button type="button" class="g">Got it</button><button type="button" class="p">Partly</button><button type="button" class="n">Not yet</button></div></div>`);
+        card.append(h(`<div class="pr-fb"><strong>${isExam?"Model answer":"A good answer"}</strong><span>${esc(q.model_answer||"")}</span>${q.marking_scheme?`<span class="pr-scheme"><strong>Marking scheme:</strong> ${esc(q.marking_scheme)}</span>`:""}</div>`));
+        const r = h(`<div style="display:flex;flex-direction:column;gap:10px"><strong style="font-size:17px">How did you do?</strong><div class="pr-rate"><button type="button">Got it</button><button type="button">Half right</button><button type="button">Not yet</button></div></div>`);
         [1, 0.5, 0].forEach((v, i) => r.querySelectorAll("button")[i].onclick = () => { done(v, "quiz"); session.i++; next(); });
         card.append(r);
       };
       card.append(box);
     }
 
-    async function finish(){
-      const R = session.results, pct = R.length ? Math.round(R.reduce((a,r)=>a+r.v,0)/R.length*100) : 0;
-      const good = R.filter(r => r.v >= 1), gaps = R.filter(r => r.v < 1);
-      await refreshSummary();
-      const card = h(`<div class="pr-card"><span class="pr-tag" style="align-self:flex-start">${esc(session.name)} · done</span>
-        <div class="pr-row" style="gap:16px"><span class="pr-score">${pct}%</span><span>${R.length} question${R.length===1?"":"s"} answered. ${pct>=80?"Strong. Come back tomorrow to make it stick.":pct>=50?"Good start. Your gaps are below.":"This chapter needs another look. Start with the gaps below."}</span></div>
-        ${good.length ? `<div class="pr-fb good"><h4>Answered well (${good.length})</h4><ul>${good.map(r=>`<li>${esc(r.q.prompt)}</li>`).join("")}</ul></div>` : ""}
-        ${gaps.length ? `<div class="pr-fb bad"><h4>To study (${gaps.length})</h4><ul>${gaps.map(r=>`<li>${esc(r.q.prompt)}</li>`).join("")}</ul></div>` : ""}
-        ${gaps.length ? `<p class="pr-tip">Your tutor will start with these next time you talk to it.</p>` : ""}
-        <div class="pr-row"><button type="button" class="pr-btn">Back to the chapter</button></div></div>`);
-      card.querySelector(".pr-btn").onclick = () => { home(); slot.scrollIntoView({ block:"start", behavior:"smooth" }); };
+    function finish(){
+      const R = session.results, good = R.filter(r => r.v >= 1), gaps = R.filter(r => r.v < 1);
+      const card = h(`<div class="pr-card"><h3>${esc(session.name)}: done</h3>
+        <p class="pr-next">${R.length ? `You answered ${plural(R.length, "question", "questions")}. ${plural(good.length, "was", "were")} right${gaps.length ? `, and ${plural(gaps.length, "goes", "go")} on your list to fix` : ""}.` : "No answers saved this time."}</p>
+        ${gaps.length ? `<div class="pr-fb"><h4>To fix next time</h4><ul>${gaps.map(r=>`<li>${esc(shortTitle(r.q))}</li>`).join("")}</ul><span class="pr-tip">Your tutor will start with these too.</span></div>` : ""}
+        <div class="pr-row"><button type="button" class="pr-btn" data-home>Back to Test</button><button type="button" class="pr-btn ghost" data-prog>See my progress</button></div></div>`);
+      card.querySelector("[data-home]").onclick = () => home();
+      card.querySelector("[data-prog]").onclick = () => { home(); goTo("progress"); };
       session = null;
-      wrap.replaceChildren(card);
+      slot.replaceChildren(card);
       card.scrollIntoView({ block:"start", behavior:"smooth" });
     }
 
-    paintSummary();
+    window.addEventListener("study-progress", async () => {
+      if (!slot.isConnected) return;
+      prog = await loadProgress(sb, profile, questions); paintProgress(); if (!session) home();
+    });
+
+    paintProgress();
     home();
+    return { refresh: paintProgress, startToday: () => start("Today's 10 minutes", todaysPick()) };
   }
   window.mountPractice = mountPractice;
 })();

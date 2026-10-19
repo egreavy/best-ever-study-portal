@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Annabel's Study Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap">
 <style>
   :root{
     color-scheme: light;
@@ -350,6 +352,52 @@
   }
   .settings-toggle.on .knob{left:20px;}
   .settings-hint{color:var(--sub);font-size:13px;margin:0 0 18px;}
+
+  /* ---- Chapter view: tabs (Progress / Learn / Test), calm palette ---- */
+  .cv{font-family:"Atkinson Hyperlegible",Verdana,system-ui,sans-serif;color:#1F2328;letter-spacing:.01em;}
+  .cv .crumb{font-size:16px;margin-bottom:14px;}
+  .cv .crumb span{color:#1F6F5C;font-weight:700;}
+  .cv-title{margin:0 0 10px;font-size:30px;font-weight:700;line-height:1.25;text-wrap:balance;}
+  .cv-meta{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;margin-bottom:18px;}
+  .cv-flag{border:none;background:none;padding:6px 0;font:inherit;font-size:16px;font-weight:700;color:#5B6470;cursor:pointer;}
+  .cv-flag.active{color:#1F2328;}
+  .cv-nb{font-size:16px;font-weight:700;color:#1F6F5C;}
+  .cv .flag-note-row{margin:-8px 0 18px;}
+  .cv-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;background:#E6E9EC;padding:6px;border-radius:14px;margin-bottom:22px;}
+  .cv-tab{border:none;background:none;font:inherit;font-size:18px;font-weight:700;color:#5B6470;padding:14px 0;border-radius:10px;cursor:pointer;min-height:52px;}
+  .cv-tab[aria-selected="true"]{background:#fff;color:#1F2328;box-shadow:0 1px 2px rgba(0,0,0,.08);}
+  .cv-tab:focus-visible,.cv-btn:focus-visible,.cv-check:focus-visible,.cv-flag:focus-visible{outline:3px solid #1F6F5C;outline-offset:2px;}
+  .cv-card{background:#fff;border-radius:18px;padding:26px 28px;margin:0 0 16px;}
+  .cv-empty{color:#5B6470;font-size:17px;line-height:1.5;}
+  .cv-intro{display:flex;flex-direction:column;gap:4px;margin:0 0 14px;}
+  .cv-intro b{font-size:20px;}
+  .cv-intro span{font-size:17px;color:#5B6470;line-height:1.5;}
+  .cv-list{padding-top:4px;padding-bottom:4px;}
+  .cv-row{border-bottom:1px solid #DDE1E5;padding:20px 0;}
+  .cv-row:last-child{border-bottom:none;}
+  .cv-item{display:flex;align-items:center;gap:18px;}
+  .cv .check.cv-check{flex:none;width:36px;height:36px;border-radius:10px;border:2.5px solid #9AA3AD;background:#fff;color:transparent;font-size:20px;}
+  .cv .cv-row.done .check.cv-check{background:#1F2328;border-color:#1F2328;color:#fff;}
+  .cv-item-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;}
+  .cv-item-title{font-size:20px;font-weight:700;}
+  .cv-row.done .cv-item-title{color:#5B6470;}
+  .cv-item-sub{font-size:16px;color:#5B6470;line-height:1.45;}
+  .cv-btn{flex:none;border:2px solid #1F6F5C;background:#1F6F5C;color:#fff;font:inherit;font-size:17px;font-weight:700;padding:12px 24px;border-radius:999px;text-decoration:none;cursor:pointer;white-space:nowrap;min-height:48px;display:inline-flex;align-items:center;}
+  .cv-btn.ghost,.cv-row.done .cv-btn{background:#fff;color:#1F6F5C;}
+  .cv-wait{flex:none;font-size:16px;color:#5B6470;}
+  .cv-setup{margin:10px 0 0 54px;font-size:14px;color:#5B6470;}
+  .cv-setup summary{cursor:pointer;display:inline-block;}
+  .cv-setup-body{margin-top:10px;padding:12px;background:#F4F5F6;border-radius:12px;font-size:13.5px;}
+  .cv-foot{display:flex;align-items:center;justify-content:space-between;gap:16px;font-size:18px;}
+  .cv-more summary,.cv-conf summary{cursor:pointer;font-weight:700;font-size:17px;}
+  .cv-more .cv-list{margin-top:10px;}
+  .cv-conf .confidence-row{margin-top:16px;}
+  .cv-conf .sub{color:#5B6470;font-size:16px;margin:10px 0 0;}
+  .cv-conf .confidence-value{color:#1F2328;}
+  .cv-conf .confidence-slider::-webkit-slider-thumb{border-color:#1F2328;}
+  .cv-conf .confidence-slider::-moz-range-thumb{border-color:#1F2328;}
+  .cv-conf .confidence-saved{color:#1F2328;}
+  @media (max-width:600px){.cv-item{flex-wrap:wrap}.cv-item .cv-btn,.cv-item .cv-wait{margin-left:54px}.cv-card{padding:22px 20px}.cv-foot{flex-direction:column;align-items:flex-start}.cv-title{font-size:26px}}
 </style>
 </head>
 <body>
@@ -759,114 +807,72 @@ async function renderChapter(){
   progressRows.forEach(r => { doneMap[r.step_order] = { done: !!r.done, resourceUrl: r.resource_url || "" }; });
   const confidenceRating = confidenceRows[0] ? parseInt(confidenceRows[0].rating, 10) : null;
 
-  const stepOrders = templateRows.map(t => t.step_order);
-  if (state.expandedStep === null || !stepOrders.includes(state.expandedStep)) {
-    const firstNotDone = learnRows.find(t => !(doneMap[t.step_order] || {}).done);
-    state.expandedStep = firstNotDone ? firstNotDone.step_order : (learnRows.length ? learnRows[learnRows.length - 1].step_order : (stepOrders[0] ?? null));
-  }
+  const NAMES = { "Revision Guide": "Revision guide", "Video Overview": "Video", "In-Depth Slide Deck": "Slides", "Audio Recap": "Audio recap", "Mind Map": "Mind map", "Flashcards Review": "Flashcards", "Quiz Yourself": "NotebookLM quiz", "Exam Practice": "Exam practice sheet to print" };
+  const NOTES = { "Revision Guide": "5 minute read", "Video Overview": "Watch the key ideas", "In-Depth Slide Deck": "Like a full class lesson", "Audio Recap": "Listen anywhere", "Mind Map": "See how it all connects", "Flashcards Review": "Quick recall, little and often", "Quiz Yourself": "A NotebookLM quiz on this chapter", "Exam Practice": "Past paper questions with model answers" };
+  const VERB = { "Video Overview": "Watch", "Audio Recap": "Listen" };
 
-  function totalSteps(){ return learnRows.length || 1; }
+  function totalSteps(){ return learnRows.length; }
   function doneCount(){ return learnRows.filter(t => (doneMap[t.step_order] || {}).done).length; }
 
-  function stepHTML(t, i, list){
-    list = list || templateRows;
-    const actions = Array.isArray(t.actions) ? t.actions : (typeof t.actions === "string" ? JSON.parse(t.actions) : []);
-    const entry = doneMap[t.step_order] || { done: false, resourceUrl: "" };
-    const isDone = entry.done;
-    const isExpanded = t.step_order === state.expandedStep;
-    const stepColor = STEP_COLORS[i % STEP_COLORS.length];
-
-    if (!isExpanded) {
-      return `
-        <div class="step collapsed ${isDone ? "done" : ""}" data-expand="${t.step_order}" style="--stepcolor:${stepColor}">
-          <div class="step-head">
-            <div class="num">${isDone ? "&#10003;" : t.step_order}</div>
-            <div class="step-body">
-              <p class="step-title">${esc(t.title)}</p>
-              <p class="step-blurb">${esc(t.blurb || "")}</p>
-            </div>
-            <div class="check" data-step="${t.step_order}" data-done="${isDone}">&#10003;</div>
-          </div>
-        </div>`;
+  // Parent set-up for a material: prompts, pasting a link, making the video
+  function setupHTML(t, actions, entry, isAutoVideo){
+    const vr = videoRequest;
+    const isQueued = vr && (vr.status === "pending" || vr.status === "processing");
+    const customize = encodeURIComponent((actions.find(a => a.type === "customize") || {}).text || "");
+    if (isAutoVideo) {
+      const status = isQueued
+        ? "Queued. The video will be made next time the automation runs, and the link will appear here."
+        : (vr && vr.status === "error") ? `Something went wrong last time${vr.error_message ? ": " + esc(vr.error_message) : "."} You can try again.`
+        : entry.resourceUrl ? "" : "Make this chapter's video automatically.";
+      return `<div class="action">${status ? `<p class="action-instruction" style="margin-bottom:10px;">${status}</p>` : ""}
+        ${isQueued
+          ? `<button class="make-video-btn queued" disabled>Queued</button><button class="cancel-video-btn" data-topic="${state.topicId}">Cancel request</button>`
+          : `<button class="make-video-btn${entry.resourceUrl ? " secondary" : ""}" data-topic="${state.topicId}" data-prompt="${customize}">${entry.resourceUrl ? "Make another video" : "Make video"}</button>`}
+        ${entry.resourceUrl ? `<button class="change-btn" data-step="${t.step_order}" data-action="change-link" style="margin-left:10px">Remove link</button>` : ""}</div>`;
     }
-
-    const isAutoVideo = t.title === "Video Overview" && actions.length === 2;
-
-    let linkLine = "";
-    let actionsHtml = "";
-    if (isAutoVideo && !entry.resourceUrl) {
-      const vr = videoRequest;
-      const isQueued = vr && (vr.status === "pending" || vr.status === "processing");
-      const statusLine = isQueued
-        ? "Queued — a video will be generated automatically next time the automation runs, and the link will appear here."
-        : (vr && vr.status === "error")
-          ? `Something went wrong last time${vr.error_message ? ": " + esc(vr.error_message) : "."} You can try again.`
-          : "Generate this chapter's video automatically — no copying prompts needed.";
-      actionsHtml = `
-        <div class="action">
-          <p class="action-instruction" style="margin-bottom:10px;">${statusLine}</p>
-          ${isQueued
-            ? `<button class="make-video-btn queued" disabled>&#9203; Queued</button><button class="cancel-video-btn" data-topic="${state.topicId}">Cancel request</button>`
-            : `<button class="make-video-btn" data-topic="${state.topicId}" data-prompt="${encodeURIComponent((actions.find(a => a.type === "customize") || {}).text || "")}">&#127916; Make video</button>`}
-        </div>`;
-      linkLine = "";
-    } else if (isAutoVideo && entry.resourceUrl) {
-      const vr = videoRequest;
-      const isQueued = vr && (vr.status === "pending" || vr.status === "processing");
-      actionsHtml = `
-        <div class="action">
-          ${isQueued
-            ? `<p class="action-instruction" style="margin-bottom:10px;">Generating a new version — the link below will update automatically when it's ready.</p><button class="make-video-btn queued" disabled>&#9203; Queued</button><button class="cancel-video-btn" data-topic="${state.topicId}">Cancel request</button>`
-            : `<button class="make-video-btn secondary" data-topic="${state.topicId}" data-prompt="${encodeURIComponent((actions.find(a => a.type === "customize") || {}).text || "")}">&#127916; Generate another video</button>`}
-        </div>`;
-      linkLine = `<div class="done-link primary"><a href="${esc(entry.resourceUrl)}" target="_blank" rel="noopener">&#10003; Click here to view the generated content</a><button class="change-btn" data-step="${t.step_order}" data-action="change-link">change</button></div>`;
-    } else if (entry.resourceUrl) {
-      actionsHtml = "";
-      linkLine = `<div class="done-link primary"><a href="${esc(entry.resourceUrl)}" target="_blank" rel="noopener">&#10003; Click here to view the generated content</a><button class="change-btn" data-step="${t.step_order}" data-action="change-link">change</button></div>`;
-    } else {
-      const leadAction = actions.find(a => a.type !== "prompt" && a.type !== "customize");
-      const leadLine = leadAction
-        ? `This content hasn't yet been created. Open the NotebookLM link and ${lowerFirst(leadAction.text)}`
-        : `This content hasn't yet been created. Open the NotebookLM link and follow the prompt below.`;
-      actionsHtml = `
-        <div class="actions">
-          <div class="action"><p class="action-instruction" style="margin-bottom:10px;">${esc(leadLine)}</p></div>
-          ${actions.filter(a => a.type === "prompt" || a.type === "customize").map(a => actionHTML(a)).join("")}
-        </div>`;
-      linkLine = `
-        <div class="link-form" data-step="${t.step_order}">
-          <input type="url" placeholder="Paste a link to the resource you generated for this step" data-role="link-input" />
-          <button data-action="save-link" data-step="${t.step_order}">Save link</button>
-        </div>`;
-    }
-    const nextStep = list[i + 1] ? list[i + 1].step_order : null;
-    return `
-      <div class="step expanded ${isDone ? "done" : ""}" style="--stepcolor:${stepColor}">
-        <div class="step-head">
-          <div class="num">${isDone ? "&#10003;" : t.step_order}</div>
-          <div class="step-body">
-            <p class="step-title">${esc(t.title)}</p>
-          </div>
-          <div class="check" data-step="${t.step_order}" data-done="${isDone}">&#10003;</div>
-        </div>
-        ${actionsHtml}
-        ${linkLine}
-        ${nextStep !== null ? `<span class="skip-link" data-skip-to="${nextStep}">Skip for now, go to next step</span>` : ""}
+    if (entry.resourceUrl) return `<button class="change-btn" data-step="${t.step_order}" data-action="change-link">Remove this link</button>`;
+    const leadAction = actions.find(a => a.type !== "prompt" && a.type !== "customize");
+    const leadLine = leadAction ? `Not made yet. Open the NotebookLM notebook and ${lowerFirst(leadAction.text)}` : `Not made yet. Open the NotebookLM notebook and use the prompt below.`;
+    return `<div class="actions" style="margin-top:0">
+        <div class="action"><p class="action-instruction" style="margin-bottom:10px;">${esc(leadLine)}</p></div>
+        ${actions.filter(a => a.type === "prompt" || a.type === "customize").map(a => actionHTML(a)).join("")}
+      </div>
+      <div class="link-form" data-step="${t.step_order}">
+        <input type="url" placeholder="Paste the link to what you made" data-role="link-input" />
+        <button data-action="save-link" data-step="${t.step_order}">Save link</button>
       </div>`;
   }
 
+  function stepHTML(t){
+    const actions = Array.isArray(t.actions) ? t.actions : (typeof t.actions === "string" ? JSON.parse(t.actions) : []);
+    const entry = doneMap[t.step_order] || { done: false, resourceUrl: "" };
+    const isDone = entry.done;
+    const isAutoVideo = t.title === "Video Overview" && actions.length === 2;
+    const vr = videoRequest;
+    const isQueued = vr && (vr.status === "pending" || vr.status === "processing");
+    const name = NAMES[t.title] || t.title;
+    const note = (NOTES[t.title] || t.blurb || "") + (isDone ? " · done" : "");
+    let btn;
+    if (entry.resourceUrl) btn = `<a class="cv-btn" href="${esc(entry.resourceUrl)}" target="_blank" rel="noopener">${VERB[t.title] || "Open"}${isDone ? " again" : ""}</a>`;
+    else if (isAutoVideo && isQueued) btn = `<span class="cv-wait">Being made</span>`;
+    else btn = `<span class="cv-wait">Not ready yet</span>`;
+    return `
+      <div class="cv-row${isDone ? " done" : ""}">
+        <div class="cv-item">
+          <button type="button" class="check cv-check" data-step="${t.step_order}" data-done="${isDone}" aria-pressed="${isDone}" aria-label="${isDone ? "Mark " + esc(name) + " as not done" : "Mark " + esc(name) + " as done"}">&#10003;</button>
+          <div class="cv-item-body"><span class="cv-item-title">${esc(name)}</span><span class="cv-item-sub">${esc(note)}</span></div>
+          ${btn}
+        </div>
+        <details class="cv-setup"><summary>${entry.resourceUrl && !isAutoVideo ? "Change" : "Set up"}</summary><div class="cv-setup-body">${setupHTML(t, actions, entry, isAutoVideo)}</div></details>
+      </div>`;
+  }
+
+  let practiceApi = null;
   function updateProgressUI(){
+    const el = document.getElementById("learnSummary");
     const dc = doneCount(), ts = totalSteps();
-    const countEl = document.getElementById("doneCount");
-    const fillEl = document.getElementById("fill");
-    const celebrateEl = document.getElementById("celebrate");
-    if (countEl) countEl.textContent = `${dc} of ${ts} done`;
-    if (fillEl) fillEl.style.width = `${dc / ts * 100}%`;
-    const knowEl = document.getElementById("knowCount"), knowFill = document.getElementById("knowFill");
-    if (knowEl) knowEl.textContent = knowStats ? `${knowStats.good} of ${knowStats.total} questions` : "Not started";
-    if (knowFill) knowFill.style.width = knowStats && knowStats.total ? `${knowStats.good / knowStats.total * 100}%` : "0%";
-    const mastered = dc === ts && ts > 0 && knowStats && knowStats.total && knowStats.good / knowStats.total >= 0.8;
-    if (celebrateEl) celebrateEl.classList.toggle("show", !!mastered);
+    if (el) el.textContent = !ts ? "" : dc >= ts ? "All done. Check what stuck." : "Finished learning? Check what stuck.";
+    if (practiceApi) practiceApi.refresh();
   }
 
   function bindStepEvents(){
@@ -988,68 +994,90 @@ async function renderChapter(){
   function refreshSteps(){
     const stepsEl = document.getElementById("stepsContainer");
     if (!stepsEl) return;
-    stepsEl.innerHTML = learnRows.length ? learnRows.map((t, i) => stepHTML(t, i, learnRows)).join("") : `<div class="phase-empty">No learning materials set up for this chapter yet.</div>`;
+    stepsEl.innerHTML = learnRows.length ? learnRows.map(t => stepHTML(t)).join("") : `<p class="cv-empty">No learning materials for this chapter yet.</p>`;
     const extraEl = document.getElementById("stepsContainer2"), extraBox = document.getElementById("extraPractice");
-    if (extraEl) extraEl.innerHTML = extraRows.map((t, i) => stepHTML(t, i, extraRows)).join("");
-    if (extraBox) extraBox.hidden = !extraRows.length;
+    if (extraEl) extraEl.innerHTML = extraRows.map(t => stepHTML(t)).join("");
+    if (extraBox && !extraRows.length) extraBox.hidden = true;
     bindStepEvents();
     updateProgressUI();
   }
 
+  const TABS = [["progress", "Progress"], ["learn", "Learn"], ["test", "Test"]];
+  if (!state.chapterTab || state.chapterTabTopic !== state.topicId) { state.chapterTab = "progress"; state.chapterTabTopic = state.topicId; }
+
   document.getElementById("view").innerHTML = `
-    <div class="crumb"><span id="backBtn">&larr; Back to subjects</span></div>
-    <div class="chapter-header">
-      ${topic ? `<p class="chapter-eyebrow">${esc(topic.subject_title)} &middot; Chapter ${esc(String(topic.order_num ?? ""))}</p>` : ""}
-      <h2>${esc(topic ? topic.title : "")}</h2>
-      ${topic && topic.notebook_url ? `<a class="notebook-link" href="${esc(topic.notebook_url)}" target="_blank" rel="noopener">Open NotebookLM notebook</a>` : ""}
-      <div style="display:flex;align-items:center;gap:10px;margin-top:12px;">
-        <button class="flag-icon-btn${currentFlag.flagType ? " active" : ""}" id="chapFlagToggle" title="${currentFlag.flagType ? "Remove from revision list" : "Add to revision list"}" aria-label="${currentFlag.flagType ? "Remove from revision list" : "Add to revision list"}">${currentFlag.flagType ? "&check;" : "&#43;"}</button>
-        <span style="font-size:13px;font-weight:700;color:${currentFlag.flagType ? "#7c3aed" : "var(--sub)"};">${currentFlag.flagType ? "Marked for revision" : "Add to revision list"}</span>
-      </div>
-      ${currentFlag.flagType ? `
-        <div class="flag-note-row" style="margin-top:8px;">
-          <input type="text" id="chapNoteInput" placeholder="Add a note, e.g. test on Tue 29/09" value="${esc(currentFlag.note)}" />
-          <button id="chapNoteSave">Save</button>
-        </div>` : ""}
-      <div class="progress-top"><span>1 · Learn it: materials</span><span class="count" id="doneCount">${doneCount()} of ${totalSteps()} done</span></div>
-      <div class="track"><div class="fill" id="fill" style="width:${doneCount()/totalSteps()*100}%"></div></div>
-      <div class="progress-top"><span>2 · Test yourself: questions you know well</span><span class="count know" id="knowCount">Not started</span></div>
-      <div class="track"><div class="fill" id="knowFill" style="width:0%;background:var(--green)"></div></div>
-      <div class="celebrate" id="celebrate">Chapter mastered! Keep it fresh with a quick quiz now and then.</div>
+  <div class="cv">
+    <div class="crumb"><span id="backBtn">&larr; ${esc(topic && topic.subject_title ? topic.subject_title : "Back to subjects")}</span></div>
+    <h2 class="cv-title">${esc(topic ? topic.title : "")}</h2>
+    <div class="cv-meta">
+      <button type="button" class="cv-flag${currentFlag.flagType ? " active" : ""}" id="chapFlagToggle">${currentFlag.flagType ? "&check; On my revision list" : "+ Add to revision list"}</button>
+      ${topic && topic.notebook_url ? `<a class="cv-nb" href="${esc(topic.notebook_url)}" target="_blank" rel="noopener">NotebookLM notebook</a>` : ""}
     </div>
-    <div class="phase">
-      <div class="phase-head"><span class="phase-num">1</span><div><h3>Learn it</h3><p>Read, watch and listen. Tick each one off when you've done it.</p></div></div>
-      <div class="steps" id="stepsContainer"></div>
+    ${currentFlag.flagType ? `
+      <div class="flag-note-row">
+        <input type="text" id="chapNoteInput" placeholder="Add a note, e.g. test on Tue 29/09" value="${esc(currentFlag.note)}" />
+        <button id="chapNoteSave">Save</button>
+      </div>` : ""}
+    <div class="cv-tabs" role="tablist" aria-label="Chapter sections">
+      ${TABS.map(([k, l]) => `<button type="button" role="tab" class="cv-tab" id="tabbtn-${k}" data-tab="${k}" aria-controls="tab-${k}">${l}</button>`).join("")}
     </div>
-    <div class="phase">
-      <div class="phase-head"><span class="phase-num">2</span><div><h3>Test yourself</h3><p>Notes closed. Quizzes, exam questions and your tutor all keep track of what you know.</p></div></div>
-      <div id="practiceSlot"><div class="phase-empty">Quizzes for this chapter are coming soon. Use the practice below for now.</div></div>
+
+    <section id="tab-progress" role="tabpanel" aria-labelledby="tabbtn-progress">
+      <div id="progressSlot"><div class="cv-card cv-empty">Your progress will show here once this chapter has questions. For now, start with Learn.</div></div>
+      <details class="cv-card cv-conf">
+        <summary>How confident do you feel about this chapter?</summary>
+        <p class="sub">1 means still shaky, 10 means you could teach it. It saves when you let go.</p>
+        <div class="confidence-row">
+          <input type="range" min="1" max="10" step="1" value="${confidenceRating || 5}" class="confidence-slider" id="confSlider" aria-label="Confidence out of 10" />
+          <div class="confidence-value"><span id="confValue">${confidenceRating || 5}</span><span class="max">/10</span></div>
+        </div>
+        <div class="confidence-saved" id="confSaved">Saved</div>
+      </details>
+    </section>
+
+    <section id="tab-learn" role="tabpanel" aria-labelledby="tabbtn-learn" hidden>
+      <div class="cv-intro"><b>Read, watch or listen</b><span>Do them in order, or pick what suits you today. Tick each one when you've finished.</span></div>
+      <div class="cv-card cv-list" id="stepsContainer"></div>
+      <div class="cv-card cv-foot"><span id="learnSummary"></span><button type="button" class="cv-btn ghost" data-goto="test">Go to Test</button></div>
+    </section>
+
+    <section id="tab-test" role="tabpanel" aria-labelledby="tabbtn-test" hidden>
+      <div id="practiceSlot"><div class="cv-card cv-empty">Quizzes for this chapter are coming soon. Use the extra practice below for now.</div></div>
       <div id="tutorSlot"></div>
-      <details class="extra-practice" id="extraPractice"><summary>More practice: NotebookLM and printable sheets</summary><div class="steps" id="stepsContainer2"></div></details>
-    </div>
-    <div class="phase">
-      <div class="phase-head"><span class="phase-num">3</span><div><h3>Track it</h3><p>What you know well and what still needs study, updated as you go.</p></div></div>
-      <div id="summarySlot"><div class="phase-empty">Your progress table will appear here once this chapter has quizzes.</div></div>
-    <div class="confidence-card reveal">
-      <h3>How confident do you feel about this chapter?</h3>
-      <p class="sub">1 means still shaky, 10 means you could teach it. Drag the slider - it saves automatically.</p>
-      <div class="confidence-row">
-        <input type="range" min="1" max="10" step="1" value="${confidenceRating || 5}" class="confidence-slider" id="confSlider" />
-        <div class="confidence-value"><span id="confValue">${confidenceRating || 5}</span><span class="max">/10</span></div>
-      </div>
-      <div class="confidence-labels"><span>1 &middot; Not confident</span><span>10 &middot; Very confident</span></div>
-      <div class="confidence-saved" id="confSaved">Saved</div>
-    </div>
-    </div>
+      <div id="practiceMoreSlot"></div>
+      <details class="cv-card cv-more" id="extraPractice"><summary>More practice: flashcards and printable exam sheet</summary><div class="cv-list" id="stepsContainer2"></div></details>
+    </section>
+  </div>
   `;
 
-  const chapToken = (window.__chapToken = (window.__chapToken || 0) + 1);
-  const onStats = (e) => {
-    if (window.__chapToken !== chapToken) { window.removeEventListener("study-stats", onStats); return; }
-    if (e.detail && e.detail.topicId === state.topicId) { knowStats = e.detail; updateProgressUI(); }
-  };
-  window.addEventListener("study-stats", onStats);
-  if (topic && window.mountPractice) window.mountPractice(document.getElementById("practiceSlot"), { topic, profile: PROFILE, sb, summarySlot: document.getElementById("summarySlot") });
+  function showTab(name){
+    state.chapterTab = name;
+    TABS.forEach(([k]) => {
+      const p = document.getElementById("tab-" + k), b = document.getElementById("tabbtn-" + k);
+      if (p) p.hidden = k !== name;
+      if (b) { b.setAttribute("aria-selected", String(k === name)); b.tabIndex = k === name ? 0 : -1; }
+    });
+  }
+  document.querySelectorAll(".cv-tab").forEach((b, i, all) => {
+    b.addEventListener("click", () => showTab(b.dataset.tab));
+    b.addEventListener("keydown", (e) => {
+      if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+      const n = all[(i + (e.key === "ArrowRight" ? 1 : all.length - 1)) % all.length];
+      n.focus(); showTab(n.dataset.tab);
+    });
+  });
+  const goTab = (t) => { showTab(t); const tabs = document.querySelector(".cv-tabs"); if (tabs) tabs.scrollIntoView({ block: "start", behavior: "smooth" }); };
+  document.querySelectorAll("[data-goto]").forEach(b => b.addEventListener("click", () => goTab(b.dataset.goto)));
+  showTab(state.chapterTab);
+
+  if (topic && window.mountPractice) window.mountPractice(document.getElementById("practiceSlot"), {
+    topic, profile: PROFILE, sb,
+    progressSlot: document.getElementById("progressSlot"),
+    moreSlot: document.getElementById("practiceMoreSlot"),
+    goTo: goTab,
+    learn: () => ({ done: doneCount(), total: totalSteps() }),
+    hideDuring: [document.getElementById("tutorSlot"), document.getElementById("practiceMoreSlot"), document.getElementById("extraPractice")]
+  }).then(api => { practiceApi = api; });
   if (topic && window.mountTutor) window.mountTutor(document.getElementById("tutorSlot"), { topic, profile: PROFILE, sb });
 
   document.getElementById("backBtn").addEventListener("click", () => {
