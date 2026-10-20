@@ -121,7 +121,8 @@
   .hc-cele{background:var(--t-accent-tint);border-radius:18px;padding:18px 22px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
   .hc-cele-b{flex:1 1 260px;display:flex;flex-direction:column;gap:3px}
   .hc-cele-b b{font-size:18px}
-  .hc-cele-btns{display:flex;gap:14px;align-items:center}
+  .hc-cele-btns{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .hc-cele-btns .hs-btn{font-size:15px;padding:8px 16px}
   .hc-week{background:var(--t-card);border-radius:18px;padding:18px 22px;display:flex;gap:24px;align-items:center;flex-wrap:wrap;margin-top:-14px}
   .hc-days{display:flex;gap:6px}
   .hc-day{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;color:var(--t-muted)}
@@ -366,7 +367,15 @@
     for (let k = 1; k <= 57; k++) { if (goodDaysIn(new Date(ws.getTime() - k * 7 * DAY)) >= GOAL_DAYS) weeksDone++; }
     const thisWeekGood = goodDaysIn(ws);
     if (thisWeekGood >= GOAL_DAYS) weeksDone++;
-    m.goal = { minutes: GOAL_MIN, days: GOAL_DAYS, dayMin, weeksDone, thisWeekGood, today: Math.round(dayMin[dayKey(new Date())] || 0), weekDone: thisWeekGood >= GOAL_DAYS };
+    // streaks of days with 14+ minutes, and all-time testing minutes
+    const runs = []; let run = 0, streakNow = 0;
+    for (let d = new Date(startOfDay(new Date()) - 400 * DAY); d <= new Date(); d = new Date(d.getTime() + DAY)) {
+      if ((dayMin[dayKey(d)] || 0) >= GOAL_MIN) run++; else { if (run) runs.push(run); run = 0; }
+    }
+    if (run) runs.push(run);
+    streakNow = run || ((dayMin[dayKey(new Date())] || 0) < GOAL_MIN && runs.length && (dayMin[dayKey(new Date(Date.now() - DAY))] || 0) >= GOAL_MIN ? runs[runs.length - 1] : 0);
+    let testMin = 0; (raw.timeRows || []).forEach(r => { if (r.kind === "test") testMin += r.seconds / 60; });
+    m.goal = { minutes: GOAL_MIN, days: GOAL_DAYS, dayMin, weeksDone, thisWeekGood, today: Math.round(dayMin[dayKey(new Date())] || 0), weekDone: thisWeekGood >= GOAL_DAYS, runs, streakNow, testMin: Math.round(testMin) };
     m.week = { testSec, learnMin, answered, fixed, days, ws, streak };
     return m;
   }
@@ -620,7 +629,7 @@
       <div class="hc-top">
         <div class="hc-hello"><h2>${hello}, ${esc(profile.name)}</h2><span>Learn it before class. Test it after. Refresh it before exams.</span></div>
         <div class="hc-meta">
-          ${m.goal ? `<span class="hc-streak" title="Days this week with ${m.goal.minutes} minutes or more">${m.goal.weekDone ? "Week complete ✓" : `${m.goal.thisWeekGood} of ${m.goal.days} days this week`}</span>` : ""}
+          ${m.goal ? `<span class="hc-streak" title="A streak day is ${m.goal.minutes} minutes or more">${m.goal.streakNow ? `${plural(m.goal.streakNow, "day", "day")} streak` : `Today: ${m.goal.today} of ${m.goal.minutes} min`}</span>` : ""}
           <button type="button" class="hs-link hc-weeklink" data-week aria-expanded="${!!weekOpen}">This week: ${hm(w.testSec)} testing</button>
         </div>
       </div>
@@ -632,8 +641,8 @@
           <div><b>${w.answered}</b><span>questions answered</span></div>
           <div><b>${w.fixed}</b><span>answers fixed</span></div>
         </div>
-        ${m.goal ? `<span class="hc-goal">Goal: ${m.goal.minutes} minutes on ${m.goal.days} days. Today: ${m.goal.today} of ${m.goal.minutes} minutes${w.streak > 1 ? ` · ${w.streak} day streak` : ""}${window.Decor && Decor.unlocked(m.goal.weeksDone).next ? ` · next reward: ${Decor.label(Decor.unlocked(m.goal.weeksDone).next)}` : ""}</span>` : ""}</div>` : ""}
-      ${cele ? `<div class="hc-cele"><span class="hc-cele-b"><b>Week complete! You unlocked ${esc(cele.items.join(" and "))}.</b><span>${m.goal.minutes} minutes on ${m.goal.days} days. That's real revision.</span></span><span class="hc-cele-btns"><button type="button" class="hs-btn" data-mypage>Go to My page</button><button type="button" class="hs-link" data-later>Later</button></span></div>` : ""}
+        ${m.goal ? `<span class="hc-goal">A streak day is ${m.goal.minutes} minutes or more. Today: ${m.goal.today} of ${m.goal.minutes} minutes.${window.Decor ? (() => { const n = Decor.nextUp(m.goal)[0]; return n ? ` Next reward: ${n.name} (${n.have} of ${n.need} ${n.unit}).` : ""; })() : ""}</span>` : ""}</div>` : ""}
+      ${cele ? `<div class="hc-cele"><span class="hc-cele-b"><b>Reward earned for ${esc(cele.why[cele.why.length - 1])}!</b><span>Choose one for your page${cele.left > 1 ? ` (${cele.left} to choose)` : ""}.</span></span><span class="hc-cele-btns"><button type="button" class="hs-btn" data-spend="sticker">+1 sticker</button><button type="button" class="hs-btn" data-spend="writing">+1 writing</button><button type="button" class="hs-btn" data-spend="photo">+1 photo</button></span></div>` : ""}
       <div class="qa" id="quickAdd"></div>
       <div class="hc-card">
         <div class="step-h"><span class="step-n" aria-hidden="true">2</span><h3>Where do you want to start?</h3></div>
@@ -651,8 +660,7 @@
     const again = () => renderHome(view, m, { profile, openChapter, openSubject, state, sb, reload, openSettings });
     const all = view.querySelector("[data-all]"); if (all) all.onclick = () => { state.homeShowAll = !showAll; again(); };
     view.querySelector("[data-week]").onclick = () => { state.weekOpen = !weekOpen; again(); };
-    const mpb = view.querySelector("[data-mypage]"); if (mpb) mpb.onclick = async () => { await Decor.markSeen(sb, cele.weeks); if (openSettings) openSettings(); };
-    const lat = view.querySelector("[data-later]"); if (lat) lat.onclick = async () => { await Decor.markSeen(sb, cele.weeks); again(); };
+    view.querySelectorAll("[data-spend]").forEach(b => b.onclick = async () => { b.disabled = true; await Decor.spend(sb, b.dataset.spend); if (openSettings) openSettings(); });
     if (sb) mountQuickAdd(view.querySelector("#quickAdd"), m, { sb, profile, reload, state });
   }
 
