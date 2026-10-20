@@ -45,6 +45,13 @@
   .hs-pill.learn{color:var(--t-ink);background:var(--t-soft2)}
   .hs-pill.test{color:var(--t-accent);background:var(--t-accent-tint)}
   .hs-pill.refresh{color:var(--t-warn);background:var(--t-warn-tint)}
+  .hs-steps{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:92px}
+  .hs-arrows{display:flex}
+  .hs-arrows i{display:block;width:16px;height:14px;margin-left:-3px;background:var(--t-line);clip-path:polygon(0 0,62% 0,100% 50%,62% 100%,0 100%,38% 50%)}
+  .hs-arrows i:first-child{margin-left:0}
+  .hs-arrows i.on{background:var(--t-accent)}
+  .hs-steps-l{font-size:12px;font-weight:700;color:var(--t-muted);white-space:nowrap}
+  .hs-card .hs-steps{align-items:flex-start;min-width:0}
   .hs-back{background:none;border:none;padding:0;font:inherit;font-size:16px;font-weight:700;color:var(--t-accent);cursor:pointer;align-self:flex-start}
   .hs h1{margin:0;font-size:30px;line-height:1.2}
   .hs-exam{background:var(--t-card);border-radius:14px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
@@ -150,6 +157,17 @@
     return "Not started";
   }
   const TAG = { learn: "Learn", test: "Test", refresh: "Refresh" };
+  // Four arrows: not started > learning >> done in class >>> testing >>>>
+  function stepLevel(c){
+    if (c.stage === "refresh") return [4, "Refreshing"];
+    if (c.stage === "test") return (c.stats && (c.stats.tried || c.stats.triedEver)) ? [4, "Testing"] : [3, "Done in class"];
+    if (c.stage === "learn") return [2, "Learning"];
+    return [1, "Not started"];
+  }
+  function stepsMark(c){
+    const [n, label] = stepLevel(c);
+    return `<span class="hs-steps" aria-label="Step ${n} of 4: ${label}"><span class="hs-arrows" aria-hidden="true">${[1,2,3,4].map(i => `<i${i <= n ? ' class="on"' : ""}></i>`).join("")}</span><span class="hs-steps-l">${label}</span></span>`;
+  }
   const GO = { learn: "Keep learning ›", test: "Test myself ›", refresh: "Refresh ›", none: "Start ›" };
   const TAB_FOR = { learn: "learn", test: "test", refresh: "refresh", none: "learn" };
 
@@ -334,7 +352,7 @@
   }
 
   function revCard(c, subjTitle){
-    const tag = c.stage === "none" ? "" : `<span class="hs-pill ${c.stage}">${TAG[c.stage]}</span>`;
+    const tag = stepsMark(c);
     const note = c.flag && c.flag.note ? ` · ${esc(c.flag.note)}` : "";
     return `<button type="button" class="hs-card" data-open="${c.id}" data-tab="${TAB_FOR[c.stage]}">${tag}
       <span class="hs-sub">${esc(subjTitle)} · Ch ${esc(String(c.order_num ?? ""))}</span>
@@ -410,7 +428,7 @@
     const b = subjectBar(chs);
 
     const row = (c) => {
-      const tag = c.stage !== "none" && !isTested(c) ? `<span class="hs-pill ${c.stage}">${TAG[c.stage]}</span>` : "";
+      const tag = isTested(c) ? "" : stepsMark(c);
       const classBtn = c.stage === "learn" && !c.classDone ? `<span class="hs-btn ghost small" role="button" tabindex="0" data-classdone="${c.id}">Done in class?</span>` : "";
       const note = c.flag && c.flag.note ? ` · ${esc(c.flag.note)}` : "";
       return `<button type="button" class="hs-row${c.stage === "none" ? " dim" : ""}" data-open="${c.id}" data-tab="${TAB_FOR[c.stage]}">
