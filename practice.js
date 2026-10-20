@@ -79,18 +79,28 @@
   .pr-btn svg{width:18px;height:18px;margin-right:6px;flex:none}
   .pr-improve{display:flex;flex-direction:column;gap:10px;margin:4px 0 6px}
   .pr-up{font-weight:700;color:var(--t-accent)}
-  .pr-how{display:flex;flex-direction:column;gap:8px;background:var(--t-soft);border-radius:12px;padding:12px 14px}
-  .pr-how[hidden]{display:none}
-  .pr-how-l{font-weight:700;font-size:15px}
-  .pr-chat{border:2px solid var(--t-accent-border);background:var(--t-accent-tint);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
-  .pr-chat-top{display:flex;align-items:center;gap:12px}
-  .pr-chat-top .ft-icon{width:40px;height:40px;border-radius:12px}.pr-chat-top .ft-icon svg{width:20px;height:20px}
-  .pr-chat-t{font-weight:700;font-size:15px;line-height:1.3}.pr-chat-t small{display:block;font-weight:400;color:var(--t-muted);font-size:13px}
-  .pr-chat-log{display:flex;flex-direction:column;gap:8px;max-height:360px;overflow:auto}
-  .pr-chat-log p{margin:0;padding:10px 12px;border-radius:12px;background:var(--t-card);font-size:16px;line-height:1.5;max-width:88%;align-self:flex-start}
-  .pr-chat-log p.me{background:var(--t-accent);color:var(--t-on-accent);align-self:flex-end}
-  .pr-chat-log p.typing{color:var(--t-muted);font-style:italic}
-  .pr-chat textarea{min-height:64px;background:var(--t-card)}
+  .pr-nx-l{font-size:14px;font-weight:700;color:var(--t-muted)}
+  .pr-nx{display:flex;align-items:center;gap:14px;padding:12px 14px;border-radius:14px;border:2px solid var(--t-line);background:var(--t-card);text-align:left;font:inherit;color:var(--t-ink);cursor:pointer;width:100%}
+  .pr-nx:hover{border-color:var(--t-accent)}
+  .pr-nx:focus-visible{outline:3px solid var(--t-accent);outline-offset:2px}
+  .pr-nx.main{background:var(--t-accent-tint);border-color:var(--t-accent)}
+  .pr-nx-i{flex:none;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--t-soft2);color:var(--t-accent)}
+  .pr-nx.main .pr-nx-i{background:var(--t-accent);color:var(--t-on-accent)}
+  .pr-nx-i svg{width:20px;height:20px;margin:0}
+  .pr-nx .pr-li-body{flex:1}
+  .pr-steps2{display:flex;flex-direction:column;gap:10px;background:var(--t-card);border-radius:14px;padding:14px 16px}
+  .pr-bars{display:flex;gap:6px}.pr-bars i{flex:1;height:6px;border-radius:9px;background:var(--t-line)}.pr-bars i.on{background:var(--t-accent)}
+  .pr-stepcard{background:var(--t-accent-tint);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;font-size:16px;line-height:1.5}
+  .pr-stepcard b{font-size:18px}
+  .pr-stepcard summary{cursor:pointer;font-weight:700;color:var(--t-accent);font-size:15px}
+  .pr-stepcard details span{display:block;margin-top:4px}
+  .pr-steps2 textarea{min-height:72px}
+  .pr-verdict{border-left:4px solid var(--t-warn);background:var(--t-warn-tint);border-radius:10px;padding:10px 14px;font-size:15px;line-height:1.5}
+  .pr-verdict.good{border-color:var(--t-accent);background:var(--t-accent-tint)}
+  .pr-verdict[hidden]{display:none}
+  .pr-added{border-top:1px solid var(--t-line);padding-top:10px;display:flex;flex-direction:column;gap:4px;font-size:14px;color:var(--t-muted);line-height:1.45}
+  .pr-added b{color:var(--t-ink)}
+  .pr-alldone{background:var(--t-accent-tint);color:var(--t-ink)!important;border-radius:10px;padding:10px 14px}
   .pp-hero{background:var(--t-card);border:2px solid var(--t-accent-border);border-radius:18px;padding:22px 24px;display:flex;align-items:center;gap:18px;margin:0 0 10px}
   .pp-hero .ft-icon{width:58px;height:58px;border-radius:16px}
   .pp-hero-b{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
@@ -153,6 +163,7 @@
   const speakTip = () => `<p class="pr-tip">To speak instead of typing: ${isTouch ? "tap the microphone on your keyboard" : isMac ? "press the Fn (Globe) key twice" : "press Windows + H"}.</p>`;
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   // Adds a Speak my answer button that types what he says into the box (Chrome, Edge, Safari)
+  const STEPS_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h10M4 12h7M4 17h10"/><path d="M16 15l2 2 4-4"/></svg>';
   const PEN_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
   const MIC_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v5"/></svg>';
   const PAPER_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M8 13h8M8 17h5"/></svg>';
@@ -460,90 +471,106 @@
       card.append(opts);
     }
 
-    // After marking: work on it with the tutor (typed chat or voice call), then have another go
+    // After marking: "What next?" — improve it step by step, talk it through, or just try again
     function improveRow(card, q, text, f, entry){
-      const canCoach = q.qtype === "exam";
-      const wrap = h(`<div class="pr-improve">
-        <div class="pr-row">${canCoach ? `<button type="button" class="pr-btn" data-coach>Improve this with my tutor</button>` : ""}<button type="button" class="pr-btn ghost" data-again>Try writing it again</button></div>
-        <div class="pr-how" hidden><span class="pr-how-l">How do you want to work on it?</span>
-          <div class="pr-row"><button type="button" class="pr-btn ghost" data-type>${PEN_SVG}Type with my tutor</button>${window.coachAnswer ? `<button type="button" class="pr-btn ghost" data-talk>${MIC_SVG}Talk with my tutor</button>` : ""}</div>
-          ${window.coachAnswer ? `<span class="pr-small">Talking uses your daily talking time.</span>` : ""}</div>
-        <div data-coachslot></div></div>`);
-      const coachBtn = wrap.querySelector("[data-coach]"), againBtn = wrap.querySelector("[data-again]"), cslot = wrap.querySelector("[data-coachslot]"), how = wrap.querySelector(".pr-how");
-      const show = (el, on) => { if (el) el.style.display = on ? "" : "none"; };
-      againBtn.onclick = () => {
-        cslot.replaceChildren();
-        session.queue.splice(session.i + 1, 0, { q, retry:true, again:true, prev:text, tips: f.to_improve.slice(), before: { marks_awarded: f.marks_awarded, marks_available: f.marks_available } });
+      const isExam = q.qtype === "exam";
+      const again = (added) => {
+        session.queue.splice(session.i + 1, 0, { q, retry:true, again:true, added: added || [],
+          prev: added && added.length ? (text ? text.trim() + "\n\n" : "") + added.join(" ") : text,
+          tips: added && added.length ? [] : f.to_improve.slice(),
+          before: { marks_awarded: f.marks_awarded, marks_available: f.marks_available } });
         session.total++; session.i++; next();
       };
-      const ended = ({ failed }) => {
-        if (failed) { show(coachBtn, true); return; }
-        againBtn.classList.remove("ghost"); againBtn.focus({ preventScroll:true });
-      };
-      if (coachBtn) coachBtn.onclick = () => { show(coachBtn, false); how.hidden = false; };
-      const typeBtn = wrap.querySelector("[data-type]"), talkBtn = wrap.querySelector("[data-talk]");
-      if (typeBtn) typeBtn.onclick = () => { how.hidden = true; coachChat(cslot, q, text, f, ended); };
-      if (talkBtn) talkBtn.onclick = () => { how.hidden = true;
-        window.coachAnswer(cslot, { topic, profile, sb, question:q, answer:text, feedback:f, onEnd: ended }); };
+      const opt = (key, icon, title, note, main) => `<button type="button" class="pr-nx${main ? " main" : ""}" data-${key}><span class="pr-nx-i">${icon}</span><span class="pr-li-body"><span class="pr-li-title">${title}</span><span class="pr-li-note">${note}</span></span><span class="pr-chev" aria-hidden="true">›</span></button>`;
+      const wrap = h(`<div class="pr-improve">
+        <span class="pr-nx-l">What next?</span>
+        ${isExam ? opt("steps", STEPS_SVG, "Improve it step by step", `${Math.min(3, f.to_improve.length)} short step${Math.min(3, f.to_improve.length) === 1 ? "" : "s"}, one sentence each`, true) : ""}
+        ${isExam && window.coachAnswer ? opt("talk", MIC_SVG, "Talk it through with my tutor", "A short voice call about this answer") : ""}
+        ${opt("again", PEN_SVG, "Just try again", isExam ? "You already know what to fix" : "Have another go with the tips below", !isExam)}
+        <div data-coachslot></div></div>`);
+      const cslot = wrap.querySelector("[data-coachslot]");
+      const opts = () => wrap.querySelectorAll(".pr-nx, .pr-nx-l");
+      const showOpts = on => opts().forEach(el => el.style.display = on ? "" : "none");
+      wrap.querySelector("[data-again]").onclick = () => { cslot.replaceChildren(); again(); };
+      const st = wrap.querySelector("[data-steps]");
+      if (st) st.onclick = () => { showOpts(false); stepper(cslot, q, text, f, (added) => again(added), () => { cslot.replaceChildren(); showOpts(true); }); };
+      const tk = wrap.querySelector("[data-talk]");
+      if (tk) tk.onclick = () => { showOpts(false);
+        window.coachAnswer(cslot, { topic, profile, sb, question:q, answer:text, feedback:f,
+          onEnd: () => { showOpts(true); const a = wrap.querySelector("[data-again]"); a.classList.add("main"); a.focus({ preventScroll:true }); } }); };
       // Straight under the mark and summary, so the next step is the first thing he sees
       const head = card.querySelector(":scope > .pr-row");
       if (head) head.after(wrap); else card.append(wrap);
     }
 
-    // Typed coaching chat about one marked answer
-    function coachChat(slot2, q, text, f, onEnd){
-      const box = h(`<div class="pr-chat">
-        <div class="pr-chat-top"><span class="ft-icon">${PEN_SVG}</span><span class="pr-chat-t">Improving your answer with your tutor<small>Write short replies. Spelling doesn't matter.</small></span></div>
-        <div class="pr-chat-log" aria-live="polite"></div>
-        <div class="pr-answer"><textarea aria-label="Your reply" placeholder="Your reply" rows="2"></textarea><div class="pr-tools" data-inputs></div></div>
-        <div class="pr-row"><button type="button" class="pr-btn" data-send>Send</button><button type="button" class="pr-btn ghost" data-end>I'm done</button></div>
-        <p class="pr-err" hidden></p></div>`);
+    // Improve it step by step: one point at a time, one sentence each, then put it together
+    async function stepper(slot2, q, text, f, onDone, onCancel){
+      const box = h(`<div class="pr-steps2"><p class="pr-small">Working out your steps…</p></div>`);
       slot2.replaceChildren(box);
-      const log = box.querySelector(".pr-chat-log"), ta = box.querySelector("textarea"), send = box.querySelector("[data-send]"),
-        endB = box.querySelector("[data-end]"), err = box.querySelector(".pr-err"), tools = box.querySelector("[data-inputs]");
-      attachMic(tools, ta, err);
-      const msgs = []; let busy = false, closed = false, saved = false;
-      const add = (role, t) => {
-        msgs.push({ role, text: t });
-        log.append(h(`<p class="${role === "user" ? "me" : ""}">${esc(t)}</p>`));
-        log.scrollTop = log.scrollHeight;
+      const post = async (payload) => {
+        const r = await fetch("/api/improve", { method:"POST", headers:{ "Content-Type":"application/json" },
+          body: JSON.stringify(Object.assign({ question_id: q.id, answer: text, feedback: { marks_awarded: f.marks_awarded, marks_available: f.marks_available, summary: f.summary, to_improve: f.to_improve } }, payload)) });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error || "That didn't work just now. Try again.");
+        return d;
       };
-      const save = () => {
-        if (saved || msgs.length < 2) return; saved = true;
-        sb("tutor_sessions", { method:"POST", prefer:"return=minimal", body:[{ profile_id: profile.id, topic_id: topic.id, transcript: msgs.map(m => ({ role: m.role === "user" ? "user" : "agent", text: m.text })), seconds: 0, results: { mode: "coach-text", question_id: q.id, marks_awarded: f.marks_awarded ?? null, marks_available: f.marks_available ?? null } }] }).catch(() => {});
-      };
-      const close = () => {
-        if (closed) return; closed = true; save();
-        box.querySelector(".pr-answer").remove(); send.remove(); endB.remove();
-        if (tools._stopMic) tools._stopMic();
-        onEnd({ failed: false });
-      };
-      async function ask(){
-        busy = true; send.disabled = true; err.hidden = true;
-        const typing = h(`<p class="typing">Your tutor is typing…</p>`); log.append(typing); log.scrollTop = log.scrollHeight;
-        try {
-          const r = await fetch("/api/coach-chat", { method:"POST", headers:{ "Content-Type":"application/json" },
-            body: JSON.stringify({ question_id: q.id, answer: text, feedback: f, name: profile.name, messages: msgs }) });
-          const d = await r.json().catch(() => ({}));
-          typing.remove();
-          if (!r.ok || !d.reply) throw new Error(d.error || "Your tutor couldn't reply just now.");
-          add("agent", d.reply);
-          if (d.done) close();
-        } catch (e) {
-          typing.remove(); err.textContent = e.message; err.hidden = false;
-          if (!msgs.length) { closed = true; onEnd({ failed: true }); box.remove(); slot2.append(err); }
-        } finally { busy = false; send.disabled = false; if (!closed) ta.focus({ preventScroll:true }); }
+      let steps;
+      try { steps = (await post({ action: "plan" })).steps; }
+      catch (e) {
+        box.replaceChildren(h(`<div class="pr-row"><p class="pr-err" style="flex:1">${esc(e.message)}</p><button type="button" class="pr-btn ghost">Back</button></div>`));
+        box.querySelector("button").onclick = onCancel; return;
       }
-      send.onclick = () => {
-        if (busy) return;
-        if (tools._stopMic) tools._stopMic();
-        const t = ta.value.trim(); if (!t) return;
-        ta.value = ""; add("user", t); ask();
-      };
-      ta.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send.onclick(); } });
-      endB.onclick = close;
-      const watch = setInterval(() => { if (!box.isConnected) { clearInterval(watch); save(); } }, 2000);
-      ask();
+      const added = []; let i = 0;
+      function paint(){
+        const s = steps[i], last = i === steps.length - 1;
+        box.innerHTML = `
+          <div class="pr-bars">${steps.map((_, k) => `<i class="${k <= i ? "on" : ""}"></i>`).join("")}</div>
+          <div class="pr-row" style="justify-content:space-between"><span class="pr-eyebrow">Step ${i + 1} of ${steps.length}</span>${i ? `<span class="pr-small" style="color:var(--t-accent);font-weight:700">&#10003; ${i === 1 ? "Step 1" : "Steps 1–" + i} done</span>` : ""}</div>
+          <div class="pr-stepcard"><b>${esc(s.title)}</b><span>${esc(s.why)}</span>${s.hint ? `<details><summary>Need a hint?</summary><span>${esc(s.hint)}</span></details>` : ""}</div>
+          <label class="pr-nx-l" for="stepTa">Write one sentence</label>
+          <div class="pr-answer"><textarea id="stepTa" rows="2" placeholder="Your sentence"></textarea><div class="pr-tools" data-inputs></div></div>
+          <div class="pr-verdict" hidden></div>
+          <div class="pr-row"><button type="button" class="pr-btn" data-check>Check it</button><button type="button" class="pr-btn ghost" data-skip>${last ? "Skip and put it together" : "Skip this step"}</button></div>
+          <p class="pr-err" hidden></p>
+          ${added.length ? `<div class="pr-added"><b>Your new sentences</b>${added.map((t, k) => `<span>${k + 1}. ${esc(t)}</span>`).join("")}</div>` : ""}`;
+        const ta = box.querySelector("textarea"), tools = box.querySelector("[data-inputs]"), err = box.querySelector(".pr-err"),
+          chk = box.querySelector("[data-check]"), skip = box.querySelector("[data-skip]"), ver = box.querySelector(".pr-verdict");
+        attachMic(tools, ta, err);
+        const stopMic = () => { if (tools._stopMic) tools._stopMic(); };
+        const advance = (sentence) => {
+          stopMic();
+          if (sentence) added.push(sentence);
+          if (last) finishSteps(); else { i++; paint(); box.scrollIntoView({ block:"nearest", behavior:"smooth" }); }
+        };
+        skip.onclick = () => advance(null);
+        chk.onclick = async () => {
+          stopMic();
+          const sentence = ta.value.trim();
+          if (!sentence) { err.textContent = "Write or say your sentence first."; err.hidden = false; return; }
+          err.hidden = true; chk.disabled = true; chk.textContent = "Checking…";
+          try {
+            const d = await post({ action: "check", step: s, sentence });
+            const good = d.verdict === "good";
+            ver.className = "pr-verdict " + (good ? "good" : "");
+            ver.innerHTML = `<b>${good ? "Good, that earns marks." : d.verdict === "close" ? "Nearly." : "Not yet."}</b> ${esc(d.message || "")}`;
+            ver.hidden = false;
+            chk.textContent = "Check again"; chk.className = "pr-btn ghost";
+            let go = box.querySelector("[data-next]");
+            if (!go) { go = h(`<button type="button" class="pr-btn" data-next>${last ? "Put it together ›" : "Next step ›"}</button>`); chk.before(go); }
+            go.textContent = good ? (last ? "Put it together ›" : "Next step ›") : (last ? "Use it anyway and put it together ›" : "Use it anyway ›");
+            go.onclick = () => advance(ta.value.trim());
+            skip.style.display = "none";
+            go.focus({ preventScroll:true });
+          } catch (e) { err.textContent = e.message; err.hidden = false; chk.textContent = "Check it"; }
+          finally { chk.disabled = false; }
+        };
+        ta.focus({ preventScroll:true });
+      }
+      function finishSteps(){
+        if (!added.length) { onCancel(); return; }
+        onDone(added);
+      }
+      paint();
     }
 
     function writtenView(card, q, retry, entry = {}){
@@ -562,9 +589,12 @@
       const fbBtn = box.querySelector("[data-fb]"), selfBtn = box.querySelector("[data-self]");
       if (entry.again) {
         ta.value = entry.prev || "";
-        box.querySelector(".pr-tip").textContent = entry.before
+        box.querySelector(".pr-tip").textContent = entry.added && entry.added.length
+          ? `All steps done. Your new sentences are added at the end of your answer. Read it through, move things around if you like, then check it.${entry.before ? ` Last time: ${entry.before.marks_awarded} out of ${entry.before.marks_available}.` : ""}`
+          : entry.before
           ? `Last time: ${entry.before.marks_awarded} out of ${entry.before.marks_available}. Add the points you talked through, then check it again.`
           : "Add the points you talked through, then check it again.";
+        if (entry.added && entry.added.length) { box.querySelector(".pr-tip").classList.add("pr-alldone"); ta.rows = 8; }
         selfBtn.style.display = "none";
         if (entry.tips && entry.tips.length) box.querySelector(".pr-tip").after(h(`<div class="pr-fb"><h4>${isExam ? "To get more marks" : "To make it better"}</h4><ul>${entry.tips.map(t => `<li>${esc(t)}</li>`).join("")}</ul></div>`));
       }
