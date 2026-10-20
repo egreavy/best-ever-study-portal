@@ -425,6 +425,7 @@
   .look-seg button{border:none;background:none;font:inherit;font-size:16px;font-weight:700;color:var(--t-muted);padding:9px 0;border-radius:9px;cursor:pointer}
   .look-seg button[aria-checked="true"]{background:var(--t-card);color:var(--t-ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
   .look-h{font-size:17px;margin:0 0 6px}
+  .parent-link{display:block;margin:8px auto 30px;border:none;background:none;font:inherit;font-size:14px;font-weight:700;color:var(--t-muted);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 </style>
 </head>
 <body>
@@ -1034,24 +1035,15 @@ async function renderSettings(){
 
   const th = window.Theme ? Theme.get() : { accent: "green", mode: "light" };
   const NAMES = { green: "Green", blue: "Blue", purple: "Purple" };
-  const html = `
-    <div class="crumb"><span id="settingsBack">&larr; Home</span></div>
-    <div class="section-head"><h2 class="section-title">Settings</h2></div>
-    ${window.Theme ? `<div class="look-card">
-      <div class="look-row"><div><b>Colour</b><span>Used for buttons, ticks and highlights</span></div>
-        <div class="look-swatches" role="radiogroup" aria-label="Colour">${Theme.ACCENTS.map(a => `<button type="button" class="look-swatch" role="radio" aria-checked="${th.accent === a}" data-accent="${a}"><i style="background:${Theme.swatch(a)}"></i>${NAMES[a]}</button>`).join("")}</div></div>
-      <div class="look-row"><div><b>Screen</b><span>Dark is easier on the eyes at night</span></div>
-        <div class="look-seg" role="radiogroup" aria-label="Screen">${["light","dark"].map(m => `<button type="button" role="radio" aria-checked="${th.mode === m}" data-mode="${m}">${m === "light" ? "Light" : "Dark"}</button>`).join("")}</div></div>
-    </div>` : ""}
-    <div id="myPage"></div>
-    <h3 class="look-h">Tasks for each subject</h3>
-    <p class="settings-hint">Turn off any tasks ${esc(PROFILE.name)} doesn't want to see for a subject — like skipping the audio overview. Turned-off tasks won't count toward progress.</p>
+  const parent = !!state.parentSetup;
+  const tasksHtml = `
+    <p class="settings-hint">Choose which learning materials ${esc(PROFILE.name)} sees for each subject, like skipping the audio overview. Turned-off materials won't count toward progress.</p>
     ${subjectIds.length === 0 ? `<div class="empty">No subjects yet.</div>` : subjects.map(s => {
       const steps = bySubject[s.id].steps;
       return `
         <div class="settings-subject">
           <h3>${esc(s.title)}</h3>
-          <p class="sub">${steps.length} ${steps.length === 1 ? "task" : "tasks"}</p>
+          <p class="sub">${steps.length} ${steps.length === 1 ? "material" : "materials"}</p>
           ${steps.map(t => {
             const enabled = !disabledSet.has(t.id);
             return `
@@ -1065,7 +1057,21 @@ async function renderSettings(){
               </div>`;
           }).join("")}
         </div>`;
-    }).join("")}
+    }).join("")}`;
+  const html = parent ? `
+    <div class="crumb"><span id="settingsBack">&larr; Settings</span></div>
+    <div class="section-head"><h2 class="section-title">Parent set-up</h2></div>
+    ${tasksHtml}` : `
+    <div class="crumb"><span id="settingsBack">&larr; Home</span></div>
+    <div class="section-head"><h2 class="section-title">Settings</h2></div>
+    ${window.Theme ? `<div class="look-card">
+      <div class="look-row"><div><b>Colour</b><span>Used for buttons, ticks and highlights</span></div>
+        <div class="look-swatches" role="radiogroup" aria-label="Colour">${Theme.ACCENTS.map(a => `<button type="button" class="look-swatch" role="radio" aria-checked="${th.accent === a}" data-accent="${a}"><i style="background:${Theme.swatch(a)}"></i>${NAMES[a]}</button>`).join("")}</div></div>
+      <div class="look-row"><div><b>Screen</b><span>Dark is easier on the eyes at night</span></div>
+        <div class="look-seg" role="radiogroup" aria-label="Screen">${["light","dark"].map(m => `<button type="button" role="radio" aria-checked="${th.mode === m}" data-mode="${m}">${m === "light" ? "Light" : "Dark"}</button>`).join("")}</div></div>
+    </div>` : ""}
+    <div id="myPage"></div>
+    <button type="button" class="parent-link" id="parentSetup">Parent set-up: choose which materials show for each subject &rsaquo;</button>
   `;
   document.getElementById("view").innerHTML = html;
 
@@ -1078,12 +1084,15 @@ async function renderSettings(){
     await Theme.set(sb, { mode: b.dataset.mode });
   }));
   const mp = document.getElementById("myPage");
-  if (mp && window.Decor) {
+  if (mp && window.Decor && !parent) {
     const mdl = state.model || (await loadModel()).model;
     state.model = mdl;
     if (mp.isConnected) Decor.panel(mp, { sb, goal: mdl.goal });
   }
+  const ps = document.getElementById("parentSetup");
+  if (ps) ps.addEventListener("click", () => { state.parentSetup = true; renderSettings(); window.scrollTo({ top: 0 }); });
   document.getElementById("settingsBack").addEventListener("click", () => {
+    if (state.parentSetup) { state.parentSetup = false; renderSettings(); return; }
     state.view = "dashboard";
     render();
   });
@@ -1123,7 +1132,7 @@ function render(){
 const settingsBtn = document.getElementById("settingsBtn");
 if (settingsBtn) {
   settingsBtn.addEventListener("click", () => {
-    state.view = "settings";
+    state.view = "settings"; state.parentSetup = false;
     render();
   });
 }
