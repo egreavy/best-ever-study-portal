@@ -77,7 +77,7 @@
   .pr-btn.big{font-size:16px;padding:11px 24px;min-height:46px}
   .pr-btn.ghost{background:var(--t-card);color:var(--t-accent)}
   .pr-btn svg{width:18px;height:18px;margin-right:6px;flex:none}
-  .pr-improve{display:flex;flex-direction:column;gap:10px}
+  .pr-improve{display:flex;flex-direction:column;gap:10px;margin:4px 0 6px}
   .pr-up{font-weight:700;color:var(--t-accent)}
   .pr-how{display:flex;flex-direction:column;gap:8px;background:var(--t-soft);border-radius:12px;padding:12px 14px}
   .pr-how[hidden]{display:none}
@@ -473,7 +473,7 @@
       const show = (el, on) => { if (el) el.style.display = on ? "" : "none"; };
       againBtn.onclick = () => {
         cslot.replaceChildren();
-        session.queue.splice(session.i + 1, 0, { q, retry:true, again:true, prev:text, before: { marks_awarded: f.marks_awarded, marks_available: f.marks_available } });
+        session.queue.splice(session.i + 1, 0, { q, retry:true, again:true, prev:text, tips: f.to_improve.slice(), before: { marks_awarded: f.marks_awarded, marks_available: f.marks_available } });
         session.total++; session.i++; next();
       };
       const ended = ({ failed }) => {
@@ -485,7 +485,9 @@
       if (typeBtn) typeBtn.onclick = () => { how.hidden = true; coachChat(cslot, q, text, f, ended); };
       if (talkBtn) talkBtn.onclick = () => { how.hidden = true;
         window.coachAnswer(cslot, { topic, profile, sb, question:q, answer:text, feedback:f, onEnd: ended }); };
-      card.append(wrap);
+      // Straight under the mark and summary, so the next step is the first thing he sees
+      const head = card.querySelector(":scope > .pr-row");
+      if (head) head.after(wrap); else card.append(wrap);
     }
 
     // Typed coaching chat about one marked answer
@@ -564,6 +566,7 @@
           ? `Last time: ${entry.before.marks_awarded} out of ${entry.before.marks_available}. Add the points you talked through, then check it again.`
           : "Add the points you talked through, then check it again.";
         selfBtn.style.display = "none";
+        if (entry.tips && entry.tips.length) box.querySelector(".pr-tip").after(h(`<div class="pr-fb"><h4>${isExam ? "To get more marks" : "To make it better"}</h4><ul>${entry.tips.map(t => `<li>${esc(t)}</li>`).join("")}</ul></div>`));
       }
       const inputsRow = box.querySelector("[data-inputs]");
       attachMic(inputsRow, ta, err);
@@ -597,13 +600,14 @@
           done(v, "written");
           box.remove();
           const list = a => a.length ? `<ul>${a.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "";
-          card.append(h(`<div class="pr-fb ${v===1?"good":""}">
+          const fbEl = h(`<div class="pr-fb ${v===1?"good":""}">
             <div class="pr-row" style="gap:16px">${isExam ? `<span class="pr-score">${f.marks_awarded}/${f.marks_available}</span>` : ""}<span>${entry.before && f.marks_awarded > entry.before.marks_awarded ? `<span class="pr-up">Up from ${entry.before.marks_awarded} to ${f.marks_awarded}. </span>` : ""}${esc(f.summary||"")}</span></div>
             ${f.went_well.length ? `<h4>What you got right</h4>${list(f.went_well)}` : ""}
             ${f.to_improve.length ? `<h4>${isExam ? "How to get more marks" : "To make it better"}</h4>${list(f.to_improve)}` : ""}
             ${f.example ? `<h4>For example</h4><span>${esc(f.example)}</span>` : ""}
-          </div>`));
-          if (f.to_improve.length && (!f.marks_available || f.marks_awarded < f.marks_available)) improveRow(card, q, text || f.transcription || "", f, entry);
+          </div>`);
+          card.append(fbEl);
+          if (f.to_improve.length && (!f.marks_available || f.marks_awarded < f.marks_available)) improveRow(fbEl, q, text || f.transcription || "", f, entry);
           card.append(h(modelBlock()));
           nextBtn(card);
         } catch (e) {
