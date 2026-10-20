@@ -117,6 +117,11 @@
   .hc-meta{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
   .hc-streak{font-size:15px;font-weight:700;color:var(--t-accent);background:var(--t-accent-tint);border-radius:999px;padding:5px 12px}
   .hc-weeklink{font-size:14px;color:var(--t-muted)}
+  .hc-goal{flex-basis:100%;font-size:14px;color:var(--t-muted)}
+  .hc-cele{background:var(--t-accent-tint);border-radius:18px;padding:18px 22px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .hc-cele-b{flex:1 1 260px;display:flex;flex-direction:column;gap:3px}
+  .hc-cele-b b{font-size:18px}
+  .hc-cele-btns{display:flex;gap:14px;align-items:center}
   .hc-week{background:var(--t-card);border-radius:18px;padding:18px 22px;display:flex;gap:24px;align-items:center;flex-wrap:wrap;margin-top:-14px}
   .hc-days{display:flex;gap:6px}
   .hc-day{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;color:var(--t-muted)}
@@ -254,7 +259,7 @@
     const subjects = await sb(`subjects?select=id,title,description&user_id=eq.${profile.id}&order=title.asc`);
     const subjectIds = subjects.map(s => s.id);
     if (!subjectIds.length) return { subjects, topics: [] };
-    const since = new Date(Date.now() - 70 * DAY).toISOString();
+    const since = new Date(Date.now() - 400 * DAY).toISOString();
     const [topics, templatesAll, disabled, progress, status, exams, flags, timeRows] = await Promise.all([
       sb(`topics?select=id,title,order_num,subject_id&subject_id=in.${inList(subjectIds)}&order=order_num.asc`),
       sb(`nlm_checklist_templates?select=id,subject_id,step_order,title&subject_id=in.${inList(subjectIds)}`),
@@ -350,6 +355,18 @@
     let streak = 0, d = startOfDay(new Date());
     if (!days.has(dayKey(d))) d = new Date(d - DAY);
     while (days.has(dayKey(d))) { streak++; d = new Date(d - DAY); }
+    // minutes per day (testing, tutor and learning all count) and completed goal weeks
+    const dayMin = {};
+    const addMin = (d, mins) => { const k = dayKey(d); dayMin[k] = (dayMin[k] || 0) + mins; };
+    (raw.timeRows || []).forEach(r => addMin(r.created_at, r.seconds / 60));
+    learnEvents.forEach(e => addMin(e.at, e.min));
+    const GOAL_MIN = 14, GOAL_DAYS = 5;
+    const goodDaysIn = (start) => { let n = 0; for (let i = 0; i < 7; i++) if ((dayMin[dayKey(new Date(start.getTime() + i * DAY))] || 0) >= GOAL_MIN) n++; return n; };
+    let weeksDone = 0;
+    for (let k = 1; k <= 57; k++) { if (goodDaysIn(new Date(ws.getTime() - k * 7 * DAY)) >= GOAL_DAYS) weeksDone++; }
+    const thisWeekGood = goodDaysIn(ws);
+    if (thisWeekGood >= GOAL_DAYS) weeksDone++;
+    m.goal = { minutes: GOAL_MIN, days: GOAL_DAYS, dayMin, weeksDone, thisWeekGood, today: Math.round(dayMin[dayKey(new Date())] || 0), weekDone: thisWeekGood >= GOAL_DAYS };
     m.week = { testSec, learnMin, answered, fixed, days, ws, streak };
     return m;
   }
@@ -573,10 +590,11 @@
   }
 
   // ---- homepage ----
-  function renderHome(view, m, { profile, openChapter, openSubject, state, sb, reload }){
+  function renderHome(view, m, { profile, openChapter, openSubject, state, sb, reload, openSettings }){
     addCss();
     const w = m.week;
     const hour = new Date().getHours();
+    const cele = window.Decor && m.goal ? Decor.celebration(m.goal) : null;
     const hello = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
     const letters = ["M","T","W","T","F","S","S"], todayKey = dayKey(new Date());
     const dots = letters.map((l, i) => {
@@ -601,7 +619,7 @@
       <div class="hc-top">
         <div class="hc-hello"><h2>${hello}, ${esc(profile.name)}</h2><span>Learn it before class. Test it after. Refresh it before exams.</span></div>
         <div class="hc-meta">
-          ${w.streak ? `<span class="hc-streak">${plural(w.streak, "day", "day")} streak</span>` : ""}
+          ${m.goal ? `<span class="hc-streak" title="Days this week with ${m.goal.minutes} minutes or more">${m.goal.weekDone ? "Week complete ✓" : `${m.goal.thisWeekGood} of ${m.goal.days} days this week`}</span>` : ""}
           <button type="button" class="hs-link hc-weeklink" data-week aria-expanded="${!!weekOpen}">This week: ${hm(w.testSec)} testing</button>
         </div>
       </div>
@@ -612,7 +630,9 @@
           <div><b>${w.learnMin ? "about " + hm(w.learnMin * 60) : "0 m"}</b><span>learning</span></div>
           <div><b>${w.answered}</b><span>questions answered</span></div>
           <div><b>${w.fixed}</b><span>answers fixed</span></div>
-        </div></div>` : ""}
+        </div>
+        ${m.goal ? `<span class="hc-goal">Goal: ${m.goal.minutes} minutes on ${m.goal.days} days. Today: ${m.goal.today} of ${m.goal.minutes} minutes${w.streak > 1 ? ` · ${w.streak} day streak` : ""}${window.Decor && Decor.unlocked(m.goal.weeksDone).next ? ` · next reward: ${Decor.label(Decor.unlocked(m.goal.weeksDone).next)}` : ""}</span>` : ""}</div>` : ""}
+      ${cele ? `<div class="hc-cele"><span class="hc-cele-b"><b>Week complete! You unlocked ${esc(cele.items.join(" and "))}.</b><span>${m.goal.minutes} minutes on ${m.goal.days} days. That's real revision.</span></span><span class="hc-cele-btns"><button type="button" class="hs-btn" data-mypage>Go to My page</button><button type="button" class="hs-link" data-later>Later</button></span></div>` : ""}
       <div class="qa" id="quickAdd"></div>
       <div class="hc-card">
         <div class="step-h"><span class="step-n" aria-hidden="true">2</span><h3>Where do you want to start?</h3></div>
@@ -627,9 +647,11 @@
     </div>`;
     view.querySelectorAll("[data-subject]").forEach(b => b.onclick = () => openSubject(b.dataset.subject));
     view.querySelectorAll("[data-open]").forEach(b => b.onclick = () => { const c = m.topics[b.dataset.open]; openChapter(c.id, c.subject_id, b.dataset.tab); });
-    const again = () => renderHome(view, m, { profile, openChapter, openSubject, state, sb, reload });
+    const again = () => renderHome(view, m, { profile, openChapter, openSubject, state, sb, reload, openSettings });
     const all = view.querySelector("[data-all]"); if (all) all.onclick = () => { state.homeShowAll = !showAll; again(); };
     view.querySelector("[data-week]").onclick = () => { state.weekOpen = !weekOpen; again(); };
+    const mpb = view.querySelector("[data-mypage]"); if (mpb) mpb.onclick = async () => { await Decor.markSeen(sb, cele.weeks); if (openSettings) openSettings(); };
+    const lat = view.querySelector("[data-later]"); if (lat) lat.onclick = async () => { await Decor.markSeen(sb, cele.weeks); again(); };
     if (sb) mountQuickAdd(view.querySelector("#quickAdd"), m, { sb, profile, reload, state });
   }
 

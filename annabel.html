@@ -6,6 +6,7 @@
 <title>Annabel's Study Portal</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <script src="theme.js" data-profile="0525676f-a10f-424d-b707-8f75e5b3a053"></script>
+<script src="rewards.js" data-profile="0525676f-a10f-424d-b707-8f75e5b3a053"></script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap">
 <style>
   :root{
@@ -530,7 +531,7 @@ async function renderDashboard(){
   const { raw, err, model } = await loadModel();
   if (!raw.subjects.length && err) return errorBox(err, renderDashboard);
   state.model = model;
-  Stages.renderHome(v, model, { profile: PROFILE, openChapter, openSubject, state, sb, reload: renderDashboard });
+  Stages.renderHome(v, model, { profile: PROFILE, openChapter, openSubject, state, sb, reload: renderDashboard, openSettings: () => { state.view = "settings"; render(); window.scrollTo({ top: 0 }); } });
 }
 
 async function renderSubjectPage(){
@@ -1041,6 +1042,7 @@ async function renderSettings(){
       <div class="look-row"><div><b>Screen</b><span>Dark is easier on the eyes at night</span></div>
         <div class="look-seg" role="radiogroup" aria-label="Screen">${["light","dark"].map(m => `<button type="button" role="radio" aria-checked="${th.mode === m}" data-mode="${m}">${m === "light" ? "Light" : "Dark"}</button>`).join("")}</div></div>
     </div>` : ""}
+    <div id="myPage"></div>
     <h3 class="look-h">Tasks for each subject</h3>
     <p class="settings-hint">Turn off any tasks ${esc(PROFILE.name)} doesn't want to see for a subject — like skipping the audio overview. Turned-off tasks won't count toward progress.</p>
     ${subjectIds.length === 0 ? `<div class="empty">No subjects yet.</div>` : subjects.map(s => {
@@ -1074,6 +1076,12 @@ async function renderSettings(){
     document.querySelectorAll(".look-seg [data-mode]").forEach(x => x.setAttribute("aria-checked", String(x === b)));
     await Theme.set(sb, { mode: b.dataset.mode });
   }));
+  const mp = document.getElementById("myPage");
+  if (mp && window.Decor) {
+    const mdl = state.model || (await loadModel()).model;
+    state.model = mdl;
+    if (mp.isConnected) Decor.panel(mp, { sb, goal: mdl.goal });
+  }
   document.getElementById("settingsBack").addEventListener("click", () => {
     state.view = "dashboard";
     render();
@@ -1121,6 +1129,7 @@ if (settingsBtn) {
 
 render();
 if (window.Theme) Theme.load(sb);
+if (window.Decor) Decor.load(sb);
 </script>
 </body>
 </html>
