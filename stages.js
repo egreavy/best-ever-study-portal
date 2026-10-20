@@ -160,7 +160,8 @@
   @media (max-width:600px){.hc-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.hc-meta{align-items:flex-start}.hc-card,.qa{padding:20px 18px}.hc-go{width:100%}}
   .hs-empty{background:var(--t-card);border-radius:14px;padding:18px;color:var(--t-muted)}
   @media (max-width:700px){.hs-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hs-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
-  @media (max-width:460px){.hs-grid{grid-template-columns:1fr}.hs-grid.tiles{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.hs-tile{padding:12px 14px;gap:6px}.hs-tile b{font-size:16px}.hs-row{padding:12px 14px;gap:10px;flex-wrap:wrap}.hs-row .hs-row-b{flex-basis:calc(100% - 60px)}}
+  @media (max-width:600px){.hs-steps{min-width:0}.hs-steps-l{display:none}.hs-arrows i{width:12px;height:11px;margin-left:-2px}.hs-row{padding:12px 14px;gap:10px}.hs-row-t{font-size:16px}}
+  @media (max-width:460px){.hs-grid{grid-template-columns:1fr}.hs-grid.tiles{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.hs-tile{padding:12px 14px;gap:6px}.hs-tile b{font-size:16px}}
   `;
   function addCss(){ if (document.getElementById("hs-css")) return; const s = document.createElement("style"); s.id = "hs-css"; s.textContent = css; document.head.appendChild(s); }
   const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -690,8 +691,8 @@
       const note = c.flag && c.flag.note ? ` · ${esc(c.flag.note)}` : "";
       return `<button type="button" class="hs-row${c.stage === "none" ? " dim" : ""}" data-open="${c.id}" data-tab="${TAB_FOR[c.stage]}">
         <span class="hs-num${isTested(c) ? " ok" : ""}">${isTested(c) ? "✓" : esc(String(c.order_num ?? "-"))}</span>
-        <span class="hs-row-b"><span class="hs-row-t">${esc(shortTitle(c.title))}</span><span class="hs-row-s">${esc(c.stage === "none" ? (comingUp.includes(c) ? "Not started · learn ahead before class" : "Not started") : c.line)}${note}</span></span>
-        ${classBtn}${tag}<span class="hs-chev" aria-hidden="true">›</span></button>`;
+        <span class="hs-row-b"><span class="hs-row-t">${esc(shortTitle(c.title))}</span><span class="hs-row-s">${esc(c.stage === "none" ? (comingUp.includes(c) ? "Not started · learn ahead before class" : "Not started") : c.line)}${note}</span>${classBtn ? `<span style="display:block;margin-top:6px">${classBtn}</span>` : ""}</span>
+        ${tag}<span class="hs-chev" aria-hidden="true">›</span></button>`;
     };
     const fold = (key, title, sub, list, icon) => {
       if (!list.length) return "";
