@@ -613,7 +613,7 @@
     }).join("");
     const rev = revisionList(m);
     const best = rev[0] || null;
-    const rest = rev.slice(1);
+    const rest = rev;
     const showAll = state && state.homeShowAll;
     const subjTitle = id => (m.bySubject[id] || {}).title || "";
     const weekOpen = state && state.weekOpen;
@@ -646,11 +646,8 @@
       <div class="qa" id="quickAdd"></div>
       <div class="hc-card">
         <div class="step-h"><span class="step-n" aria-hidden="true">2</span><h3>Where do you want to start?</h3></div>
-        ${best ? `<div class="hc-best">
-          <span class="hc-best-b"><span class="hc-eyebrow">Best place to start</span><span class="hc-best-t">${esc(shortTitle(best.title))}</span><span class="hc-best-s">${esc(bestNote)}</span></span>
-          <button type="button" class="hs-btn hc-go" data-open="${best.id}" data-tab="${TAB_FOR[best.stage]}">${GO[best.stage].replace(" ›", "")}</button></div>` : ""}
-        ${m.subjects.length ? `<div class="hc-sec"><span class="hc-label">${best ? "Or pick a subject" : "Pick a subject"}</span><div class="hc-chips">${chips}</div></div>` : `<div class="hs-empty">No subjects yet.</div>`}
-        ${rest.length ? `<div class="hc-sec"><span class="hc-label">Or something from your revision list</span>
+        ${m.subjects.length ? `<div class="hc-sec"><span class="hc-label">Pick a subject</span><div class="hc-chips">${chips}</div></div>` : `<div class="hs-empty">No subjects yet.</div>`}
+        ${rest.length ? `<div class="hc-sec"><span class="hc-label">Or choose a topic from your revision list</span>
           <div class="hc-list">${rest.slice(0, showAll ? rest.length : 3).map(row).join("")}</div>
           ${rest.length > 3 ? `<button type="button" class="hs-link" style="align-self:flex-start" data-all>${showAll ? "Show fewer" : `See all ${rest.length}`}</button>` : ""}</div>` : ""}
       </div>
