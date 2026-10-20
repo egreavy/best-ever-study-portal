@@ -78,7 +78,13 @@
   .hs-fold{background:var(--t-soft2)}
   .hs-fold .hs-show{flex:none;font-size:15px;font-weight:700;color:var(--t-accent)}
   .hs-group{display:block;padding:14px 18px 4px;border-top:1px solid var(--t-line);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--t-muted)}
-  .qa{background:var(--t-card);border-radius:18px;padding:20px 22px;display:flex;flex-direction:column;gap:12px}
+  .step-h{display:flex;align-items:center;gap:12px}
+  .step-n{flex:none;width:32px;height:32px;border-radius:50%;background:var(--t-accent);color:var(--t-on-accent);display:grid;place-items:center;font-size:17px;font-weight:700}
+  .step-in{margin-left:44px}
+  .hs-link.step-in{margin-left:44px}
+  .step2{display:flex;flex-direction:column;gap:14px;padding:0 24px}
+  @media (max-width:600px){.step-in,.hs-link.step-in{margin-left:0 !important}.step2{padding:0}}
+  .qa{border:2px solid var(--t-accent-border);background:var(--t-card);border-radius:18px;padding:20px 22px;display:flex;flex-direction:column;gap:12px}
   .qa h3{margin:0;font-size:19px}
   .qa-row{display:flex;gap:10px;align-items:center}
   .qa-box{flex:1;display:flex;align-items:center;gap:8px;border:2px solid var(--t-line);border-radius:14px;padding:6px 8px 6px 14px;background:var(--t-card)}
@@ -404,8 +410,8 @@
       return (chs.find(c => c.stage === "none") || chs[0] || {}).id || null;
     };
     function paintInput(msgHtml, value){
-      el.innerHTML = `<div><h3>What's new at school?</h3><span class="hs-sub">Say or type what's coming up, what you did in class, or any tests.</span></div>
-        <form class="qa-row"><div class="qa-box"><input type="text" name="t" autocomplete="off" aria-label="What's new at school" placeholder='e.g. "econ ch 3 coming up, we did polsoc ch 5, geog test friday"'>${SR ? `<button type="button" class="qa-mic" aria-label="Speak" title="Speak">${QA_MIC}</button>` : ""}</div><button class="hs-btn" type="submit" style="min-height:48px;padding:10px 22px;font-size:16px">Add</button></form>
+      el.innerHTML = `<div class="step-h"><span class="step-n" aria-hidden="true">1</span><div><h3>What's new at school?</h3><span class="hs-sub">Say or type what's coming up, what you did in class, or any tests.</span></div></div>
+        <form class="qa-row step-in"><div class="qa-box"><input type="text" name="t" autocomplete="off" aria-label="What's new at school" placeholder='e.g. "econ ch 3 coming up, we did polsoc ch 5, geog test friday"'>${SR ? `<button type="button" class="qa-mic" aria-label="Speak" title="Speak">${QA_MIC}</button>` : ""}</div><button class="hs-btn" type="submit" style="min-height:48px;padding:10px 22px;font-size:16px">Add</button></form>
         <p class="qa-err" hidden></p>${msgHtml || ""}`;
       const form = el.querySelector("form"), input = form.t, err = el.querySelector(".qa-err");
       if (value) input.value = value;
@@ -458,7 +464,7 @@
         return `<div class="qa-item"><span class="qa-ic ${ic[0]}">${ic[1]}</span><span class="qa-b"><span class="k">${esc(k)}</span><span class="t">${a.type === "unclear" || a.type === "exam" || a.type === "deadline" ? t : esc(t)}</span><span class="w">${w}</span></span>${can ? `<input type="checkbox" class="qa-check" data-i="${i}" checked aria-label="Include this">` : ""}</div>`;
       };
       const usable = actions.some(a => a.type !== "unclear");
-      el.innerHTML = `<div><h3>What's new at school?</h3><span class="hs-sub">You said: "${esc(text)}"</span></div>
+      el.innerHTML = `<div class="step-h"><span class="step-n" aria-hidden="true">1</span><div><h3>What's new at school?</h3><span class="hs-sub">You said: "${esc(text)}"</span></div></div>
         <b style="font-size:17px">Here's what I'll do</b>
         <div class="qa-list">${actions.map(item).join("")}</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap">${usable ? `<button class="hs-btn" type="button" data-ok style="min-height:48px;padding:10px 24px;font-size:16px">Looks right</button>` : ""}<button class="hs-btn ghost" type="button" data-again style="min-height:48px;padding:10px 22px;font-size:16px">Start again</button></div>
@@ -549,11 +555,11 @@
           </div></div>
       </div>
       <div class="qa" id="quickAdd"></div>
-      <div class="hs-head"><h3>Where do you want to start today?</h3>${rev.length ? `<button type="button" class="hs-link" data-pick>Can't decide? Pick for me</button>` : ""}</div>
-      ${m.subjects.length ? `<div class="hs-grid tiles">${tiles}</div>` : `<div class="hs-empty">No subjects yet.</div>`}
-      ${rev.length ? `<div class="hs-head" style="margin-top:6px"><h3 style="font-size:17px">Or choose from your revision list</h3><span class="hs-sub">most urgent first</span></div>
-      <div class="hs-grid">${rev.slice(0, showAll ? rev.length : 3).map(c => revCard(c, subjTitle(c.subject_id))).join("")}</div>
-      ${rev.length > 3 ? `<button type="button" class="hs-link" data-all>${showAll ? "Show fewer" : `See all ${rev.length} on my revision list`}</button>` : ""}` : ""}
+      <div class="step2"><div class="hs-head"><div class="step-h"><span class="step-n" aria-hidden="true">2</span><h3>Where do you want to start today?</h3></div>${rev.length ? `<button type="button" class="hs-link" data-pick>Can't decide? Pick for me</button>` : ""}</div>
+      ${m.subjects.length ? `<div class="hs-grid tiles step-in">${tiles}</div>` : `<div class="hs-empty">No subjects yet.</div>`}
+      ${rev.length ? `<div class="hs-head step-in" style="margin-top:6px"><h3 style="font-size:17px">Or choose from your revision list</h3><span class="hs-sub">most urgent first</span></div>
+      <div class="hs-grid step-in">${rev.slice(0, showAll ? rev.length : 3).map(c => revCard(c, subjTitle(c.subject_id))).join("")}</div>
+      ${rev.length > 3 ? `<button type="button" class="hs-link step-in" style="align-self:flex-start;margin-left:44px;padding:0" data-all>${showAll ? "Show fewer" : `See all ${rev.length} on my revision list`}</button>` : ""}` : ""}</div>
     </div>`;
     view.querySelectorAll("[data-subject]").forEach(b => b.onclick = () => openSubject(b.dataset.subject));
     view.querySelectorAll("[data-open]").forEach(b => b.onclick = () => { const c = m.topics[b.dataset.open]; openChapter(c.id, c.subject_id, b.dataset.tab); });
