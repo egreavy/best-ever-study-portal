@@ -92,21 +92,23 @@ module.exports = async (req, res) => {
   if (topicRow[0]) { const s = await getJson(`subjects?select=title&id=eq.${topicRow[0].subject_id}`); subject = s[0] ? String(s[0].title).replace(/\s*\d+$/, "").replace(/\s*PolSoc$/i, "").trim() : ""; }
 
   try {
-    const r = await fetch("https://api.anthropic.com/v1/messages", {
+    const call = () => fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: Object.assign(
         { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
         process.env.ANTHROPIC_WORKSPACE_ID ? { "anthropic-workspace-id": process.env.ANTHROPIC_WORKSPACE_ID.trim() } : {}
       ),
-      body: JSON.stringify({ model: MODEL, max_tokens: 400, system: system({ q, subject, notes: (notesRow[0] || {}).notes || "", name, answer, f }), messages: merged }),
+      body: JSON.stringify({ model: MODEL, max_tokens: 600, system: system({ q, subject, notes: (notesRow[0] || {}).notes || "", name, answer, f }), messages: merged }),
     });
-    const data = await r.json().catch(() => ({}));
+    let r = await call(), data = await r.json().catch(() => ({}));
+    const textOf = d => (d.content || []).filter(b => b.type === "text").map(b => b.text).join("").trim();
+    if (r.ok && !textOf(data)) { console.error("coach-chat empty", data.stop_reason); r = await call(); data = await r.json().catch(() => ({})); }
     if (!r.ok) {
       console.error("coach-chat anthropic", r.status, JSON.stringify(data).slice(0, 400));
       res.status(502).json({ error: `Your tutor couldn't reply just now (${r.status}). Try again.` });
       return;
     }
-    const reply = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("").trim();
+    const reply = textOf(data);
     if (!reply) { res.status(502).json({ error: "Your tutor didn't reply. Try again." }); return; }
     res.status(200).json({ reply, done: /Try writing it again/i.test(reply) });
   } catch (e) {
