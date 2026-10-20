@@ -205,6 +205,8 @@
   .mp-photo{border:2px dashed var(--t-line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px;align-items:stretch}
   .mp-photo img{width:100%;aspect-ratio:1/0.85;object-fit:cover;border-radius:6px}
   .mp-photo input[type=text]{font:inherit;font-size:14px;border:2px solid var(--t-line);border-radius:8px;padding:6px 8px}
+  .mp-photo .mp-btns{flex-wrap:nowrap;gap:6px}
+  .mp-photo .mp-btn{flex:1;text-align:center;font-size:13px;padding:4px 8px;border-width:1.5px}
   .mp-photo .empty{aspect-ratio:1/0.85;border-radius:6px;background:var(--t-soft);display:grid;place-items:center;color:var(--t-muted);font-size:13px;text-align:center;padding:6px}
   .mp-wlist{display:flex;flex-direction:column;gap:10px}
   .mp-w{display:flex;align-items:center;gap:12px;border:2px solid var(--t-line);border-radius:12px;padding:10px 12px}
