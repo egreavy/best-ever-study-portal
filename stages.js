@@ -85,7 +85,7 @@
   .step2{display:flex;flex-direction:column;gap:14px}
   .step2-h{padding:0 24px}
   @media (max-width:600px){.step-in,.hs-link.step-in{margin-left:0 !important}.step2-h{padding:0}}
-  .qa{border:2px solid var(--t-accent-border);background:var(--t-card);border-radius:18px;padding:20px 22px;display:flex;flex-direction:column;gap:12px}
+  .qa{background:var(--t-card);border-radius:18px;padding:24px 26px;display:flex;flex-direction:column;gap:12px}
   .qa h3{margin:0;font-size:19px}
   .qa-row{display:flex;gap:10px;align-items:center}
   .qa-box{flex:1;display:flex;align-items:center;gap:8px;border:2px solid var(--t-line);border-radius:14px;padding:6px 8px 6px 14px;background:var(--t-card)}
@@ -109,6 +109,49 @@
   .qa-check{flex:none;width:26px;height:26px;accent-color:var(--t-accent);cursor:pointer}
   .qa-msg{background:var(--t-accent-tint);border-radius:12px;padding:12px 16px;font-size:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
   .qa-err{color:#a32020;font-size:14px;margin:0}
+  .hc{gap:28px}
+  .hc-top{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;padding:4px 2px 0}
+  .hc-hello{display:flex;flex-direction:column;gap:4px}
+  .hc-hello h2{margin:0;font-size:28px;line-height:1.2}
+  .hc-hello span{font-size:16px;color:var(--t-muted)}
+  .hc-meta{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+  .hc-streak{font-size:15px;font-weight:700;color:var(--t-accent);background:var(--t-accent-tint);border-radius:999px;padding:5px 12px}
+  .hc-weeklink{font-size:14px;color:var(--t-muted)}
+  .hc-week{background:var(--t-card);border-radius:18px;padding:18px 22px;display:flex;gap:24px;align-items:center;flex-wrap:wrap;margin-top:-14px}
+  .hc-days{display:flex;gap:6px}
+  .hc-day{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;color:var(--t-muted)}
+  .hc-day i{width:18px;height:18px;border-radius:50%;background:var(--t-soft2);display:block;box-sizing:border-box}
+  .hc-day.on i{background:var(--t-accent)}
+  .hc-day.today{color:var(--t-ink);font-weight:700}
+  .hc-day.today:not(.on) i{background:none;border:2px dashed var(--t-accent)}
+  .hc-stats{flex:1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+  .hc-stats div{display:flex;flex-direction:column}
+  .hc-stats b{font-size:19px}
+  .hc-stats span{font-size:13px;color:var(--t-muted)}
+  .qa .step-h h3,.hc-card .step-h h3{margin:0;font-size:20px}
+  .hc-card{background:var(--t-card);border-radius:18px;padding:24px 26px;display:flex;flex-direction:column;gap:20px}
+  .hc-best{background:var(--t-accent-tint);border-radius:14px;padding:18px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .hc-best-b{flex:1 1 240px;display:flex;flex-direction:column;gap:3px;min-width:0}
+  .hc-eyebrow{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--t-accent)}
+  .hc-best-t{font-size:19px;font-weight:700;line-height:1.3}
+  .hc-best-s{font-size:15px}
+  .hc-go{font-size:17px;padding:12px 28px;min-height:50px}
+  .hc-sec{display:flex;flex-direction:column;gap:10px}
+  .hc-label{font-size:15px;font-weight:700;color:var(--t-muted)}
+  .hc-chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+  .hc-chip{border:none;background:var(--t-soft);border-radius:12px;padding:10px 14px;display:flex;flex-direction:column;gap:7px;text-align:left;font:inherit;color:var(--t-ink);cursor:pointer;min-width:0}
+  .hc-chip:hover{background:var(--t-soft2)}
+  .hc-chip b{font-size:15px;line-height:1.25}
+  .hc-chip .hs-bar{margin-top:auto}
+  .hc-chip .hs-bar{height:5px}
+  .hc-chip:focus-visible,.hc-row:focus-visible{outline:3px solid var(--t-accent);outline-offset:2px}
+  .hc-list{display:flex;flex-direction:column}
+  .hc-row{display:flex;align-items:center;gap:14px;padding:12px 0;border:none;border-top:1px solid var(--t-soft2);background:none;font:inherit;color:var(--t-ink);text-align:left;cursor:pointer;width:100%}
+  .hc-row:hover .hc-row-t{text-decoration:underline}
+  .hc-row-b{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+  .hc-row-t{font-size:16px;font-weight:700;line-height:1.35}
+  .hc-row-s{font-size:14px;color:var(--t-muted)}
+  @media (max-width:600px){.hc-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.hc-meta{align-items:flex-start}.hc-card,.qa{padding:20px 18px}.hc-go{width:100%}}
   .hs-empty{background:var(--t-card);border-radius:14px;padding:18px;color:var(--t-muted)}
   @media (max-width:700px){.hs-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hs-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
   @media (max-width:460px){.hs-grid{grid-template-columns:1fr}.hs-grid.tiles{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.hs-tile{padding:12px 14px;gap:6px}.hs-tile b{font-size:16px}.hs-row{padding:12px 14px;gap:10px;flex-wrap:wrap}.hs-row .hs-row-b{flex-basis:calc(100% - 60px)}}
@@ -194,6 +237,10 @@
     if (c.stage === "test") return (c.stats && (c.stats.tried || c.stats.triedEver)) ? [4, "Testing"] : [3, "Done in class"];
     if (c.stage === "learn") return [2, "Learning"];
     return [1, "Not started"];
+  }
+  function stepsArrows(c){
+    const [n, label] = stepLevel(c);
+    return `<span class="hs-arrows" role="img" aria-label="Step ${n} of 4: ${label}">${[1,2,3,4].map(i => `<i${i <= n ? ' class="on"' : ""}></i>`).join("")}</span>`;
   }
   function stepsMark(c){
     const [n, label] = stepLevel(c);
@@ -317,7 +364,8 @@
       const testDays = c.testOn ? (parseDate(c.testOn) - startOfDay(new Date())) / DAY : null;
       if (testDays !== null && testDays >= 0) score = testDays;
       else if (c.stage === "refresh" && !c.done) score = 0 + Math.max(0, (c.examDate - new Date()) / DAY);
-      else if (c.flag) score = 40;
+      else if (c.flag && c.flag.note) score = 40;
+      else if (c.flag && c.stage === "none") score = 300;
       else if (c.stage === "test" && c.stats.fixes) score = 100 - c.stats.fixes;
       else if (c.stage === "test") score = c.stats.total ? 150 : 400;
       else if (c.stage === "learn" && !c.done) score = 200;
@@ -412,7 +460,7 @@
     };
     function paintInput(msgHtml, value){
       el.innerHTML = `<div class="step-h"><span class="step-n" aria-hidden="true">1</span><div><h3>What's new at school?</h3><span class="hs-sub">Say or type what's coming up, what you did in class, or any tests.</span></div></div>
-        <form class="qa-row step-in"><div class="qa-box"><input type="text" name="t" autocomplete="off" aria-label="What's new at school" placeholder='e.g. "econ ch 3 coming up, we did polsoc ch 5, geog test friday"'>${SR ? `<button type="button" class="qa-mic" aria-label="Speak" title="Speak">${QA_MIC}</button>` : ""}</div><button class="hs-btn" type="submit" style="min-height:48px;padding:10px 22px;font-size:16px">Add</button></form>
+        <form class="qa-row"><div class="qa-box"><input type="text" name="t" autocomplete="off" aria-label="What's new at school" placeholder='e.g. "econ ch 3 coming up, we did polsoc ch 5, geog test friday"'>${SR ? `<button type="button" class="qa-mic" aria-label="Speak" title="Speak">${QA_MIC}</button>` : ""}</div><button class="hs-btn ghost" type="submit" style="min-height:48px;padding:10px 22px;font-size:16px">Add</button></form>
         <p class="qa-err" hidden></p>${msgHtml || ""}`;
       const form = el.querySelector("form"), input = form.t, err = el.querySelector(".qa-err");
       if (value) input.value = value;
@@ -528,44 +576,60 @@
   function renderHome(view, m, { profile, openChapter, openSubject, state, sb, reload }){
     addCss();
     const w = m.week;
+    const hour = new Date().getHours();
+    const hello = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
     const letters = ["M","T","W","T","F","S","S"], todayKey = dayKey(new Date());
     const dots = letters.map((l, i) => {
       const d = new Date(w.ws.getTime() + i * DAY), k = dayKey(d);
-      return `<span class="hs-day${w.days.has(k) ? " on" : ""}${k === todayKey ? " today" : ""}"><i></i>${l}</span>`;
+      return `<span class="hc-day${w.days.has(k) ? " on" : ""}${k === todayKey ? " today" : ""}"><i></i>${l}</span>`;
     }).join("");
     const rev = revisionList(m);
+    const best = rev[0] || null;
+    const rest = rev.slice(1);
     const showAll = state && state.homeShowAll;
     const subjTitle = id => (m.bySubject[id] || {}).title || "";
-    const tiles = m.subjects.map(s => {
+    const weekOpen = state && state.weekOpen;
+    const chips = m.subjects.map(s => {
       const b = subjectBar(s.chapters);
-      const line = s.chapters.length ? `${plural(s.chapters.length, "chapter", "chapters")}${b.parts.length ? " · " + b.parts.slice(0, 2).join(" · ") : " · not started"}` : "No chapters yet";
-      return `<button type="button" class="hs-tile" data-subject="${s.id}"><b>${esc(s.title)}</b>${b.bar}<span class="hs-sub">${esc(line)}</span></button>`;
+      return `<button type="button" class="hc-chip" data-subject="${s.id}"><b>${esc(s.title)}</b>${b.bar}</button>`;
     }).join("");
-    view.innerHTML = `<div class="hs">
-      <div class="hs-hi">
-        <div class="hs-hi-top">
-          <div><h2>Hi ${esc(profile.name)}</h2><p class="hs-tag-line">Learn it before class. Test it after. Refresh it before exams.</p></div>
-          <div class="hs-streak"><div class="hs-days" aria-label="Days studied this week">${dots}</div><div class="hs-streak-n"><b>${w.streak}</b><span>day streak</span></div></div>
+    const bestNote = best ? [subjTitle(best.subject_id), best.flag && best.flag.note ? best.flag.note : "", best.line].filter(Boolean).join(" · ") : "";
+    const row = c => `<button type="button" class="hc-row" data-open="${c.id}" data-tab="${TAB_FOR[c.stage]}">
+        <span class="hc-row-b"><span class="hc-row-t">${esc(shortTitle(c.title))}</span><span class="hc-row-s">${esc(subjTitle(c.subject_id))} · ${esc(c.flag && c.flag.note ? c.flag.note : stepLevel(c)[1].toLowerCase())}</span></span>
+        ${stepsArrows(c)}<span class="hs-chev" aria-hidden="true">›</span></button>`;
+    view.innerHTML = `<div class="hs hc">
+      <div class="hc-top">
+        <div class="hc-hello"><h2>${hello}, ${esc(profile.name)}</h2><span>Learn it before class. Test it after. Refresh it before exams.</span></div>
+        <div class="hc-meta">
+          ${w.streak ? `<span class="hc-streak">${plural(w.streak, "day", "day")} streak</span>` : ""}
+          <button type="button" class="hs-link hc-weeklink" data-week aria-expanded="${!!weekOpen}">This week: ${hm(w.testSec)} testing</button>
         </div>
-        <div class="hs-week"><span class="hs-eyebrow">This week</span>
-          <div class="hs-stats">
-            <div class="hs-stat"><b>${hm(w.testSec)}</b><span>testing myself</span></div>
-            <div class="hs-stat"><b>${w.learnMin ? "about " + hm(w.learnMin * 60) : "0 m"}</b><span>learning</span></div>
-            <div class="hs-stat"><b>${w.answered}</b><span>questions answered</span></div>
-            <div class="hs-stat"><b>${w.fixed}</b><span>answers fixed</span></div>
-          </div></div>
       </div>
+      ${weekOpen ? `<div class="hc-week">
+        <div class="hc-days" aria-label="Days studied this week">${dots}</div>
+        <div class="hc-stats">
+          <div><b>${hm(w.testSec)}</b><span>testing myself</span></div>
+          <div><b>${w.learnMin ? "about " + hm(w.learnMin * 60) : "0 m"}</b><span>learning</span></div>
+          <div><b>${w.answered}</b><span>questions answered</span></div>
+          <div><b>${w.fixed}</b><span>answers fixed</span></div>
+        </div></div>` : ""}
       <div class="qa" id="quickAdd"></div>
-      <div class="step2"><div class="hs-head step2-h"><div class="step-h"><span class="step-n" aria-hidden="true">2</span><h3>Where do you want to start today?</h3></div>${rev.length ? `<button type="button" class="hs-link" data-pick>Can't decide? Pick for me</button>` : ""}</div>
-      ${m.subjects.length ? `<div class="hs-grid tiles">${tiles}</div>` : `<div class="hs-empty">No subjects yet.</div>`}
-      ${rev.length ? `<div class="hs-head" style="margin-top:6px"><h3 style="font-size:17px">Or choose from your revision list</h3><span class="hs-sub">most urgent first</span></div>
-      <div class="hs-grid">${rev.slice(0, showAll ? rev.length : 3).map(c => revCard(c, subjTitle(c.subject_id))).join("")}</div>
-      ${rev.length > 3 ? `<button type="button" class="hs-link" style="align-self:flex-start;padding:0" data-all>${showAll ? "Show fewer" : `See all ${rev.length} on my revision list`}</button>` : ""}` : ""}</div>
+      <div class="hc-card">
+        <div class="step-h"><span class="step-n" aria-hidden="true">2</span><h3>Where do you want to start?</h3></div>
+        ${best ? `<div class="hc-best">
+          <span class="hc-best-b"><span class="hc-eyebrow">Best place to start</span><span class="hc-best-t">${esc(shortTitle(best.title))}</span><span class="hc-best-s">${esc(bestNote)}</span></span>
+          <button type="button" class="hs-btn hc-go" data-open="${best.id}" data-tab="${TAB_FOR[best.stage]}">${GO[best.stage].replace(" ›", "")}</button></div>` : ""}
+        ${m.subjects.length ? `<div class="hc-sec"><span class="hc-label">${best ? "Or pick a subject" : "Pick a subject"}</span><div class="hc-chips">${chips}</div></div>` : `<div class="hs-empty">No subjects yet.</div>`}
+        ${rest.length ? `<div class="hc-sec"><span class="hc-label">Or something from your revision list</span>
+          <div class="hc-list">${rest.slice(0, showAll ? rest.length : 3).map(row).join("")}</div>
+          ${rest.length > 3 ? `<button type="button" class="hs-link" style="align-self:flex-start" data-all>${showAll ? "Show fewer" : `See all ${rest.length}`}</button>` : ""}</div>` : ""}
+      </div>
     </div>`;
     view.querySelectorAll("[data-subject]").forEach(b => b.onclick = () => openSubject(b.dataset.subject));
     view.querySelectorAll("[data-open]").forEach(b => b.onclick = () => { const c = m.topics[b.dataset.open]; openChapter(c.id, c.subject_id, b.dataset.tab); });
-    const pick = view.querySelector("[data-pick]"); if (pick) pick.onclick = () => { const c = rev[0]; openChapter(c.id, c.subject_id, TAB_FOR[c.stage]); };
-    const all = view.querySelector("[data-all]"); if (all) all.onclick = () => { state.homeShowAll = !showAll; renderHome(view, m, { profile, openChapter, openSubject, state, sb, reload }); };
+    const again = () => renderHome(view, m, { profile, openChapter, openSubject, state, sb, reload });
+    const all = view.querySelector("[data-all]"); if (all) all.onclick = () => { state.homeShowAll = !showAll; again(); };
+    view.querySelector("[data-week]").onclick = () => { state.weekOpen = !weekOpen; again(); };
     if (sb) mountQuickAdd(view.querySelector("#quickAdd"), m, { sb, profile, reload, state });
   }
 
