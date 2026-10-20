@@ -45,6 +45,12 @@
   .tutor-lines{display:flex;flex-direction:column;gap:6px;margin-top:6px;max-height:240px;overflow:auto;font-size:14px;line-height:1.45}
   .tutor-lines p{margin:0;padding:6px 10px;border-radius:10px;background:var(--t-soft)}
   .tutor-lines p.me{background:var(--t-accent-tint)}
+  .coach{border:2px solid var(--t-accent-border);background:var(--t-accent-tint);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+  .coach-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .coach-top .tutor-icon{width:40px;height:40px;border-radius:12px}
+  .coach-top .tutor-icon svg{width:20px;height:20px}
+  .coach-title{flex:1 1 160px;min-width:0;font-weight:700;font-size:15px;line-height:1.3}
+  .coach-title small{display:block;font-weight:400;color:var(--t-muted);font-size:13px}
   `;
 
 
@@ -102,6 +108,120 @@ ${notes || "(no notes for this chapter)"}
 
 Question list:
 ${questions.map(fmt).join("\n")}`;
+  }
+
+  // "Improve this with my tutor": a short spoken coaching call about ONE answer the student has just had marked.
+  function coachPrompt({ name, subject, title, notes, q, answer, f }){
+    const isExam = q.qtype === "exam";
+    const score = f.marks_available ? `${f.marks_awarded} out of ${f.marks_available}` : "";
+    return `You are ${name}'s spoken tutor for Leaving Certificate Higher Level ${subject}, chapter "${title}". ${name} is dyslexic. This is a short live voice call about ONE answer ${name} has just written and had marked. Your job is to coach ${name} to improve it, not to give the answer.
+
+The question${isExam && q.source ? ` (${q.source}, ${q.marks} marks)` : ""}:
+${q.prompt}
+
+${name}'s answer:
+${answer || "(answer was a photo; see the marker's notes)"}
+
+How it was marked${score ? `: ${score}` : ""}. ${f.summary || ""}
+What went well: ${(f.went_well || []).join(" ") || "-"}
+What to improve: ${(f.to_improve || []).join(" ") || "-"}
+${q.marking_scheme ? `Marking scheme: ${q.marking_scheme}` : ""}
+Model answer (for YOU only, never read it out or recite it): ${q.model_answer || "-"}
+
+How to run the call:
+- Talk like a friendly tutor on a call. One to three short sentences per turn. Plain everyday words. No lists or symbols.
+- Start with one specific thing ${name} did well, in one sentence.
+- Then work through the biggest missing points, at most three, one at a time. For each one: say briefly what the examiner wanted, ask ${name} a question that leads them to the missing idea, and wait.
+- Make ${name} do the thinking. If stuck, give a small hint. Only explain the point fully after a second try.
+- When ${name} has the idea, help them say it as one clear exam sentence, then say "Add that to your answer."
+- Explain how the marks work when it helps, for example "40 marks means about four well explained points with examples."
+- Never dictate or recite a full answer for ${name} to copy. Use only facts from the notes below.
+- Speech recognition can mishear names and terms. Judge the idea, not exact words.
+- Finish after the main points are covered, or if ${name} wants to stop: sum up in one or two sentences what to add, then say "Tap Try writing it again and add those points." and say goodbye.
+
+Chapter notes (use only these facts):
+${notes || "(no notes for this chapter)"}`;
+  }
+
+  let coachBusy = false;
+  async function coachAnswer(slot, { topic, profile, sb, question: q, answer, feedback: f, onEnd }){
+    if (!slot || coachBusy) return;
+    addCss();
+    const box = document.createElement("div");
+    box.className = "coach";
+    box.innerHTML = `
+      <div class="coach-top">
+        <span class="tutor-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v5"/></svg></span>
+        <span class="coach-title">Improving your answer with your tutor<small>Talk it through. Your tutor helps you find what you missed.</small></span>
+        <button class="tutor-orb" type="button" disabled>Starting…</button>
+      </div>
+      <p class="tutor-status" aria-live="polite">Allow the microphone if your browser asks.</p>
+      <button class="tutor-end" type="button" hidden>End call</button>
+      <p class="tutor-err" hidden></p>
+      <details class="tutor-log" hidden><summary>Show what was said</summary><div class="tutor-lines"></div></details>`;
+    slot.replaceChildren(box);
+    const orb = box.querySelector(".tutor-orb"), status = box.querySelector(".tutor-status"), endBtn = box.querySelector(".tutor-end"),
+      errEl = box.querySelector(".tutor-err"), log = box.querySelector(".tutor-log"), lines = box.querySelector(".tutor-lines");
+    let convo = null, transcript = [], saved = false, callStart = 0, finished = false;
+    coachBusy = true;
+    const addLine = (role, text) => {
+      if (!text) return; log.hidden = false;
+      transcript.push({ role: role === "user" ? "user" : "agent", text: String(text).slice(0, 2000) });
+      const p = document.createElement("p"); if (role === "user") p.className = "me";
+      p.textContent = (role === "user" ? "You: " : "Tutor: ") + text; lines.appendChild(p); lines.scrollTop = lines.scrollHeight;
+    };
+    const save = () => {
+      if (saved) return; saved = true;
+      if (transcript.length) sb("tutor_sessions", { method: "POST", prefer: "return=minimal",
+        body: [{ profile_id: profile.id, topic_id: topic.id, transcript: transcript.slice(-200), results: { mode: "coach", question_id: q.id, marks_awarded: f.marks_awarded ?? null, marks_available: f.marks_available ?? null } }] }).catch(() => {});
+      if (callStart) {
+        const sec = Math.min(Math.round((Date.now() - callStart) / 1000), 3600); callStart = 0;
+        if (sec > 0) sb("study_time", { method: "POST", prefer: "return=minimal", body: [{ profile_id: profile.id, topic_id: topic.id, kind: "test", seconds: sec }] }).catch(() => {});
+      }
+    };
+    const finish = (msg) => {
+      if (finished) return; finished = true; coachBusy = false; convo = null;
+      save();
+      orb.disabled = true; orb.className = "tutor-orb"; orb.textContent = "Call ended";
+      endBtn.hidden = true; status.textContent = msg || "";
+      if (onEnd) onEnd({ talked: transcript.length > 0 });
+    };
+    try {
+      const notesRow = await sb(`topic_notes?select=notes&topic_id=eq.${topic.id}`).catch(() => []);
+      const prompt = coachPrompt({ name: profile.name, subject: topic.subject_title || "", title: topic.title, notes: (notesRow && notesRow[0] || {}).notes || "", q, answer, f });
+      const firstMessage = f.marks_available
+        ? `Hi ${profile.name}. You got ${f.marks_awarded} out of ${f.marks_available} on that one. Let's see if we can get you more marks. Ready?`
+        : `Hi ${profile.name}. Let's make that answer even better. Ready?`;
+      const [lib, tokRes] = await Promise.all([ loadLib(), fetch("/api/tutor-token", { method: "POST" }) ]);
+      const tok = await tokRes.json().catch(() => ({}));
+      if (!tokRes.ok || !tok.token) throw new Error(tok.error || "The voice tutor could not start.");
+      convo = await lib.Conversation.startSession({
+        conversationToken: tok.token,
+        connectionType: "webrtc",
+        overrides: { agent: { prompt: { prompt }, firstMessage } },
+        clientTools: { record_result: async () => "ignored" },
+        onConnect: () => { callStart = Date.now(); orb.disabled = false; endBtn.hidden = false; status.textContent = "Connected. Just talk."; },
+        onModeChange: ({ mode }) => {
+          orb.className = "tutor-orb " + (mode === "speaking" ? "speaking" : "listening");
+          orb.textContent = mode === "speaking" ? "Tutor talking" : "Listening…";
+          status.textContent = mode === "speaking" ? "You can interrupt any time." : "Your turn. Just talk.";
+        },
+        onMessage: ({ message, role, source }) => addLine(role || (source === "ai" ? "agent" : "user"), message),
+        onError: (m) => { errEl.textContent = "Something went wrong with the connection."; errEl.hidden = false; console.warn("coach error", m); },
+        onDisconnect: () => finish(transcript.length ? "Nice work. Now add those points to your answer." : "Call ended.")
+      });
+      endBtn.onclick = async () => { endBtn.disabled = true; try { await convo.endSession(); } catch (e) { finish(""); } };
+      const watch = setInterval(() => { if (!box.isConnected) { clearInterval(watch); if (convo) convo.endSession(); else finish(""); } }, 1000);
+      window.addEventListener("pagehide", () => { if (convo) convo.endSession(); save(); }, { once: true });
+    } catch (e) {
+      const msg = /Permission|NotAllowed|denied/i.test(String(e && (e.name + e.message)))
+        ? "The tutor needs your microphone. Allow it in your browser's settings for this site, then try again."
+        : (e && e.message) || "The voice tutor could not start.";
+      errEl.textContent = msg; errEl.hidden = false;
+      finished = true; coachBusy = false;
+      orb.hidden = true; status.textContent = "";
+      if (onEnd) onEnd({ talked: false, failed: true });
+    }
   }
 
   async function mountTutor(slot, { topic, profile, sb }){
@@ -183,7 +303,7 @@ ${questions.map(fmt).join("\n")}`;
         const latest = {}, src = {}, reviews = {};
         (attempts || []).forEach(a => { if (latest[a.question_id] === undefined) { latest[a.question_id] = Number(a.result); src[a.question_id] = a.source; } });
         (revRows || []).forEach(r => { if (!reviews[r.question_id]) reviews[r.question_id] = r; });
-        const lastRows = await sb(`tutor_sessions?select=transcript,created_at&profile_id=eq.${profile.id}&topic_id=eq.${topic.id}&order=created_at.desc&limit=1`);
+        const lastRows = await sb(`tutor_sessions?select=transcript,created_at&profile_id=eq.${profile.id}&topic_id=eq.${topic.id}&results->>mode=is.null&order=created_at.desc&limit=1`);
         const lastSession = lastRows && lastRows[0] && (lastRows[0].transcript || []).length ? lastRows[0] : null;
         const prompt = buildPrompt({ name: profile.name, subject: topic.subject_title || "", title: topic.title, notes: (notesRow[0] || {}).notes || "", questions, latest, lastSession, reviews, src });
         const chapterName = topic.title.replace(/^Ch\s*\d+:\s*/i, "");
@@ -244,4 +364,5 @@ ${questions.map(fmt).join("\n")}`;
   }
 
   window.mountTutor = mountTutor;
+  window.coachAnswer = coachAnswer;
 })();

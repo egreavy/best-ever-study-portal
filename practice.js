@@ -76,6 +76,9 @@
   .pr-btn{border:2px solid var(--t-accent);background:var(--t-accent);color:var(--t-on-accent);border-radius:999px;padding:8px 18px;font-weight:700;font-size:15px;cursor:pointer;font-family:inherit;min-height:40px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap}
   .pr-btn.big{font-size:16px;padding:11px 24px;min-height:46px}
   .pr-btn.ghost{background:var(--t-card);color:var(--t-accent)}
+  .pr-btn svg{width:18px;height:18px;margin-right:6px;flex:none}
+  .pr-improve{display:flex;flex-direction:column;gap:10px}
+  .pr-up{font-weight:700;color:var(--t-accent)}
   .pr-btn.dark{background:var(--t-ink);border-color:var(--t-ink)}
   .pr-btn[disabled]{opacity:.6;cursor:default}
   .pr-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
@@ -322,16 +325,16 @@
 
     function next(){
       if (session.i >= session.queue.length) return finish();
-      const { q, retry } = session.queue[session.i];
+      const entry = session.queue[session.i], { q, retry } = entry;
       const label = q.qtype === "exam" ? (isPast(q) ? `Past paper · ${esc(q.source || "")} · ${q.marks || 5} marks` : `Exam-style question · ${q.marks || 5} marks`) : q.qtype === "recall" ? "Short answer" : "Quick quiz";
       const card = h(`<div class="pr-card">
-        <div class="pr-row" style="justify-content:space-between"><button type="button" class="pr-btn ghost" data-stop>Stop</button><span class="pr-small" style="font-variant-numeric:tabular-nums">${retry ? "Second try" : `Question ${session.i+1} of ${session.total}`}</span></div>
+        <div class="pr-row" style="justify-content:space-between"><button type="button" class="pr-btn ghost" data-stop>Stop</button><span class="pr-small" style="font-variant-numeric:tabular-nums">${entry.again ? "Improving your answer" : retry ? "Second try" : `Question ${session.i+1} of ${session.total}`}</span></div>
         <div class="pr-progress"><i style="width:${Math.min(session.i,session.total)/session.total*100}%"></i></div>
         <div class="pr-meta"><span>${label}</span></div>
         <p class="pr-q">${esc(q.prompt)}</p></div>`);
       card.querySelector("[data-stop]").onclick = () => session.results.length ? finish() : home();
       session.t0 = session.t0 || Date.now();
-      if (q.qtype === "mcq") mcqView(card, q, retry); else writtenView(card, q, retry);
+      if (q.qtype === "mcq") mcqView(card, q, retry); else writtenView(card, q, retry, entry);
       slot.replaceChildren(card);
       card.scrollIntoView({ block:"start", behavior:"smooth" });
     }
@@ -366,7 +369,26 @@
       card.append(opts);
     }
 
-    function writtenView(card, q, retry){
+    // After marking: talk it through with the tutor, then have another go
+    function improveRow(card, q, text, f, entry){
+      const wrap = h(`<div class="pr-improve">
+        <div class="pr-row">${window.coachAnswer ? `<button type="button" class="pr-btn" data-coach>${MIC_SVG}Improve this with my tutor</button>` : ""}<button type="button" class="pr-btn ghost" data-again>Try writing it again</button></div>
+        <div data-coachslot></div></div>`);
+      const coachBtn = wrap.querySelector("[data-coach]"), againBtn = wrap.querySelector("[data-again]"), cslot = wrap.querySelector("[data-coachslot]");
+      againBtn.onclick = () => {
+        cslot.replaceChildren();
+        session.queue.splice(session.i + 1, 0, { q, retry:true, again:true, prev:text, before: { marks_awarded: f.marks_awarded, marks_available: f.marks_available } });
+        session.total++; session.i++; next();
+      };
+      if (coachBtn) coachBtn.onclick = () => {
+        coachBtn.hidden = true;
+        window.coachAnswer(cslot, { topic, profile, sb, question:q, answer:text, feedback:f,
+          onEnd: ({ failed }) => { if (failed) coachBtn.hidden = false; else { againBtn.classList.remove("ghost"); againBtn.focus({ preventScroll:true }); } } });
+      };
+      card.append(wrap);
+    }
+
+    function writtenView(card, q, retry, entry = {}){
       const images = [], isExam = q.qtype === "exam";
       const box = h(`<div style="display:flex;flex-direction:column;gap:10px">
         <p class="pr-tip">Type your answer, tap the microphone to speak it, or add a photo of a written answer.</p>
@@ -380,6 +402,13 @@
         <p class="pr-err" hidden></p></div>`);
       const ta = box.querySelector("textarea"), thumbs = box.querySelector(".pr-thumbs"), file = box.querySelector("input[type=file]"), err = box.querySelector(".pr-err");
       const fbBtn = box.querySelector("[data-fb]"), selfBtn = box.querySelector("[data-self]");
+      if (entry.again) {
+        ta.value = entry.prev || "";
+        box.querySelector(".pr-tip").textContent = entry.before
+          ? `Last time: ${entry.before.marks_awarded} out of ${entry.before.marks_available}. Add the points you talked through, then check it again.`
+          : "Add the points you talked through, then check it again.";
+        selfBtn.style.display = "none";
+      }
       const inputsRow = box.querySelector("[data-inputs]");
       attachMic(inputsRow, ta, err);
       const stopMic = () => { if (inputsRow._stopMic) inputsRow._stopMic(); };
@@ -391,7 +420,10 @@
         }
         file.value = "";
       };
-      const done = (v, source) => { if (!retry) { session.results.push({ q, v }); save(q.id, v, source); } };
+      const done = (v, source) => {
+        if (entry.again) { const r = session.results.find(x => x.q === q); if (r) r.v = Math.max(r.v, v); save(q.id, v, source); }
+        else if (!retry) { session.results.push({ q, v }); save(q.id, v, source); }
+      };
       const modelBlock = () => `<details><summary>${isExam ? "See the model answer and marking scheme" : "See a good answer"}</summary><div class="pr-fb" style="margin-top:8px"><span>${esc(q.model_answer||"")}</span>${q.marking_scheme?`<span class="pr-scheme"><strong>Marking scheme:</strong> ${esc(q.marking_scheme)}</span>`:""}</div></details>`;
 
       fbBtn.onclick = async () => {
@@ -410,11 +442,12 @@
           box.remove();
           const list = a => a.length ? `<ul>${a.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "";
           card.append(h(`<div class="pr-fb ${v===1?"good":""}">
-            <div class="pr-row" style="gap:16px">${isExam ? `<span class="pr-score">${f.marks_awarded}/${f.marks_available}</span>` : ""}<span>${esc(f.summary||"")}</span></div>
+            <div class="pr-row" style="gap:16px">${isExam ? `<span class="pr-score">${f.marks_awarded}/${f.marks_available}</span>` : ""}<span>${entry.before && f.marks_awarded > entry.before.marks_awarded ? `<span class="pr-up">Up from ${entry.before.marks_awarded} to ${f.marks_awarded}. </span>` : ""}${esc(f.summary||"")}</span></div>
             ${f.went_well.length ? `<h4>What you got right</h4>${list(f.went_well)}` : ""}
             ${f.to_improve.length ? `<h4>${isExam ? "How to get more marks" : "To make it better"}</h4>${list(f.to_improve)}` : ""}
             ${f.example ? `<h4>For example</h4><span>${esc(f.example)}</span>` : ""}
           </div>`));
+          if (f.to_improve.length && (!f.marks_available || f.marks_awarded < f.marks_available)) improveRow(card, q, text || f.transcription || "", f, entry);
           card.append(h(modelBlock()));
           nextBtn(card);
         } catch (e) {
