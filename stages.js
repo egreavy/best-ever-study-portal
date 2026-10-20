@@ -383,6 +383,7 @@
       else if (c.stage === "refresh" && !c.done) score = 0 + Math.max(0, (c.examDate - new Date()) / DAY);
       else if (c.flag && c.flag.note) score = 40;
       else if (c.flag && c.stage === "none") score = 300;
+      else if (c.stage === "test" && c.stats.total && c.classDoneAt && !c.stats.tried && (Date.now() - new Date(c.classDoneAt)) / DAY <= 7) score = 60 + (Date.now() - new Date(c.classDoneAt)) / DAY;
       else if (c.stage === "test" && c.stats.fixes) score = 100 - c.stats.fixes;
       else if (c.stage === "test") score = c.stats.total ? 150 : 400;
       else if (c.stage === "learn" && !c.done) score = 200;
