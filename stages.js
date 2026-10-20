@@ -82,8 +82,9 @@
   .step-n{flex:none;width:32px;height:32px;border-radius:50%;background:var(--t-accent);color:var(--t-on-accent);display:grid;place-items:center;font-size:17px;font-weight:700}
   .step-in{margin-left:44px}
   .hs-link.step-in{margin-left:44px}
-  .step2{display:flex;flex-direction:column;gap:14px;padding:0 24px}
-  @media (max-width:600px){.step-in,.hs-link.step-in{margin-left:0 !important}.step2{padding:0}}
+  .step2{display:flex;flex-direction:column;gap:14px}
+  .step2-h{padding:0 24px}
+  @media (max-width:600px){.step-in,.hs-link.step-in{margin-left:0 !important}.step2-h{padding:0}}
   .qa{border:2px solid var(--t-accent-border);background:var(--t-card);border-radius:18px;padding:20px 22px;display:flex;flex-direction:column;gap:12px}
   .qa h3{margin:0;font-size:19px}
   .qa-row{display:flex;gap:10px;align-items:center}
@@ -389,7 +390,7 @@
     return `<button type="button" class="hs-card" data-open="${c.id}" data-tab="${TAB_FOR[c.stage]}">${tag}
       <span class="hs-sub">${esc(subjTitle)} · Ch ${esc(String(c.order_num ?? ""))}</span>
       <span class="t">${esc(shortTitle(c.title))}</span>
-      <span class="s">${esc(c.line)}${note}</span>
+      ${c.stage === "none" && !note ? "" : `<span class="s">${esc(c.line)}${note}</span>`}
       <span class="go">${GO[c.stage]}</span></button>`;
   }
 
@@ -555,11 +556,11 @@
           </div></div>
       </div>
       <div class="qa" id="quickAdd"></div>
-      <div class="step2"><div class="hs-head"><div class="step-h"><span class="step-n" aria-hidden="true">2</span><h3>Where do you want to start today?</h3></div>${rev.length ? `<button type="button" class="hs-link" data-pick>Can't decide? Pick for me</button>` : ""}</div>
-      ${m.subjects.length ? `<div class="hs-grid tiles step-in">${tiles}</div>` : `<div class="hs-empty">No subjects yet.</div>`}
-      ${rev.length ? `<div class="hs-head step-in" style="margin-top:6px"><h3 style="font-size:17px">Or choose from your revision list</h3><span class="hs-sub">most urgent first</span></div>
-      <div class="hs-grid step-in">${rev.slice(0, showAll ? rev.length : 3).map(c => revCard(c, subjTitle(c.subject_id))).join("")}</div>
-      ${rev.length > 3 ? `<button type="button" class="hs-link step-in" style="align-self:flex-start;margin-left:44px;padding:0" data-all>${showAll ? "Show fewer" : `See all ${rev.length} on my revision list`}</button>` : ""}` : ""}</div>
+      <div class="step2"><div class="hs-head step2-h"><div class="step-h"><span class="step-n" aria-hidden="true">2</span><h3>Where do you want to start today?</h3></div>${rev.length ? `<button type="button" class="hs-link" data-pick>Can't decide? Pick for me</button>` : ""}</div>
+      ${m.subjects.length ? `<div class="hs-grid tiles">${tiles}</div>` : `<div class="hs-empty">No subjects yet.</div>`}
+      ${rev.length ? `<div class="hs-head" style="margin-top:6px"><h3 style="font-size:17px">Or choose from your revision list</h3><span class="hs-sub">most urgent first</span></div>
+      <div class="hs-grid">${rev.slice(0, showAll ? rev.length : 3).map(c => revCard(c, subjTitle(c.subject_id))).join("")}</div>
+      ${rev.length > 3 ? `<button type="button" class="hs-link" style="align-self:flex-start;padding:0" data-all>${showAll ? "Show fewer" : `See all ${rev.length} on my revision list`}</button>` : ""}` : ""}</div>
     </div>`;
     view.querySelectorAll("[data-subject]").forEach(b => b.onclick = () => openSubject(b.dataset.subject));
     view.querySelectorAll("[data-open]").forEach(b => b.onclick = () => { const c = m.topics[b.dataset.open]; openChapter(c.id, c.subject_id, b.dataset.tab); });
