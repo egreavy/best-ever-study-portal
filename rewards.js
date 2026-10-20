@@ -26,7 +26,7 @@
   };
   const BGS = { plain: "Plain", dots: "Dots", grid: "Grid paper", stripes: "Stripes", waves: "Waves" };
   const FONTS = {
-    big: { name: "Big letters", family: "Anton, Impact, sans-serif", ratio: .46, upper: true },
+    big: { name: "Block letters", family: "Anton, Impact, sans-serif", ratio: .46, upper: true },
     hand: { name: "Handwriting", family: "Caveat, cursive", ratio: .42 },
     graffiti: { name: "Graffiti", family: "'Permanent Marker', cursive", ratio: .62 }
   };
@@ -88,6 +88,7 @@
       data.writings = [s.startsWith("img:") ? { id: "w1", image: s.slice(4) } : { id: "w1", text: s.replace(/^text:/, ""), style: "hand" }];
       if (data.layout && data.layout.sig) { data.layout["wr:w1"] = data.layout.sig; delete data.layout.sig; }
     }
+    data.signature = null;
     data.stickers = (data.stickers || []).filter(k => STICKERS[k]);
   }
   function allowance(){
@@ -245,7 +246,8 @@
       </div>
       <div class="mp-sec"><div class="mp-hrow"><span class="mp-h">Writing</span><span class="mp-sub">${ws.length} of ${al.writing}</span></div>
         <span class="mp-sub">Your name, a motto, or upload your signature or a note from a friend.</span>
-        <div class="mp-wlist">${ws.map(w => `<div class="mp-w"><span class="pv">${wPrev(w)}</span><button type="button" class="mp-btn" data-wdel="${esc(w.id)}">Remove</button></div>`).join("")}</div>
+        <div class="mp-wlist">${ws.map(w => `<div class="mp-w" style="flex-wrap:wrap"><span class="pv">${wPrev(w)}</span><button type="button" class="mp-btn" data-wdel="${esc(w.id)}">${ws.length >= al.writing ? "Remove and add new" : "Remove"}</button>
+          ${w.image ? "" : `<div class="mp-styles" style="flex-basis:100%">${Object.keys(FONTS).map(k => `<button type="button" class="mp-style" data-wrestyle="${esc(w.id)}" data-k="${k}" aria-pressed="${(w.style || "hand") === k}"><span style="font-family:${FONTS[k].family}">${esc(FONTS[k].upper ? String(w.text).toUpperCase() : w.text)}</span><small>${FONTS[k].name}</small></button>`).join("")}</div>`}</div>`).join("")}</div>
         ${ws.length < al.writing ? `<div class="mp-new">
           <div class="mp-tabs" role="group" aria-label="How to add writing"><button type="button" data-wtab="type" aria-pressed="true">Type it</button><button type="button" data-wtab="draw" aria-pressed="false">Draw it</button><button type="button" data-wtab="upload" aria-pressed="false">Upload a picture</button></div>
           <div data-wpane="type"><input class="mp-in" type="text" maxlength="30" placeholder="e.g. Leaving Cert 2028" aria-label="Your writing" data-wtext>
@@ -261,7 +263,7 @@
         <div class="mp-photos">${Array.from({ length: al.photo }, (_, i) => i + 1).map(n => {
           const ph = (data.photos || []).find(p => p.slot === n);
           return `<div class="mp-photo">${ph ? `<img alt="Photo ${n}" src="${ph.image}">` : `<div class="empty">Add a photo</div>`}
-            <input type="text" maxlength="24" placeholder="Caption" value="${esc(ph ? ph.caption || "" : "")}" data-cap="${n}" aria-label="Caption for photo ${n}">
+            <input type="text" maxlength="24" placeholder="Caption the photo" value="${esc(ph ? ph.caption || "" : "")}" data-cap="${n}" aria-label="Caption for photo ${n}">
             <div class="mp-btns"><label class="mp-btn">${ph ? "Change" : "Add photo"}<input type="file" accept="image/*" data-photo="${n}"></label>${ph ? `<button type="button" class="mp-btn" data-photo-remove="${n}">Remove</button>` : ""}</div></div>`;
         }).join("")}</div>
       </div>
@@ -287,6 +289,7 @@
       say(""); await saveSettings(sb, { stickers: list }); again();
     });
     // writing
+    el.querySelectorAll("[data-wrestyle]").forEach(b => b.onclick = async () => { const id = b.dataset.wrestyle; await saveSettings(sb, { writings: ws.map(w => w.id === id ? Object.assign({}, w, { style: b.dataset.k }) : w) }); again(); });
     el.querySelectorAll("[data-wdel]").forEach(b => b.onclick = async () => { const id = b.dataset.wdel; const L = Object.assign({}, data.layout); delete L["wr:" + id]; await saveSettings(sb, { writings: ws.filter(w => w.id !== id), layout: L }); again(); });
     const newId = () => "w" + Date.now().toString(36);
     const addWriting = async (w) => { await saveSettings(sb, { writings: ws.concat([Object.assign({ id: newId() }, w)]) }); again(); };
