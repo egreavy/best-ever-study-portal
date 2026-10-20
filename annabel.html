@@ -378,6 +378,8 @@
   .cv-class-done{color:var(--t-muted)}
   .cv-back-learn{background:none;border:none;padding:4px 0;font:inherit;font-size:15px;font-weight:700;color:var(--t-accent);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
   #examSlot{margin-bottom:12px}
+  #examSlot[hidden],#refreshSlot[hidden],#prepBackLearn[hidden]{display:none!important}
+  #voiceCard select{font:inherit;font-size:15px;padding:8px 10px;border-radius:10px;border:2px solid var(--t-line);flex:none}
   .cv-tab:focus-visible,.cv-btn:focus-visible,.cv-check:focus-visible,.cv-flag:focus-visible{outline:3px solid var(--t-accent);outline-offset:2px;}
   .cv-card{background:var(--t-card);border-radius:14px;padding:16px 20px;margin:0 0 10px;}
   .cv-empty{color:var(--t-muted);font-size:15px;line-height:1.5;}
@@ -712,16 +714,18 @@ async function renderChapter(){
     if (info.stage === "test") set("test", info.done ? "tick" : "now", "After class · " + (info.done ? "done" : "now"), !info.done);
     else if (info.tested || (info.stage === "refresh" && (info.stats.triedEver || 0) >= Math.ceil((info.stats.total || 1) * 0.8))) set("test", "tick", "After class · done", false);
     else set("test", "", "After class", false);
-    if (info.stage === "refresh") set("refresh", info.done ? "tick" : "now", "Before exams · " + (info.done ? "done" : "now"), !info.done);
-    else set("refresh", "", info.refreshOpen ? "Before exams · open" : info.opensOn && info.examDate >= new Date(new Date().setHours(0,0,0,0)) ? "Before exams · from " + Stages.fmtDate(info.opensOn) : "Before exams", false);
+    const st = info.stats || {}, nPast = st.pastTotal || 0, nEx = st.examTotal || 0;
+    const prepSub = nPast ? `${nPast} past paper question${nPast === 1 ? "" : "s"}` : nEx ? `${nEx} exam question${nEx === 1 ? "" : "s"}` : "Before exams";
+    if (info.stage === "refresh") set("refresh", info.done ? "tick" : "now", info.done ? "Exam ready" : "Exams soon · now", !info.done);
+    else set("refresh", "", prepSub, false);
     return info;
   }
   function paintClassFoot(){
     const el = document.getElementById("classFoot"); if (!el) return;
     if (classDoneAt) {
-      el.innerHTML = `<span class="cv-class-done">Done in class on ${esc(Stages.fmtDate(new Date(classDoneAt)))}. Now test yourself.</span><span style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="cv-btn ghost" data-undo-class>Undo</button><button type="button" class="cv-btn" data-goto2="test">Go to Test</button></span>`;
+      el.innerHTML = `<span class="cv-class-done">Done in class on ${esc(Stages.fmtDate(new Date(classDoneAt)))}. Now test yourself.</span><span style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="cv-btn ghost" data-undo-class>Undo</button><button type="button" class="cv-btn" data-goto2="test">Go to Quick Tests</button></span>`;
     } else {
-      el.innerHTML = `<span>Done this chapter in class? Tap here and it moves on to Test.</span><button type="button" class="cv-btn" data-class-done>We've done this in class</button>`;
+      el.innerHTML = `<span>Done this chapter in class? Tap here and it moves on to Quick Tests.</span><button type="button" class="cv-btn" data-class-done>We've done this in class</button>`;
     }
     const d = el.querySelector("[data-class-done]");
     if (d) d.onclick = async () => { d.disabled = true; d.textContent = "Saving…"; await Stages.markClassDone(sb, PROFILE, state.topicId, true); classDoneAt = new Date().toISOString(); paintClassFoot(); paintTabs(); };
@@ -858,7 +862,7 @@ async function renderChapter(){
     updateProgressUI();
   }
 
-  const TABS = [["learn", "Learn"], ["test", "Test"], ["refresh", "Refresh"]];
+  const TABS = [["learn", "Learn"], ["test", "Quick Tests"], ["refresh", "Exam Prep"]];
   // Open on the step he's at (worked out again once the questions have loaded)
   let autoTab = false;
   if (!state.chapterTab || state.chapterTabTopic !== state.topicId) {
@@ -899,8 +903,9 @@ async function renderChapter(){
 
     <section id="tab-refresh" role="tabpanel" aria-labelledby="tabbtn-refresh" hidden>
       <div id="examSlot"></div>
-      <div id="refreshSlot"><div class="cv-card cv-empty">Refresh needs questions for this chapter. They're coming soon.</div></div>
-      <button type="button" class="cv-back-learn" data-goto="learn">Need a reminder first? Go back to Learn &rsaquo;</button>
+      <div id="prepSlot"><div class="cv-card cv-empty">Exam questions for this chapter are coming soon.</div></div>
+      <div id="refreshSlot"></div>
+      <button type="button" class="cv-back-learn" id="prepBackLearn" data-goto="learn">Need a reminder first? Go back to Learn &rsaquo;</button>
     </section>
   </div>
   `;
@@ -933,6 +938,8 @@ async function renderChapter(){
     moreSlot: document.getElementById("practiceMoreSlot"),
     paperSlot: document.getElementById("paperSlot"),
     refreshSlot: document.getElementById("refreshSlot"),
+    prepSlot: document.getElementById("prepSlot"),
+    prepHide: [document.getElementById("examSlot"), document.getElementById("refreshSlot"), document.getElementById("prepBackLearn")],
     rightSlot: document.getElementById("rightSlot"),
     freshSince: () => freshSince,
     goTo: goTab,
@@ -1061,6 +1068,7 @@ async function renderSettings(){
   const html = parent ? `
     <div class="crumb"><span id="settingsBack">&larr; Settings</span></div>
     <div class="section-head"><h2 class="section-title">Parent set-up</h2></div>
+    <div id="voiceCard"></div>
     ${tasksHtml}` : `
     <div class="crumb"><span id="settingsBack">&larr; Home</span></div>
     <div class="section-head"><h2 class="section-title">Settings</h2></div>
@@ -1071,7 +1079,7 @@ async function renderSettings(){
         <div class="look-seg" role="radiogroup" aria-label="Screen">${["light","dark"].map(m => `<button type="button" role="radio" aria-checked="${th.mode === m}" data-mode="${m}">${m === "light" ? "Light" : "Dark"}</button>`).join("")}</div></div>
     </div>` : ""}
     <div id="myPage"></div>
-    <button type="button" class="parent-link" id="parentSetup">Parent set-up: choose which materials show for each subject &rsaquo;</button>
+    <button type="button" class="parent-link" id="parentSetup">Parent set-up: materials and voice tutor time &rsaquo;</button>
   `;
   document.getElementById("view").innerHTML = html;
 
@@ -1089,6 +1097,7 @@ async function renderSettings(){
     state.model = mdl;
     if (mp.isConnected) Decor.panel(mp, { sb, goal: mdl.goal });
   }
+  if (parent && window.TutorLimits) TutorLimits.voicePanel(document.getElementById("voiceCard"), { sb, profile: PROFILE });
   const ps = document.getElementById("parentSetup");
   if (ps) ps.addEventListener("click", () => { state.parentSetup = true; renderSettings(); window.scrollTo({ top: 0 }); });
   document.getElementById("settingsBack").addEventListener("click", () => {

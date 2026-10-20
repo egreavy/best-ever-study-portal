@@ -79,6 +79,31 @@
   .pr-btn svg{width:18px;height:18px;margin-right:6px;flex:none}
   .pr-improve{display:flex;flex-direction:column;gap:10px}
   .pr-up{font-weight:700;color:var(--t-accent)}
+  .pp-hero{background:var(--t-card);border:2px solid var(--t-accent-border);border-radius:18px;padding:22px 24px;display:flex;align-items:center;gap:18px;margin:0 0 10px}
+  .pp-hero .ft-icon{width:58px;height:58px;border-radius:16px}
+  .pp-hero-b{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+  .pp-hero-t{font-size:21px;font-weight:700;line-height:1.25}
+  .pp-hero .pr-btn.big{flex:none;font-size:17px;padding:12px 28px;min-height:50px}
+  @media (max-width:600px){.pp-hero{flex-wrap:wrap}.pp-hero .pr-btn.big{width:100%}}
+  .pp-list{background:var(--t-card);border-radius:14px;padding:2px 20px;margin:0 0 10px;display:flex;flex-direction:column}
+  .pp-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;padding:12px 0 4px}
+  .pp-head b{font-size:14px;color:var(--t-muted)}.pp-head span{font-size:13px;color:var(--t-muted)}
+  .pp-row{display:flex;align-items:center;gap:14px;padding:12px 0;border:none;border-top:1px solid var(--t-line);background:none;text-align:left;font:inherit;color:inherit;cursor:pointer;width:100%}
+  .pp-row:hover .pp-q{text-decoration:underline}
+  .pp-row:focus-visible{outline:3px solid var(--t-accent);outline-offset:2px}
+  .pp-yr{flex:none;width:48px;font-size:16px;font-weight:700;color:var(--t-accent)}
+  .pp-b{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+  .pp-s{font-size:13px;font-weight:700;color:var(--t-muted)}
+  .pp-q{font-size:15px;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .pp-chip{flex:none;font-size:13px;font-weight:700;border-radius:999px;padding:3px 10px;background:var(--t-soft2);color:var(--t-muted);white-space:nowrap}
+  .pp-chip.good{background:var(--t-accent-tint);color:var(--t-accent)}
+  .pp-chip.mid{background:var(--t-warn-tint);color:var(--t-warn)}
+  .pp-more{padding:12px 0;border:none;border-top:1px solid var(--t-line);background:none;text-align:left;font:inherit;font-weight:700;font-size:15px;color:var(--t-accent);cursor:pointer}
+  .pp-link{border:none;background:none;padding:0 4px;margin:0 0 14px;font:inherit;font-weight:700;font-size:15px;color:var(--t-accent);cursor:pointer;text-align:left}
+  .pp-next{background:var(--t-accent-tint);border:none;border-radius:14px;padding:14px 20px;margin:0 0 10px;display:flex;align-items:center;gap:14px;width:100%;text-align:left;font:inherit;color:var(--t-ink);cursor:pointer}
+  .pp-next .pr-li-body{flex:1}
+  .pp-next b.go{flex:none;color:var(--t-accent);font-size:15px}
+  .pp-before{font-size:19px;font-weight:700;margin:16px 2px 8px}
   .pr-btn.dark{background:var(--t-ink);border-color:var(--t-ink)}
   .pr-btn[disabled]{opacity:.6;cursor:default}
   .pr-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
@@ -205,7 +230,7 @@
 
   // ---- mount ----
   async function mountPractice(slot, opts){
-    const { topic, profile, sb, moreSlot, paperSlot, refreshSlot, rightSlot, goTo = () => {}, onStats = () => {}, onStartFresh = async () => {}, hideDuring = [] } = opts;
+    const { topic, profile, sb, moreSlot, paperSlot, refreshSlot, prepSlot, rightSlot, goTo = () => {}, onStats = () => {}, onStartFresh = async () => {}, hideDuring = [], prepHide = [] } = opts;
     const freshSince = typeof opts.freshSince === "function" ? opts.freshSince : () => opts.freshSince || null;
     if (!slot || !topic) return null;
     addCss();
@@ -226,7 +251,6 @@
       const mcqN = Math.max(0, 8 - pick.length - 2);
       fill(newMcq.length >= mcqN ? newMcq : mcq, mcqN);
       if (!pick.some(q => q.qtype === "recall")) fill(rec, 1);
-      if (!pick.some(q => q.qtype === "exam")) fill(ex, 1);
       return pick;
     }
     function todaysCaption(pick){
@@ -236,7 +260,6 @@
       if (f) parts.push(`${f} to try again`);
       if (m) parts.push(`${m} new multiple choice`);
       if (pick.some(q => q.qtype === "recall" && !fixes().includes(q))) parts.push("1 short answer");
-      if (pick.some(q => q.qtype === "exam" && !fixes().includes(q))) parts.push("1 exam question");
       return parts.join(" · ");
     }
 
@@ -244,8 +267,9 @@
     const weakSpots = () => questions.filter(q => prog.everWeak.has(q.id) || !prog.ever.has(q.id));
     function paintStats(){
       const fx = fixes(), kn = known(), un = untried();
-      onStats({ total: questions.length, tried: questions.length - un.length, fixes: fx.length, right: kn.length, triedEver: prog.ever.size, lastAt: prog.lastAt });
+      onStats({ total: questions.length, tried: questions.length - un.length, fixes: fx.length, right: kn.length, triedEver: prog.ever.size, lastAt: prog.lastAt, pastTotal: ex.filter(isPast).length, examTotal: ex.length, examTried: ex.filter(q => prog.latest[q.id] !== undefined).length });
       paintRefresh();
+      if (!session || session.where !== prepSlot) paintPrep();
     }
     function paintRefresh(){
       if (!refreshSlot) return;
@@ -255,25 +279,78 @@
       if (hard) parts.push(`the ${plural(hard, "question", "questions")} you found hard before`);
       if (never) parts.push(`${plural(never, "question", "questions")} you never tried`);
       const weakDesc = parts.length ? parts.join(", plus ").replace(/^t/, "T") + "." + (ws.length > 15 ? " Up to 15 at a time, hardest first." : "") : "You've never got one wrong here. Try Start from scratch instead.";
-      const wrap = h(`<div><p class="pr-choose-label" style="font-size:18px;color:var(--t-ink);margin:2px 0 8px">How do you want to refresh?</p><div class="pr-refresh">
+      const wrap = h(`<div><p class="pp-before">Before your exam</p><div class="pr-refresh">
         <div class="pr-card"><span class="pr-pill">Best when exams are close</span><h3 style="font-size:20px">Focus on weak spots</h3><p class="pr-sub">${esc(weakDesc)}</p><div class="pr-side-btn"><button type="button" class="pr-btn big" data-weak${ws.length ? "" : " disabled"}>Start</button></div></div>
         <div class="pr-card"><span class="pr-pill" style="visibility:hidden">.</span><h3 style="font-size:20px">Start from scratch</h3><p class="pr-sub">Every question comes back as new. Your first results are kept, so you'll see how much stuck.</p>${fresh ? `<p class="pr-small">You started fresh on ${esc(new Date(fresh).toLocaleDateString("en-IE", { day:"numeric", month:"short" }))}: ${plural(known().length, "right", "right")} so far, ${fixes().length} to fix, ${untried().length} to go.</p>` : ""}<div class="pr-side-btn"><button type="button" class="pr-btn big ghost" data-fresh>${fresh ? "Start fresh again" : "Start fresh"}</button></div></div>
       </div></div>`);
       wrap.querySelector("[data-weak]").onclick = () => {
         const hardOnes = shuffle(ws.filter(q => prog.everWeak.has(q.id))), newOnes = shuffle(ws.filter(q => !prog.everWeak.has(q.id)));
-        goTo("test"); start("Weak Spots", hardOnes.concat(newOnes).slice(0, 15));
+        start("Weak Spots", hardOnes.concat(newOnes).slice(0, 15), "prep");
       };
       wrap.querySelector("[data-fresh]").onclick = async (e) => {
         e.target.disabled = true; e.target.textContent = "Starting…";
         await onStartFresh();
         prog = await loadProgress(sb, profile, questions, freshSince());
-        paintStats(); home(); goTo("test"); start("Your Daily Practice", todaysPick());
+        paintStats(); home(); start("Start from scratch", shuffle(questions.slice()).slice(0, 15), "prep");
       };
       refreshSlot.replaceChildren(wrap);
     }
 
+    // ---- Exam Prep tab ----
+    let prepAll = false;
+    const pastSorted = () => ex.filter(isPast).sort((a, b) => String(b.source).localeCompare(String(a.source)) || a.id.localeCompare(b.id));
+    const styleQs = () => ex.filter(q => !isPast(q));
+    const yearOf = q => (String(q.source || "").match(/\b(19|20)\d{2}\b/) || [""])[0];
+    const partOf = q => String(q.source || "").replace(/^\s*(19|20)\d{2}\s*State Exam\s*[-–·]\s*/i, "");
+    function chip(q){
+      const r = prog.reviews[q.id], v = prog.latest[q.id];
+      if (v === undefined) return `<span class="pp-chip">Not tried</span>`;
+      const score = r && r.marks_available ? `${r.marks_awarded}/${r.marks_available}` : v >= 1 ? "Got it" : "Tried";
+      return v >= 1 ? `<span class="pp-chip good">${esc(score)}</span>` : `<span class="pp-chip mid">${esc(score)} · improve</span>`;
+    }
+    function prepQueue(){
+      const past = pastSorted(), style = styleQs();
+      const untriedP = past.filter(q => prog.latest[q.id] === undefined), weakP = past.filter(q => prog.latest[q.id] !== undefined && prog.latest[q.id] < 1);
+      const untriedS = style.filter(q => prog.latest[q.id] === undefined), weakS = style.filter(q => prog.latest[q.id] !== undefined && prog.latest[q.id] < 1);
+      const q = [...untriedP, ...weakP, ...untriedS, ...weakS];
+      return (q.length ? q : [...past, ...style]).slice(0, 5);
+    }
+    function paintPrep(){
+      if (!prepSlot) return;
+      if (!ex.length) { prepSlot.replaceChildren(h(`<div class="pr-card"><p class="pr-sub" style="margin:0">Exam questions for this chapter are coming soon. You can still use the tools below.</p></div>`)); return; }
+      const past = pastSorted(), style = styleQs(), pool = past.length ? past : style;
+      const doneN = pool.filter(q => prog.latest[q.id] !== undefined).length;
+      const years = past.map(yearOf).filter(Boolean).sort();
+      const tag = past.length ? `Real State Exam questions${years.length ? ` · ${years[0] === years[years.length - 1] ? years[0] : years[0] + " to " + years[years.length - 1]}` : ""}` : "Exam-style questions from your textbook";
+      const hero = h(`<div class="pp-hero"><span class="ft-icon">${PAPER_SVG}</span><span class="pp-hero-b"><span class="ft-tag">${esc(tag)}</span><span class="pp-hero-t">Do an exam question</span><span class="pr-sub">Write it, get it marked like the real exam, then improve it with your tutor. ${doneN} of ${pool.length} done.</span></span><button type="button" class="pr-btn big">Start</button></div>`);
+      hero.querySelector("button").onclick = () => start("Exam Prep", prepQueue(), "prep");
+      const nodes = [hero];
+      const row = q => {
+        const b = h(`<button type="button" class="pp-row"><span class="pp-yr">${esc(isPast(q) ? yearOf(q) : "")}</span><span class="pp-b"><span class="pp-s">${esc(isPast(q) ? partOf(q) : "Practice question")} · ${q.marks || 5} marks</span><span class="pp-q">${esc(q.prompt.split("\n")[0])}</span></span>${chip(q)}</button>`);
+        b.onclick = () => start("Exam Prep", [q], "prep");
+        return b;
+      };
+      const list = past.length ? past : style;
+      const best = Object.values(prog.reviews).filter(r => list.some(q => q.id === r.question_id) && r.marks_available).sort((a, b) => b.marks_awarded / b.marks_available - a.marks_awarded / a.marks_available)[0];
+      const box = h(`<div class="pp-list"><div class="pp-head"><b>${past.length ? "Past paper questions" : "Exam questions"}</b>${best ? `<span>Best mark so far ${best.marks_awarded}/${best.marks_available}</span>` : ""}</div></div>`);
+      const show = prepAll ? list : list.slice(0, 4);
+      show.forEach(q => box.append(row(q)));
+      if (list.length > 4) {
+        const m = h(`<button type="button" class="pp-more">${prepAll ? "Show fewer" : `See all ${list.length} ›`}</button>`);
+        m.onclick = () => { prepAll = !prepAll; paintPrep(); };
+        box.append(m);
+      }
+      nodes.push(box);
+      if (past.length && style.length) {
+        const l = h(`<button type="button" class="pp-link">Plus ${plural(style.length, "practice exam question", "practice exam questions")} written from your textbook ›</button>`);
+        l.onclick = () => start("Practice exam questions", style.slice(), "prep");
+        nodes.push(l);
+      }
+      prepSlot.replaceChildren(...nodes);
+    }
+
     // ---- Test tab ----
-    function setChrome(show){ hideDuring.forEach(el => { if (el) el.hidden = !show; }); }
+    function setChrome(show, where){ hideDuring.forEach(el => { if (el) el.hidden = !show; }); prepHide.forEach(el => { if (el) el.hidden = !show; }); }
     function home(){
       session = null; setChrome(true);
       const pick = todaysPick(), fx = fixes();
@@ -283,14 +360,7 @@
           <button type="button" class="pr-btn big" data-today>Start my 10 minutes</button></div>`);
       hero.querySelector("[data-today]").onclick = () => start("Your Daily Practice", pick);
       const nodes = [hero];
-      if (ex.length) {
-        const paper = h(`<button type="button" class="ft">
-          <span class="ft-icon">${PAPER_SVG}</span>
-          <span class="ft-body"><span class="ft-tag">Marked like the real exam</span><span class="ft-title">Exam Question Practice</span><span class="ft-line">${(() => { const n = ex.filter(isPast).length, m = ex.length - n; return [n ? plural(n, "real past paper question", "real past paper questions") : "", m ? plural(m, "exam-style question", "exam-style questions") : ""].filter(Boolean).join(" + "); })()}, with marks and tips</span></span>
-          <span class="ft-chev" aria-hidden="true">›</span></button>`);
-        paper.onclick = () => start("Exam Question Practice", [...ex.filter(isPast).sort((a, b) => String(b.source).localeCompare(String(a.source))), ...ex.filter(q => !isPast(q))]);
-        if (paperSlot) paperSlot.replaceChildren(paper); else nodes.push(paper);
-      }
+      if (paperSlot) paperSlot.replaceChildren();
       slot.replaceChildren(...nodes);
 
       if (moreSlot) {
@@ -302,8 +372,15 @@
         add("Try Again", fx.length ? "Questions you got wrong last time" : "Nothing to fix right now", () => start("Try Again", fx), !fx.length, fx.length || "");
         add("Quick Quiz", "Multiple choice, one tap answers", () => start("Quick Quiz", shuffle(mcq)), !mcq.length);
         if (rec.length) add("Short Answer Practice", "Write a line or two, then compare", () => start("Short Answer Practice", shuffle(rec)));
-        moreSlot.replaceChildren(box);
+        const nodes2 = [box];
+        if (ex.length && prepSlot) {
+          const nx = h(`<button type="button" class="pp-next"><span class="pr-li-body"><span class="pr-li-title">Know this chapter well?</span><span class="pr-li-note">Move on to Exam Prep and try ${ex.some(isPast) ? "a real past paper question" : "an exam question"}.</span></span><b class="go">Exam Prep ›</b></button>`);
+          nx.onclick = () => goTo("refresh");
+          nodes2.push(nx);
+        }
+        moreSlot.replaceChildren(...nodes2);
       }
+      paintPrep();
       if (rightSlot) {
         const kn = known();
         rightSlot.replaceChildren();
@@ -316,9 +393,10 @@
       }
     }
 
-    function start(name, list){
+    function start(name, list, where){
       if (!list || !list.length) return;
-      session = { name, queue: list.map(q => ({ q, retry:false })), i:0, results:[], total:list.length, t0: Date.now() };
+      if (session) { logTime(session); home(); }
+      session = { name, queue: list.map(q => ({ q, retry:false })), i:0, results:[], total:list.length, t0: Date.now(), where: where === "prep" && prepSlot ? prepSlot : slot };
       setChrome(false);
       next();
     }
@@ -335,7 +413,7 @@
       card.querySelector("[data-stop]").onclick = () => session.results.length ? finish() : home();
       session.t0 = session.t0 || Date.now();
       if (q.qtype === "mcq") mcqView(card, q, retry); else writtenView(card, q, retry, entry);
-      slot.replaceChildren(card);
+      session.where.replaceChildren(card);
       card.scrollIntoView({ block:"start", behavior:"smooth" });
     }
 
@@ -372,7 +450,7 @@
     // After marking: talk it through with the tutor, then have another go
     function improveRow(card, q, text, f, entry){
       const wrap = h(`<div class="pr-improve">
-        <div class="pr-row">${window.coachAnswer ? `<button type="button" class="pr-btn" data-coach>${MIC_SVG}Improve this with my tutor</button>` : ""}<button type="button" class="pr-btn ghost" data-again>Try writing it again</button></div>
+        <div class="pr-row">${window.coachAnswer && q.qtype === "exam" ? `<button type="button" class="pr-btn" data-coach>${MIC_SVG}Improve this with my tutor</button>` : ""}<button type="button" class="pr-btn ghost" data-again>Try writing it again</button></div>
         <div data-coachslot></div></div>`);
       const coachBtn = wrap.querySelector("[data-coach]"), againBtn = wrap.querySelector("[data-again]"), cslot = wrap.querySelector("[data-coachslot]");
       againBtn.onclick = () => {
@@ -472,11 +550,12 @@
       const card = h(`<div class="pr-card"><h3>${esc(session.name)}: done</h3>
         <p class="pr-next">${R.length ? `You answered ${plural(R.length, "question", "questions")}. ${plural(good.length, "was", "were")} right${gaps.length ? `, and ${plural(gaps.length, "goes", "go")} on your Try Again list` : ""}.` : "No answers saved this time."}</p>
         ${gaps.length ? `<div class="pr-fb"><h4>To try again next time</h4><ul>${gaps.map(r=>`<li>${esc(shortTitle(r.q))}</li>`).join("")}</ul><span class="pr-tip">Your tutor will start with these too.</span></div>` : ""}
-        <div class="pr-row"><button type="button" class="pr-btn" data-home>Back to Test</button></div></div>`);
+        <div class="pr-row"><button type="button" class="pr-btn" data-home>Back to ${session.where === prepSlot ? "Exam Prep" : "Quick Tests"}</button></div></div>`);
       card.querySelector("[data-home]").onclick = () => home();
       logTime(session);
+      const where = session.where;
       session = null;
-      slot.replaceChildren(card);
+      where.replaceChildren(card);
       card.scrollIntoView({ block:"start", behavior:"smooth" });
     }
 

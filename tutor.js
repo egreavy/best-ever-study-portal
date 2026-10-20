@@ -110,6 +110,48 @@ Question list:
 ${questions.map(fmt).join("\n")}`;
   }
 
+  // ---- daily talking-time allowance (set by a parent in Parent set-up) ----
+  const startOfToday = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+  async function voiceLeft(sb, profile){
+    let limit = 20, used = 0;
+    try {
+      const [st, rows] = await Promise.all([
+        sb(`student_settings?select=voice_daily_min&profile_id=eq.${profile.id}`),
+        sb(`tutor_sessions?select=seconds&profile_id=eq.${profile.id}&created_at=gte.${encodeURIComponent(startOfToday().toISOString())}`)
+      ]);
+      if (st && st[0] && st[0].voice_daily_min != null) limit = Number(st[0].voice_daily_min);
+      used = (rows || []).reduce((n, r) => n + (Number(r.seconds) || 0), 0);
+    } catch (e) {}
+    return { limit, usedSec: used, leftSec: Math.max(0, limit * 60 - used) };
+  }
+  function limitMessage(v){
+    return v.limit <= 0 ? "The voice tutor is turned off for now. You can still write answers and get them marked."
+      : "That's your talking time for today. You can still write answers and get them marked, and the tutor is back tomorrow.";
+  }
+  async function voiceUsage(sb, profile, days){
+    const since = startOfToday(); since.setDate(since.getDate() - (days - 1));
+    try {
+      const rows = await sb(`tutor_sessions?select=seconds&profile_id=eq.${profile.id}&created_at=gte.${encodeURIComponent(since.toISOString())}`);
+      return Math.round((rows || []).reduce((n, r) => n + (Number(r.seconds) || 0), 0) / 60);
+    } catch (e) { return 0; }
+  }
+  // Parent set-up card: daily limit + this week's use
+  async function voicePanel(el, { sb, profile }){
+    if (!el) return;
+    const [v, week] = await Promise.all([voiceLeft(sb, profile), voiceUsage(sb, profile, 7)]);
+    const OPTS = [0, 10, 15, 20, 30, 45, 60];
+    el.innerHTML = `<div class="settings-subject"><h3>Voice tutor</h3>
+      <p class="sub">Talking time is the part that costs money (roughly 10 cent a minute). Written marking isn't limited.</p>
+      <div class="settings-step-row"><div class="settings-step-body"><div class="settings-step-title">Daily talking time for ${esc(profile.name)}</div>
+        <div class="settings-step-blurb">Shared between the tutor and "Improve this with my tutor". Calls end gently when it runs out.</div></div>
+        <select aria-label="Daily talking time">${OPTS.map(m => `<option value="${m}"${m === v.limit ? " selected" : ""}>${m ? m + " min a day" : "Off"}</option>`).join("")}${OPTS.includes(v.limit) ? "" : `<option value="${v.limit}" selected>${v.limit} min a day</option>`}</select></div>
+      <p class="sub" style="margin-top:8px">Used today: ${Math.round(v.usedSec / 60)} min · This week: ${week} min (about €${(week * 0.1).toFixed(2)})</p></div>`;
+    el.querySelector("select").onchange = async (e) => {
+      const m = Number(e.target.value);
+      try { await sb("student_settings", { method: "POST", prefer: "resolution=merge-duplicates,return=minimal", body: [{ profile_id: profile.id, voice_daily_min: m, updated_at: new Date().toISOString() }] }); } catch (err) {}
+    };
+  }
+
   // "Improve this with my tutor": a short spoken coaching call about ONE answer the student has just had marked.
   function coachPrompt({ name, subject, title, notes, q, answer, f }){
     const isExam = q.qtype === "exam";
@@ -137,6 +179,7 @@ How to run the call:
 - Explain how the marks work when it helps, for example "40 marks means about four well explained points with examples."
 - Never dictate or recite a full answer for ${name} to copy. Use only facts from the notes below.
 - Speech recognition can mishear names and terms. Judge the idea, not exact words.
+- Keep the whole call under 4 minutes.
 - Finish after the main points are covered, or if ${name} wants to stop: sum up in one or two sentences what to add, then say "Tap Try writing it again and add those points." and say goodbye.
 
 Chapter notes (use only these facts):
@@ -172,10 +215,11 @@ ${notes || "(no notes for this chapter)"}`;
     };
     const save = () => {
       if (saved) return; saved = true;
-      if (transcript.length) sb("tutor_sessions", { method: "POST", prefer: "return=minimal",
-        body: [{ profile_id: profile.id, topic_id: topic.id, transcript: transcript.slice(-200), results: { mode: "coach", question_id: q.id, marks_awarded: f.marks_awarded ?? null, marks_available: f.marks_available ?? null } }] }).catch(() => {});
+      const sec = callStart ? Math.min(Math.round((Date.now() - callStart) / 1000), 3600) : 0;
+      if (transcript.length || sec) sb("tutor_sessions", { method: "POST", prefer: "return=minimal",
+        body: [{ profile_id: profile.id, topic_id: topic.id, transcript: transcript.slice(-200), seconds: sec, results: { mode: "coach", question_id: q.id, marks_awarded: f.marks_awarded ?? null, marks_available: f.marks_available ?? null } }] }).catch(() => {});
       if (callStart) {
-        const sec = Math.min(Math.round((Date.now() - callStart) / 1000), 3600); callStart = 0;
+        callStart = 0;
         if (sec > 0) sb("study_time", { method: "POST", prefer: "return=minimal", body: [{ profile_id: profile.id, topic_id: topic.id, kind: "test", seconds: sec }] }).catch(() => {});
       }
     };
@@ -186,7 +230,11 @@ ${notes || "(no notes for this chapter)"}`;
       endBtn.hidden = true; status.textContent = msg || "";
       if (onEnd) onEnd({ talked: transcript.length > 0 });
     };
+    let stopTimer = null;
     try {
+      const v = await voiceLeft(sb, profile);
+      if (v.leftSec < 30) throw Object.assign(new Error(limitMessage(v)), { quiet: true });
+      const capSec = Math.min(v.leftSec, 360);
       const notesRow = await sb(`topic_notes?select=notes&topic_id=eq.${topic.id}`).catch(() => []);
       const prompt = coachPrompt({ name: profile.name, subject: topic.subject_title || "", title: topic.title, notes: (notesRow && notesRow[0] || {}).notes || "", q, answer, f });
       const firstMessage = f.marks_available
@@ -200,7 +248,8 @@ ${notes || "(no notes for this chapter)"}`;
         connectionType: "webrtc",
         overrides: { agent: { prompt: { prompt }, firstMessage } },
         clientTools: { record_result: async () => "ignored" },
-        onConnect: () => { callStart = Date.now(); orb.disabled = false; endBtn.hidden = false; status.textContent = "Connected. Just talk."; },
+        onConnect: () => { callStart = Date.now(); orb.disabled = false; endBtn.hidden = false; status.textContent = "Connected. Just talk.";
+          stopTimer = setTimeout(() => { if (convo) convo.endSession(); }, capSec * 1000); },
         onModeChange: ({ mode }) => {
           orb.className = "tutor-orb " + (mode === "speaking" ? "speaking" : "listening");
           orb.textContent = mode === "speaking" ? "Tutor talking" : "Listening…";
@@ -208,7 +257,7 @@ ${notes || "(no notes for this chapter)"}`;
         },
         onMessage: ({ message, role, source }) => addLine(role || (source === "ai" ? "agent" : "user"), message),
         onError: (m) => { errEl.textContent = "Something went wrong with the connection."; errEl.hidden = false; console.warn("coach error", m); },
-        onDisconnect: () => finish(transcript.length ? "Nice work. Now add those points to your answer." : "Call ended.")
+        onDisconnect: () => { clearTimeout(stopTimer); finish(transcript.length ? "Nice work. Now add those points to your answer." : "Call ended."); }
       });
       endBtn.onclick = async () => { endBtn.disabled = true; try { await convo.endSession(); } catch (e) { finish(""); } };
       const watch = setInterval(() => { if (!box.isConnected) { clearInterval(watch); if (convo) convo.endSession(); else finish(""); } }, 1000);
@@ -218,6 +267,7 @@ ${notes || "(no notes for this chapter)"}`;
         ? "The tutor needs your microphone. Allow it in your browser's settings for this site, then try again."
         : (e && e.message) || "The voice tutor could not start.";
       errEl.textContent = msg; errEl.hidden = false;
+      if (e && e.quiet) { errEl.style.color = "var(--t-ink)"; box.querySelector(".coach-title small").textContent = ""; }
       finished = true; coachBusy = false;
       orb.hidden = true; status.textContent = "";
       if (onEnd) onEnd({ talked: false, failed: true });
@@ -270,12 +320,14 @@ ${notes || "(no notes for this chapter)"}`;
       return `You answered ${n} question${n === 1 ? "" : "s"}: ${parts.join(", ")}. Next time the tutor will pick up from here.`;
     }
     let callStart = 0;
+    let stopTimer = null;
     function saveSession(){
-      if (saved || !transcript.length) return; saved = true;
+      clearTimeout(stopTimer);
+      const sec = callStart ? Math.min(Math.round((Date.now() - callStart) / 1000), 7200) : 0;
+      if (saved || (!transcript.length && !sec)) return; saved = true;
       sb("tutor_sessions", { method: "POST", prefer: "return=minimal",
-        body: [{ profile_id: profile.id, topic_id: topic.id, transcript: transcript.slice(-200), results }] });
+        body: [{ profile_id: profile.id, topic_id: topic.id, transcript: transcript.slice(-200), results, seconds: sec }] });
       if (callStart) {
-        const sec = Math.min(Math.round((Date.now() - callStart) / 1000), 7200);
         callStart = 0;
         if (sec > 0) sb("study_time", { method: "POST", prefer: "return=minimal", body: [{ profile_id: profile.id, topic_id: topic.id, kind: "test", seconds: sec }] });
       }
@@ -294,6 +346,10 @@ ${notes || "(no notes for this chapter)"}`;
       orb.disabled = true; orb.textContent = "Starting…"; status.textContent = "Allow the microphone if your browser asks.";
       lines.replaceChildren(); log.hidden = true; results = { got_it:0, partly:0, missed:0 }; transcript = []; saved = false;
       try {
+        const allow = await voiceLeft(sb, profile);
+        if (allow.leftSec < 30) { setIdle(""); showErr(limitMessage(allow)); errEl.style.color = "var(--t-ink)"; return; }
+        errEl.style.color = "";
+        const capSec = Math.min(allow.leftSec, 1800);
         const ids = questions.map(q => q.id);
         const inIds = ids.map(encodeURIComponent).join(",");
         const [attempts, revRows] = ids.length ? await Promise.all([
@@ -305,7 +361,7 @@ ${notes || "(no notes for this chapter)"}`;
         (revRows || []).forEach(r => { if (!reviews[r.question_id]) reviews[r.question_id] = r; });
         const lastRows = await sb(`tutor_sessions?select=transcript,created_at&profile_id=eq.${profile.id}&topic_id=eq.${topic.id}&results->>mode=is.null&order=created_at.desc&limit=1`);
         const lastSession = lastRows && lastRows[0] && (lastRows[0].transcript || []).length ? lastRows[0] : null;
-        const prompt = buildPrompt({ name: profile.name, subject: topic.subject_title || "", title: topic.title, notes: (notesRow[0] || {}).notes || "", questions, latest, lastSession, reviews, src });
+        const prompt = `This call can last about ${Math.max(1, Math.floor(capSec / 60))} minutes. Start wrapping up a minute before then.\n\n` + buildPrompt({ name: profile.name, subject: topic.subject_title || "", title: topic.title, notes: (notesRow[0] || {}).notes || "", questions, latest, lastSession, reviews, src });
         const chapterName = topic.title.replace(/^Ch\s*\d+:\s*/i, "");
         const firstMessage = lastSession
           ? `Hi ${profile.name}, welcome back! Shall we pick up where we left off on ${chapterName}?`
@@ -331,7 +387,8 @@ ${notes || "(no notes for this chapter)"}`;
               return "saved";
             }
           },
-          onConnect: () => { callStart = Date.now(); orb.disabled = false; endBtn.hidden = false; status.textContent = "Connected. Just talk."; },
+          onConnect: () => { callStart = Date.now(); orb.disabled = false; endBtn.hidden = false; status.textContent = "Connected. Just talk.";
+            clearTimeout(stopTimer); stopTimer = setTimeout(() => { if (convo) convo.endSession(); }, capSec * 1000); },
           onModeChange: ({ mode }) => {
             orb.className = "tutor-orb " + (mode === "speaking" ? "speaking" : "listening");
             orb.textContent = mode === "speaking" ? "Tutor talking" : "Listening…";
@@ -365,4 +422,5 @@ ${notes || "(no notes for this chapter)"}`;
 
   window.mountTutor = mountTutor;
   window.coachAnswer = coachAnswer;
+  window.TutorLimits = { voiceLeft, voicePanel, limitMessage };
 })();

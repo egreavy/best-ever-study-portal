@@ -1,5 +1,5 @@
-// Learn it before class. Test it after. Refresh it before exams.
-// Works out where each chapter is (Learn, Test or Refresh) and draws the homepage
+// Learn it before class. Test it after. Prep it for the exam.
+// Works out where each chapter is (Learn, Quick Tests or Exam Prep) and draws the homepage
 // and the subject pages. Shared by every student page.
 (function(){
   const css = `
@@ -217,8 +217,8 @@
   function statusLine(s){
     const st = s.stats || {};
     if (s.stage === "refresh") {
-      if (s.done) return "Refreshed and ready";
-      if (s.freshSince) return st.fixes ? `Refreshing · ${plural(st.fixes, "to fix", "to fix")}` : `Refreshing · ${plural((st.total||0) - (st.tried||0), "question", "questions")} to go`;
+      if (s.done) return "Exam ready";
+      if (s.freshSince) return st.fixes ? `Exam prep · ${plural(st.fixes, "to fix", "to fix")}` : `Exam prep · ${plural((st.total||0) - (st.tried||0), "question", "questions")} to go`;
       return `Exams ${untilText(s.examDate)}${st.lastAt ? " · last tested " + ago(st.lastAt) : ""}`;
     }
     if (s.stage === "test") {
@@ -237,10 +237,10 @@
     }
     return "Not started";
   }
-  const TAG = { learn: "Learn", test: "Test", refresh: "Refresh" };
+  const TAG = { learn: "Learn", test: "Quick Tests", refresh: "Exam Prep" };
   // Four arrows: not started > learning >> done in class >>> testing >>>>
   function stepLevel(c){
-    if (c.stage === "refresh") return [4, "Refreshing"];
+    if (c.stage === "refresh") return [4, "Exam prep"];
     if (c.stage === "test") return (c.stats && (c.stats.tried || c.stats.triedEver)) ? [4, "Testing"] : [3, "Done in class"];
     if (c.stage === "learn") return [2, "Learning"];
     return [1, "Not started"];
@@ -253,7 +253,7 @@
     const [n, label] = stepLevel(c);
     return `<span class="hs-steps" aria-label="Step ${n} of 4: ${label}"><span class="hs-arrows" aria-hidden="true">${[1,2,3,4].map(i => `<i${i <= n ? ' class="on"' : ""}></i>`).join("")}</span><span class="hs-steps-l">${label}</span></span>`;
   }
-  const GO = { learn: "Keep learning ›", test: "Test myself ›", refresh: "Refresh ›", none: "Start ›" };
+  const GO = { learn: "Keep learning ›", test: "Test myself ›", refresh: "Exam prep ›", none: "Start ›" };
   const TAB_FOR = { learn: "learn", test: "test", refresh: "refresh", none: "learn" };
 
   // ---- load everything the homepage and subject pages need ----
@@ -404,7 +404,7 @@
     return items.map(i => i.c);
   }
 
-  // ---- exam date box (homepage subject pages and the Refresh tab) ----
+  // ---- exam date box (subject pages and the Exam Prep tab) ----
   function examBox(el, { sb, profile, subjectId, exam, onChange, compact }){
     function paint(editing){
       const d = exam ? parseDate(exam.exam_date) : null;
@@ -412,7 +412,7 @@
       const today = startOfDay(new Date());
       el.className = "hs-exam" + (d && today >= opens && today <= d ? " soon" : "");
       if (editing || !exam) {
-        el.innerHTML = `<div class="hs-exam-text"><b>${exam ? "Change your exam date" : "When are your next exams?"}</b><span class="hs-sub">Refresh opens ${REFRESH_DAYS / 7} weeks before, so you're ready in time.</span></div>
+        el.innerHTML = `<div class="hs-exam-text"><b>${exam ? "Change your exam date" : "When are your next exams?"}</b><span class="hs-sub">Your revision list puts exam prep first ${REFRESH_DAYS / 7} weeks before, so you're ready in time.</span></div>
           <form><input type="text" name="label" placeholder="e.g. Christmas exams" value="${esc(exam ? exam.label : "")}" aria-label="Which exams"><input type="date" name="date" value="${esc(exam ? exam.exam_date : "")}" aria-label="Exam date" required><button class="hs-btn" type="submit">Save</button>${exam ? `<button class="hs-btn ghost" type="button" data-cancel>Cancel</button><button class="hs-link" type="button" data-remove>Remove date</button>` : ""}</form>`;
         el.querySelector("form").onsubmit = async (e) => {
           e.preventDefault();
@@ -430,7 +430,7 @@
         return;
       }
       const open = today >= opens;
-      el.innerHTML = `<div class="hs-exam-text"><b>${esc(exam.label)} · ${esc(fmtDate(d))}</b><span class="hs-sub">${today > d ? "These exams are over. Set your next exam date." : open ? `Refresh is open: exams ${untilText(d)}.` : `Refresh opens ${esc(fmtDate(opens))}.${compact ? "" : " You can start early if you like."}`}</span></div><button class="hs-link" type="button" data-edit>Change date</button>`;
+      el.innerHTML = `<div class="hs-exam-text"><b>${esc(exam.label)} · ${esc(fmtDate(d))}</b><span class="hs-sub">${today > d ? "These exams are over. Set your next exam date." : open ? `Exams ${untilText(d)}. Time for exam prep.` : `Exam prep goes to the top of your list on ${esc(fmtDate(opens))}.`}</span></div><button class="hs-link" type="button" data-edit>Change date</button>`;
       el.querySelector("[data-edit]").onclick = () => paint(true);
     }
     paint(false);
@@ -531,11 +531,11 @@
         const chSelect = () => { const chs = (m.bySubject[a.subject_id] || { chapters: [] }).chapters.slice().sort((x, y) => (x.order_num || 0) - (y.order_num || 0));
           return `<select data-i="${i}" aria-label="Which chapter">${chs.map(x => `<option value="${x.id}"${x.id === a.topic_id ? " selected" : ""}>Ch ${x.order_num ?? ""}: ${esc(shortTitle(x.title))}</option>`).join("")}</select>`; };
         let ic, k, t, w;
-        if (a.type === "class_done") { ic = ["done", "✓"]; k = chName(c); t = shortTitle(c.title); w = "Done in class: moves on to Test"; }
+        if (a.type === "class_done") { ic = ["done", "✓"]; k = chName(c); t = shortTitle(c.title); w = "Done in class: moves on to Quick Tests"; }
         else if (a.type === "coming_up") { ic = ["up", "›"]; k = chName(c); t = shortTitle(c.title); w = `Coming up${d ? " " + d : " in class"}: added to your revision list to learn ahead`; }
         else if (a.type === "class_test") { ic = ["date", "!"]; k = `${subjTitle(a.subject_id)} · class test`; t = d; w = `Which chapter? ${chSelect()}`; }
         else if (a.type === "deadline") { ic = ["date", "!"]; k = `${subjTitle(a.subject_id)} · ${esc(a.label || "deadline")}`; t = `Due ${d}`; w = `For ${chSelect()}`; }
-        else if (a.type === "exam") { ic = ["date", "!"]; k = subjTitle(a.subject_id); t = `${esc(a.label || "Exams")} · ${d}`; w = "Sets the exam date, so Refresh opens 3 weeks before"; }
+        else if (a.type === "exam") { ic = ["date", "!"]; k = subjTitle(a.subject_id); t = `${esc(a.label || "Exams")} · ${d}`; w = "Sets the exam date, so exam prep starts 3 weeks before"; }
         else { ic = ["unclear", "?"]; k = "Not sure about this part"; t = `"${esc(a.said)}"`; w = esc(a.reason || "Couldn't match it to a chapter."); }
         const can = a.type !== "unclear";
         return `<div class="qa-item"><span class="qa-ic ${ic[0]}">${ic[1]}</span><span class="qa-b"><span class="k">${esc(k)}</span><span class="t">${a.type === "unclear" || a.type === "exam" || a.type === "deadline" ? t : esc(t)}</span><span class="w">${w}</span></span>${can ? `<input type="checkbox" class="qa-check" data-i="${i}" checked aria-label="Include this">` : ""}</div>`;
@@ -570,7 +570,7 @@
           await setStatus(c.id, { class_done_at: new Date().toISOString() });
           if (prevFlag && /^coming up/i.test(prevFlag.note || "")) await sb(`topic_flags?topic_id=eq.${c.id}&profile_id=eq.${profile.id}`, { method: "DELETE", prefer: "return=minimal" });
           undo.push(async () => { await setStatus(c.id, { class_done_at: prevAt }); if (prevFlag) await restoreFlag(c.id, prevFlag); });
-          said.push(`${chName(c)} moved on to Test`);
+          said.push(`${chName(c)} moved on to Quick Tests`);
         } else if (a.type === "coming_up" && c) {
           const prevFlag = flagPrev(c.id);
           await setFlag(c.id, "Coming up in class" + (a.date ? " " + fmtDate(parseDate(a.date)) : ""));
@@ -628,7 +628,7 @@
         ${stepsArrows(c)}<span class="hs-chev" aria-hidden="true">›</span></button>`;
     view.innerHTML = `<div class="hs hc">
       <div class="hc-top">
-        <div class="hc-hello"><h2>${hello}, ${esc(profile.name)}</h2><span>Learn it before class. Test it after. Refresh it before exams.</span></div>
+        <div class="hc-hello"><h2>${hello}, ${esc(profile.name)}</h2><span>Learn it before class. Test it after. Prep it for the exam.</span></div>
         <div class="hc-meta">
           ${m.goal ? `<span class="hc-streak" title="A streak day is ${m.goal.minutes} minutes or more">${m.goal.streakNow ? `${plural(m.goal.streakNow, "day", "day")} streak` : `Today: ${m.goal.today} of ${m.goal.minutes} min`}</span>` : ""}
           <button type="button" class="hs-link hc-weeklink" data-week aria-expanded="${!!weekOpen}">This week: ${hm(w.testSec)} testing</button>
@@ -702,8 +702,8 @@
           <span class="hs-row-b"><span class="hs-row-t" style="font-size:16px">${esc(title)}</span><span class="hs-row-s">${esc(sub)}</span></span>
           <span class="hs-show">${isOpen ? "Hide" : "Show"}</span></button>${isOpen ? list.map(row).join("") : ""}`;
     };
-    const opensSoon = s.exam ? (() => { const d = parseDate(s.exam.exam_date); return d ? `Refresh opens ${fmtDate(new Date(d - REFRESH_DAYS * DAY))}` : ""; })() : "";
-    const testedSub = tested.some(c => c.stage === "refresh") ? "Refreshed and ready" : (opensSoon || "Well done");
+    const opensSoon = s.exam ? (() => { const d = parseDate(s.exam.exam_date); return d ? `Exam prep from ${fmtDate(new Date(d - REFRESH_DAYS * DAY))}` : ""; })() : "";
+    const testedSub = tested.some(c => c.stage === "refresh") ? "Exam ready" : (opensSoon || "Well done");
     let listHtml = "";
     listHtml += fold("tested", `${rangeText(tested)} · ${tested.length === 1 ? "tested" : "all tested"}`, testedSub, tested, "✓");
     if (onTheGo.length) listHtml += `<span class="hs-group">On the go</span>` + onTheGo.map(row).join("");
