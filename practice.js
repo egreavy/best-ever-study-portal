@@ -283,9 +283,9 @@
       if (ex.length) {
         const paper = h(`<button type="button" class="ft">
           <span class="ft-icon">${PAPER_SVG}</span>
-          <span class="ft-body"><span class="ft-tag">Marked like the real exam</span><span class="ft-title">Exam Question Practice</span><span class="ft-line">${ex.some(isPast) ? plural(ex.length, "past paper question", "past paper questions") : plural(ex.length, "exam-style question", "exam-style questions")}, with marks and tips</span></span>
+          <span class="ft-body"><span class="ft-tag">Marked like the real exam</span><span class="ft-title">Exam Question Practice</span><span class="ft-line">${(() => { const n = ex.filter(isPast).length, m = ex.length - n; return [n ? plural(n, "real past paper question", "real past paper questions") : "", m ? plural(m, "exam-style question", "exam-style questions") : ""].filter(Boolean).join(" + "); })()}, with marks and tips</span></span>
           <span class="ft-chev" aria-hidden="true">›</span></button>`);
-        paper.onclick = () => start("Exam Question Practice", ex.slice());
+        paper.onclick = () => start("Exam Question Practice", [...ex.filter(isPast).sort((a, b) => String(b.source).localeCompare(String(a.source))), ...ex.filter(q => !isPast(q))]);
         if (paperSlot) paperSlot.replaceChildren(paper); else nodes.push(paper);
       }
       slot.replaceChildren(...nodes);
