@@ -79,6 +79,18 @@
   .pr-btn svg{width:18px;height:18px;margin-right:6px;flex:none}
   .pr-improve{display:flex;flex-direction:column;gap:10px}
   .pr-up{font-weight:700;color:var(--t-accent)}
+  .pr-how{display:flex;flex-direction:column;gap:8px;background:var(--t-soft);border-radius:12px;padding:12px 14px}
+  .pr-how[hidden]{display:none}
+  .pr-how-l{font-weight:700;font-size:15px}
+  .pr-chat{border:2px solid var(--t-accent-border);background:var(--t-accent-tint);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+  .pr-chat-top{display:flex;align-items:center;gap:12px}
+  .pr-chat-top .ft-icon{width:40px;height:40px;border-radius:12px}.pr-chat-top .ft-icon svg{width:20px;height:20px}
+  .pr-chat-t{font-weight:700;font-size:15px;line-height:1.3}.pr-chat-t small{display:block;font-weight:400;color:var(--t-muted);font-size:13px}
+  .pr-chat-log{display:flex;flex-direction:column;gap:8px;max-height:360px;overflow:auto}
+  .pr-chat-log p{margin:0;padding:10px 12px;border-radius:12px;background:var(--t-card);font-size:16px;line-height:1.5;max-width:88%;align-self:flex-start}
+  .pr-chat-log p.me{background:var(--t-accent);color:var(--t-on-accent);align-self:flex-end}
+  .pr-chat-log p.typing{color:var(--t-muted);font-style:italic}
+  .pr-chat textarea{min-height:64px;background:var(--t-card)}
   .pp-hero{background:var(--t-card);border:2px solid var(--t-accent-border);border-radius:18px;padding:22px 24px;display:flex;align-items:center;gap:18px;margin:0 0 10px}
   .pp-hero .ft-icon{width:58px;height:58px;border-radius:16px}
   .pp-hero-b{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
@@ -141,6 +153,7 @@
   const speakTip = () => `<p class="pr-tip">To speak instead of typing: ${isTouch ? "tap the microphone on your keyboard" : isMac ? "press the Fn (Globe) key twice" : "press Windows + H"}.</p>`;
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   // Adds a Speak my answer button that types what he says into the box (Chrome, Edge, Safari)
+  const PEN_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
   const MIC_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v5"/></svg>';
   const PAPER_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M8 13h8M8 17h5"/></svg>';
   const CAM_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>';
@@ -447,23 +460,88 @@
       card.append(opts);
     }
 
-    // After marking: talk it through with the tutor, then have another go
+    // After marking: work on it with the tutor (typed chat or voice call), then have another go
     function improveRow(card, q, text, f, entry){
+      const canCoach = q.qtype === "exam";
       const wrap = h(`<div class="pr-improve">
-        <div class="pr-row">${window.coachAnswer && q.qtype === "exam" ? `<button type="button" class="pr-btn" data-coach>${MIC_SVG}Improve this with my tutor</button>` : ""}<button type="button" class="pr-btn ghost" data-again>Try writing it again</button></div>
+        <div class="pr-row">${canCoach ? `<button type="button" class="pr-btn" data-coach>Improve this with my tutor</button>` : ""}<button type="button" class="pr-btn ghost" data-again>Try writing it again</button></div>
+        <div class="pr-how" hidden><span class="pr-how-l">How do you want to work on it?</span>
+          <div class="pr-row"><button type="button" class="pr-btn ghost" data-type>${PEN_SVG}Type with my tutor</button>${window.coachAnswer ? `<button type="button" class="pr-btn ghost" data-talk>${MIC_SVG}Talk with my tutor</button>` : ""}</div>
+          ${window.coachAnswer ? `<span class="pr-small">Talking uses your daily talking time.</span>` : ""}</div>
         <div data-coachslot></div></div>`);
-      const coachBtn = wrap.querySelector("[data-coach]"), againBtn = wrap.querySelector("[data-again]"), cslot = wrap.querySelector("[data-coachslot]");
+      const coachBtn = wrap.querySelector("[data-coach]"), againBtn = wrap.querySelector("[data-again]"), cslot = wrap.querySelector("[data-coachslot]"), how = wrap.querySelector(".pr-how");
+      const show = (el, on) => { if (el) el.style.display = on ? "" : "none"; };
       againBtn.onclick = () => {
         cslot.replaceChildren();
         session.queue.splice(session.i + 1, 0, { q, retry:true, again:true, prev:text, before: { marks_awarded: f.marks_awarded, marks_available: f.marks_available } });
         session.total++; session.i++; next();
       };
-      if (coachBtn) coachBtn.onclick = () => {
-        coachBtn.hidden = true;
-        window.coachAnswer(cslot, { topic, profile, sb, question:q, answer:text, feedback:f,
-          onEnd: ({ failed }) => { if (failed) coachBtn.hidden = false; else { againBtn.classList.remove("ghost"); againBtn.focus({ preventScroll:true }); } } });
+      const ended = ({ failed }) => {
+        if (failed) { show(coachBtn, true); return; }
+        againBtn.classList.remove("ghost"); againBtn.focus({ preventScroll:true });
       };
+      if (coachBtn) coachBtn.onclick = () => { show(coachBtn, false); how.hidden = false; };
+      const typeBtn = wrap.querySelector("[data-type]"), talkBtn = wrap.querySelector("[data-talk]");
+      if (typeBtn) typeBtn.onclick = () => { how.hidden = true; coachChat(cslot, q, text, f, ended); };
+      if (talkBtn) talkBtn.onclick = () => { how.hidden = true;
+        window.coachAnswer(cslot, { topic, profile, sb, question:q, answer:text, feedback:f, onEnd: ended }); };
       card.append(wrap);
+    }
+
+    // Typed coaching chat about one marked answer
+    function coachChat(slot2, q, text, f, onEnd){
+      const box = h(`<div class="pr-chat">
+        <div class="pr-chat-top"><span class="ft-icon">${PEN_SVG}</span><span class="pr-chat-t">Improving your answer with your tutor<small>Write short replies. Spelling doesn't matter.</small></span></div>
+        <div class="pr-chat-log" aria-live="polite"></div>
+        <div class="pr-answer"><textarea aria-label="Your reply" placeholder="Your reply" rows="2"></textarea><div class="pr-tools" data-inputs></div></div>
+        <div class="pr-row"><button type="button" class="pr-btn" data-send>Send</button><button type="button" class="pr-btn ghost" data-end>I'm done</button></div>
+        <p class="pr-err" hidden></p></div>`);
+      slot2.replaceChildren(box);
+      const log = box.querySelector(".pr-chat-log"), ta = box.querySelector("textarea"), send = box.querySelector("[data-send]"),
+        endB = box.querySelector("[data-end]"), err = box.querySelector(".pr-err"), tools = box.querySelector("[data-inputs]");
+      attachMic(tools, ta, err);
+      const msgs = []; let busy = false, closed = false, saved = false;
+      const add = (role, t) => {
+        msgs.push({ role, text: t });
+        log.append(h(`<p class="${role === "user" ? "me" : ""}">${esc(t)}</p>`));
+        log.scrollTop = log.scrollHeight;
+      };
+      const save = () => {
+        if (saved || msgs.length < 2) return; saved = true;
+        sb("tutor_sessions", { method:"POST", prefer:"return=minimal", body:[{ profile_id: profile.id, topic_id: topic.id, transcript: msgs.map(m => ({ role: m.role === "user" ? "user" : "agent", text: m.text })), seconds: 0, results: { mode: "coach-text", question_id: q.id, marks_awarded: f.marks_awarded ?? null, marks_available: f.marks_available ?? null } }] }).catch(() => {});
+      };
+      const close = () => {
+        if (closed) return; closed = true; save();
+        box.querySelector(".pr-answer").remove(); send.remove(); endB.remove();
+        if (tools._stopMic) tools._stopMic();
+        onEnd({ failed: false });
+      };
+      async function ask(){
+        busy = true; send.disabled = true; err.hidden = true;
+        const typing = h(`<p class="typing">Your tutor is typing…</p>`); log.append(typing); log.scrollTop = log.scrollHeight;
+        try {
+          const r = await fetch("/api/coach-chat", { method:"POST", headers:{ "Content-Type":"application/json" },
+            body: JSON.stringify({ question_id: q.id, answer: text, feedback: f, name: profile.name, messages: msgs }) });
+          const d = await r.json().catch(() => ({}));
+          typing.remove();
+          if (!r.ok || !d.reply) throw new Error(d.error || "Your tutor couldn't reply just now.");
+          add("agent", d.reply);
+          if (d.done) close();
+        } catch (e) {
+          typing.remove(); err.textContent = e.message; err.hidden = false;
+          if (!msgs.length) { closed = true; onEnd({ failed: true }); box.remove(); slot2.append(err); }
+        } finally { busy = false; send.disabled = false; if (!closed) ta.focus({ preventScroll:true }); }
+      }
+      send.onclick = () => {
+        if (busy) return;
+        if (tools._stopMic) tools._stopMic();
+        const t = ta.value.trim(); if (!t) return;
+        ta.value = ""; add("user", t); ask();
+      };
+      ta.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send.onclick(); } });
+      endB.onclick = close;
+      const watch = setInterval(() => { if (!box.isConnected) { clearInterval(watch); save(); } }, 2000);
+      ask();
     }
 
     function writtenView(card, q, retry, entry = {}){
