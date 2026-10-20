@@ -20,9 +20,19 @@ async function getQuestion(id) {
   return rows[0] || null;
 }
 
-function instructions(q, hasImages, typed) {
+async function subjectFor(topicId) {
+  try {
+    const h = { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } };
+    const t = await (await fetch(`${SUPABASE_URL}/rest/v1/topics?select=subject_id&id=eq.${encodeURIComponent(topicId)}`, h)).json();
+    if (!t[0]) return "";
+    const s = await (await fetch(`${SUPABASE_URL}/rest/v1/subjects?select=title&id=eq.${t[0].subject_id}`, h)).json();
+    return s[0] ? String(s[0].title).replace(/\s*\d+$/, "").replace(/\s*PolSoc$/i, "").trim() : "";
+  } catch (e) { return ""; }
+}
+
+function instructions(q, hasImages, typed, subject) {
   const marks = q.marks || 5;
-  return `You are an experienced Leaving Certificate Higher Level Politics and Society examiner, and a kind, encouraging tutor. The student is dyslexic.
+  return `You are an experienced Leaving Certificate Higher Level ${subject || "Politics and Society"} examiner, and a kind, encouraging tutor. The student is dyslexic.
 
 Mark the student's answer to this question exactly as the State Examinations Commission would, using the marking scheme, then give feedback that helps them improve.
 
@@ -74,7 +84,8 @@ module.exports = async (req, res) => {
     const [, mt, data] = d.match(/^data:(image\/\w+);base64,(.*)$/);
     return { type: "image", source: { type: "base64", media_type: mt, data } };
   });
-  content.push({ type: "text", text: instructions(q, images.length > 0, typed) });
+  const subject = await subjectFor(q.topic_id);
+  content.push({ type: "text", text: instructions(q, images.length > 0, typed, subject) });
 
   try {
     const r = await fetch("https://api.anthropic.com/v1/messages", {

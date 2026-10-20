@@ -197,7 +197,8 @@
     const where = { quiz: "in a quiz", tutor: "with your tutor", written: "in a written answer" }[prog.src[q.id]] || "";
     return prog.latest[q.id] === 0 ? `You didn't know this one yet${where ? " (" + where + ")" : ""}` : `Half right${where ? " " + where : ""}. Nearly there.`;
   }
-  const shortTitle = q => q.qtype === "exam" ? `Past paper: ${q.prompt}` : q.prompt;
+  const isPast = q => q.qtype === "exam" && !/^exam-style/i.test(q.source || "");
+  const shortTitle = q => q.qtype === "exam" ? `${isPast(q) ? "Past paper" : "Exam question"}: ${q.prompt}` : q.prompt;
 
   // ---- mount ----
   async function mountPractice(slot, opts){
@@ -232,7 +233,7 @@
       if (f) parts.push(`${f} to try again`);
       if (m) parts.push(`${m} new multiple choice`);
       if (pick.some(q => q.qtype === "recall" && !fixes().includes(q))) parts.push("1 short answer");
-      if (pick.some(q => q.qtype === "exam" && !fixes().includes(q))) parts.push("1 past paper question");
+      if (pick.some(q => q.qtype === "exam" && !fixes().includes(q))) parts.push("1 exam question");
       return parts.join(" · ");
     }
 
@@ -282,7 +283,7 @@
       if (ex.length) {
         const paper = h(`<button type="button" class="ft">
           <span class="ft-icon">${PAPER_SVG}</span>
-          <span class="ft-body"><span class="ft-tag">Marked like the real exam</span><span class="ft-title">Exam Question Practice</span><span class="ft-line">${plural(ex.length, "past paper question", "past paper questions")}, with marks and tips</span></span>
+          <span class="ft-body"><span class="ft-tag">Marked like the real exam</span><span class="ft-title">Exam Question Practice</span><span class="ft-line">${ex.some(isPast) ? plural(ex.length, "past paper question", "past paper questions") : plural(ex.length, "exam-style question", "exam-style questions")}, with marks and tips</span></span>
           <span class="ft-chev" aria-hidden="true">›</span></button>`);
         paper.onclick = () => start("Exam Question Practice", ex.slice());
         if (paperSlot) paperSlot.replaceChildren(paper); else nodes.push(paper);
@@ -322,7 +323,7 @@
     function next(){
       if (session.i >= session.queue.length) return finish();
       const { q, retry } = session.queue[session.i];
-      const label = q.qtype === "exam" ? `Past paper · ${esc(q.source || "")} · ${q.marks || 5} marks` : q.qtype === "recall" ? "Short answer" : "Quick quiz";
+      const label = q.qtype === "exam" ? (isPast(q) ? `Past paper · ${esc(q.source || "")} · ${q.marks || 5} marks` : `Exam-style question · ${q.marks || 5} marks`) : q.qtype === "recall" ? "Short answer" : "Quick quiz";
       const card = h(`<div class="pr-card">
         <div class="pr-row" style="justify-content:space-between"><button type="button" class="pr-btn ghost" data-stop>Stop</button><span class="pr-small" style="font-variant-numeric:tabular-nums">${retry ? "Second try" : `Question ${session.i+1} of ${session.total}`}</span></div>
         <div class="pr-progress"><i style="width:${Math.min(session.i,session.total)/session.total*100}%"></i></div>
