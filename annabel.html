@@ -530,7 +530,7 @@ async function renderDashboard(){
   const { raw, err, model } = await loadModel();
   if (!raw.subjects.length && err) return errorBox(err, renderDashboard);
   state.model = model;
-  Stages.renderHome(v, model, { profile: PROFILE, openChapter, openSubject, state });
+  Stages.renderHome(v, model, { profile: PROFILE, openChapter, openSubject, state, sb, reload: renderDashboard });
 }
 
 async function renderSubjectPage(){

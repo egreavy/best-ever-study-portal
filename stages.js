@@ -78,6 +78,30 @@
   .hs-fold{background:var(--t-soft2)}
   .hs-fold .hs-show{flex:none;font-size:15px;font-weight:700;color:var(--t-accent)}
   .hs-group{display:block;padding:14px 18px 4px;border-top:1px solid var(--t-line);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--t-muted)}
+  .qa{background:var(--t-card);border-radius:18px;padding:20px 22px;display:flex;flex-direction:column;gap:12px}
+  .qa h3{margin:0;font-size:19px}
+  .qa-row{display:flex;gap:10px;align-items:center}
+  .qa-box{flex:1;display:flex;align-items:center;gap:8px;border:2px solid var(--t-line);border-radius:14px;padding:6px 8px 6px 14px;background:var(--t-card)}
+  .qa-box:focus-within{border-color:var(--t-accent)}
+  .qa-box input{flex:1;border:none;outline:none;font:inherit;font-size:17px;padding:8px 0;background:transparent;color:var(--t-ink);min-width:0}
+  .qa-mic{flex:none;width:40px;height:40px;border-radius:50%;border:2px solid var(--t-ink);background:var(--t-card);color:var(--t-ink);display:grid;place-items:center;cursor:pointer;padding:0}
+  .qa-mic svg{width:20px;height:20px}
+  .qa-mic.on{background:var(--t-ink);color:var(--t-on-accent)}
+  .qa-list{display:flex;flex-direction:column}
+  .qa-item{display:flex;align-items:center;gap:14px;padding:12px 0;border-top:1px solid var(--t-line)}
+  .qa-ic{flex:none;width:36px;height:36px;border-radius:10px;display:grid;place-items:center;font-size:17px;font-weight:700}
+  .qa-ic.done{background:var(--t-accent-tint);color:var(--t-accent)}
+  .qa-ic.up{background:var(--t-soft2);color:var(--t-ink)}
+  .qa-ic.date{background:var(--t-warn-tint);color:var(--t-warn)}
+  .qa-ic.unclear{background:var(--t-soft2);color:var(--t-muted)}
+  .qa-b{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+  .qa-b .k{font-size:13px;color:var(--t-muted)}
+  .qa-b .t{font-size:16px;font-weight:700;line-height:1.35}
+  .qa-b .w{font-size:15px}
+  .qa-b select{font:inherit;font-size:15px;border:2px solid var(--t-line);border-radius:10px;padding:4px 8px;max-width:100%;background:var(--t-card);color:var(--t-ink)}
+  .qa-check{flex:none;width:26px;height:26px;accent-color:var(--t-accent);cursor:pointer}
+  .qa-msg{background:var(--t-accent-tint);border-radius:12px;padding:12px 16px;font-size:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  .qa-err{color:#a32020;font-size:14px;margin:0}
   .hs-empty{background:var(--t-card);border-radius:14px;padding:18px;color:var(--t-muted)}
   @media (max-width:700px){.hs-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hs-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
   @media (max-width:460px){.hs-grid{grid-template-columns:1fr}.hs-grid.tiles{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.hs-tile{padding:12px 14px;gap:6px}.hs-tile b{font-size:16px}.hs-row{padding:12px 14px;gap:10px;flex-wrap:wrap}.hs-row .hs-row-b{flex-basis:calc(100% - 60px)}}
@@ -182,7 +206,7 @@
       sb(`nlm_checklist_templates?select=id,subject_id,step_order,title&subject_id=in.${inList(subjectIds)}`),
       sb(`nlm_disabled_steps?select=template_id&profile_id=eq.${profile.id}`),
       sb(`nlm_progress?select=topic_id,step_order,updated_at&profile_id=eq.${profile.id}&done=eq.true`),
-      sb(`chapter_status?select=topic_id,class_done_at,fresh_since&profile_id=eq.${profile.id}`),
+      sb(`chapter_status?select=topic_id,class_done_at,fresh_since,test_on&profile_id=eq.${profile.id}`),
       sb(`exam_dates?select=subject_id,label,exam_date&profile_id=eq.${profile.id}`),
       sb(`topic_flags?select=topic_id,flag_type,note,updated_at&profile_id=eq.${profile.id}`),
       sb(`study_time?select=kind,seconds,created_at&profile_id=eq.${profile.id}&created_at=gte.${encodeURIComponent(since)}`)
@@ -246,7 +270,7 @@
         classDone: !!st.class_done_at, freshSince: st.fresh_since || null,
         exam: exams[sid] || null, stats: stats[t.id] || { total: 0, tried: 0, fixes: 0, right: 0, triedEver: 0 }
       });
-      const ch = { ...t, ...info, flag: flags[t.id] || null, line: "" };
+      const ch = { ...t, ...info, flag: flags[t.id] || null, classDoneAt: st.class_done_at || null, testOn: st.test_on || null, line: "" };
       ch.line = statusLine(ch);
       m.topics[t.id] = ch;
       m.bySubject[sid].chapters.push(ch);
@@ -283,7 +307,9 @@
       const active = c.stage !== "none" && !c.done;
       if (!active && !c.flag) return;
       let score;
-      if (c.stage === "refresh" && !c.done) score = 0 + Math.max(0, (c.examDate - new Date()) / DAY);
+      const testDays = c.testOn ? (parseDate(c.testOn) - startOfDay(new Date())) / DAY : null;
+      if (testDays !== null && testDays >= 0) score = testDays;
+      else if (c.stage === "refresh" && !c.done) score = 0 + Math.max(0, (c.examDate - new Date()) / DAY);
       else if (c.flag) score = 40;
       else if (c.stage === "test" && c.stats.fixes) score = 100 - c.stats.fixes;
       else if (c.stage === "test") score = c.stats.total ? 150 : 400;
@@ -361,8 +387,138 @@
       <span class="go">${GO[c.stage]}</span></button>`;
   }
 
+  // ---- "What's new at school?" ----
+  const QA_MIC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v5"/></svg>';
+  function isoDay(d){ const x = new Date(d); return x.getFullYear() + "-" + String(x.getMonth()+1).padStart(2,"0") + "-" + String(x.getDate()).padStart(2,"0"); }
+  function mountQuickAdd(el, m, { sb, profile, reload, state }){
+    if (!el) return;
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const subjTitle = id => (m.bySubject[id] || {}).title || "";
+    const chOf = id => m.topics[id];
+    const chName = c => `${subjTitle(c.subject_id)} · Ch ${c.order_num ?? ""}`;
+    const STATE_WORD = c => ({ none: "not started", learn: "learning", test: "testing", refresh: "refreshing" })[c.stage] + (c.classDone ? ", done in class" : "");
+    const guessChapter = (sid) => {
+      const rev = revisionList(m).filter(c => c.subject_id === sid);
+      if (rev.length) return rev[0].id;
+      const chs = (m.bySubject[sid] || { chapters: [] }).chapters;
+      return (chs.find(c => c.stage === "none") || chs[0] || {}).id || null;
+    };
+    function paintInput(msgHtml, value){
+      el.innerHTML = `<div><h3>What's new at school?</h3><span class="hs-sub">Say or type what's coming up, what you did in class, or any tests.</span></div>
+        <form class="qa-row"><div class="qa-box"><input type="text" name="t" autocomplete="off" aria-label="What's new at school" placeholder='e.g. "econ ch 3 coming up, we did polsoc ch 5, geog test friday"'>${SR ? `<button type="button" class="qa-mic" aria-label="Speak" title="Speak">${QA_MIC}</button>` : ""}</div><button class="hs-btn" type="submit" style="min-height:48px;padding:10px 22px;font-size:16px">Add</button></form>
+        <p class="qa-err" hidden></p>${msgHtml || ""}`;
+      const form = el.querySelector("form"), input = form.t, err = el.querySelector(".qa-err");
+      if (value) input.value = value;
+      const mic = el.querySelector(".qa-mic");
+      let rec = null;
+      if (mic) mic.onclick = () => {
+        if (rec) { try { rec.stop(); } catch (e) {} return; }
+        rec = new SR(); rec.lang = "en-IE"; rec.interimResults = true; rec.continuous = true;
+        const base = input.value ? input.value.replace(/\s*$/, " ") : "";
+        rec.onresult = (e) => { let t = ""; for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript; input.value = (base + t).replace(/^\s+/, ""); };
+        rec.onerror = (e) => { err.textContent = e.error === "not-allowed" ? "The browser blocked the microphone. Allow it for this site, or type instead." : "Didn't catch that. Try again or type it."; err.hidden = false; };
+        rec.onend = () => { rec = null; mic.classList.remove("on"); };
+        try { rec.start(); mic.classList.add("on"); err.hidden = true; } catch (e) { rec = null; }
+      };
+      const undo = el.querySelector("[data-undo]"); if (undo) undo.onclick = async () => { undo.disabled = true; undo.textContent = "Undoing…"; await state.qaUndo(); state.qaUndo = null; reload(); };
+      form.onsubmit = async (e) => {
+        e.preventDefault();
+        if (rec) { try { rec.stop(); } catch (x) {} }
+        const text = input.value.trim(); if (!text) { input.focus(); return; }
+        const btn = form.querySelector("button[type=submit]"); btn.disabled = true; btn.textContent = "Reading…"; err.hidden = true;
+        try {
+          const now = new Date();
+          const r = await fetch("/api/quick-add", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+            text, today: isoDay(now), weekday: now.toLocaleDateString("en-IE", { weekday: "long" }),
+            subjects: m.subjects.map(s => ({ id: s.id, title: s.title })),
+            chapters: Object.values(m.topics).map(c => ({ id: c.id, subject: subjTitle(c.subject_id), num: c.order_num, title: shortTitle(c.title), state: STATE_WORD(c) }))
+          }) });
+          const data = await r.json().catch(() => ({}));
+          if (!r.ok || !Array.isArray(data.actions)) throw new Error(data.error || "Couldn't read that just now.");
+          if (!data.actions.length) throw new Error("Nothing to change in that. Try naming the subject and chapter.");
+          paintConfirm(text, data.actions);
+        } catch (x) { err.textContent = x.message; err.hidden = false; btn.disabled = false; btn.textContent = "Add"; }
+      };
+    }
+    function paintConfirm(text, actions){
+      actions.forEach(a => { if ((a.type === "class_test" || a.type === "deadline") && !a.topic_id) a.topic_id = guessChapter(a.subject_id); if (!a.subject_id && a.topic_id && chOf(a.topic_id)) a.subject_id = chOf(a.topic_id).subject_id; });
+      const item = (a, i) => {
+        const c = a.topic_id ? chOf(a.topic_id) : null;
+        const d = a.date ? fmtDate(parseDate(a.date)) : "";
+        const chSelect = () => { const chs = (m.bySubject[a.subject_id] || { chapters: [] }).chapters.slice().sort((x, y) => (x.order_num || 0) - (y.order_num || 0));
+          return `<select data-i="${i}" aria-label="Which chapter">${chs.map(x => `<option value="${x.id}"${x.id === a.topic_id ? " selected" : ""}>Ch ${x.order_num ?? ""}: ${esc(shortTitle(x.title))}</option>`).join("")}</select>`; };
+        let ic, k, t, w;
+        if (a.type === "class_done") { ic = ["done", "✓"]; k = chName(c); t = shortTitle(c.title); w = "Done in class: moves on to Test"; }
+        else if (a.type === "coming_up") { ic = ["up", "›"]; k = chName(c); t = shortTitle(c.title); w = `Coming up${d ? " " + d : " in class"}: added to your revision list to learn ahead`; }
+        else if (a.type === "class_test") { ic = ["date", "!"]; k = `${subjTitle(a.subject_id)} · class test`; t = d; w = `Which chapter? ${chSelect()}`; }
+        else if (a.type === "deadline") { ic = ["date", "!"]; k = `${subjTitle(a.subject_id)} · ${esc(a.label || "deadline")}`; t = `Due ${d}`; w = `For ${chSelect()}`; }
+        else if (a.type === "exam") { ic = ["date", "!"]; k = subjTitle(a.subject_id); t = `${esc(a.label || "Exams")} · ${d}`; w = "Sets the exam date, so Refresh opens 3 weeks before"; }
+        else { ic = ["unclear", "?"]; k = "Not sure about this part"; t = `"${esc(a.said)}"`; w = esc(a.reason || "Couldn't match it to a chapter."); }
+        const can = a.type !== "unclear";
+        return `<div class="qa-item"><span class="qa-ic ${ic[0]}">${ic[1]}</span><span class="qa-b"><span class="k">${esc(k)}</span><span class="t">${a.type === "unclear" || a.type === "exam" || a.type === "deadline" ? t : esc(t)}</span><span class="w">${w}</span></span>${can ? `<input type="checkbox" class="qa-check" data-i="${i}" checked aria-label="Include this">` : ""}</div>`;
+      };
+      const usable = actions.some(a => a.type !== "unclear");
+      el.innerHTML = `<div><h3>What's new at school?</h3><span class="hs-sub">You said: "${esc(text)}"</span></div>
+        <b style="font-size:17px">Here's what I'll do</b>
+        <div class="qa-list">${actions.map(item).join("")}</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">${usable ? `<button class="hs-btn" type="button" data-ok style="min-height:48px;padding:10px 24px;font-size:16px">Looks right</button>` : ""}<button class="hs-btn ghost" type="button" data-again style="min-height:48px;padding:10px 22px;font-size:16px">Start again</button></div>
+        ${usable ? `<span class="hs-sub">Untick anything that's wrong.</span>` : ""}<p class="qa-err" hidden></p>`;
+      el.querySelectorAll("select[data-i]").forEach(s => s.onchange = () => { actions[+s.dataset.i].topic_id = s.value; });
+      el.querySelector("[data-again]").onclick = () => paintInput("", text);
+      const ok = el.querySelector("[data-ok]");
+      if (ok) ok.onclick = async () => {
+        ok.disabled = true; ok.textContent = "Saving…";
+        const chosen = actions.filter((a, i) => { const cb = el.querySelector(`.qa-check[data-i="${i}"]`); return a.type !== "unclear" && cb && cb.checked; });
+        try { const summary = await applyActions(chosen); state.qaMsg = summary; reload(); }
+        catch (x) { const e2 = el.querySelector(".qa-err"); e2.textContent = "Something didn't save. Try again."; e2.hidden = false; ok.disabled = false; ok.textContent = "Looks right"; }
+      };
+    }
+    async function applyActions(list){
+      const undo = [], said = [];
+      const flagPrev = id => { const c = chOf(id); return c && c.flag ? { ...c.flag } : null; };
+      const setFlag = (id, note) => sb("topic_flags", { method: "POST", prefer: "resolution=merge-duplicates,return=minimal", body: [{ topic_id: id, profile_id: profile.id, flag_type: "revise", note, updated_at: new Date().toISOString() }] });
+      const restoreFlag = (id, prev) => prev ? sb("topic_flags", { method: "POST", prefer: "resolution=merge-duplicates,return=minimal", body: [{ topic_id: id, profile_id: profile.id, flag_type: prev.flag_type || "revise", note: prev.note || "", updated_at: new Date().toISOString() }] })
+        : sb(`topic_flags?topic_id=eq.${id}&profile_id=eq.${profile.id}`, { method: "DELETE", prefer: "return=minimal" });
+      const setStatus = (id, fields) => sb("chapter_status", { method: "POST", prefer: "resolution=merge-duplicates,return=minimal", body: [{ profile_id: profile.id, topic_id: id, ...fields, updated_at: new Date().toISOString() }] });
+      for (const a of list) {
+        const c = a.topic_id ? chOf(a.topic_id) : null;
+        if (a.type === "class_done" && c) {
+          const prevAt = c.classDoneAt, prevFlag = flagPrev(c.id);
+          await setStatus(c.id, { class_done_at: new Date().toISOString() });
+          if (prevFlag && /^coming up/i.test(prevFlag.note || "")) await sb(`topic_flags?topic_id=eq.${c.id}&profile_id=eq.${profile.id}`, { method: "DELETE", prefer: "return=minimal" });
+          undo.push(async () => { await setStatus(c.id, { class_done_at: prevAt }); if (prevFlag) await restoreFlag(c.id, prevFlag); });
+          said.push(`${chName(c)} moved on to Test`);
+        } else if (a.type === "coming_up" && c) {
+          const prevFlag = flagPrev(c.id);
+          await setFlag(c.id, "Coming up in class" + (a.date ? " " + fmtDate(parseDate(a.date)) : ""));
+          undo.push(() => restoreFlag(c.id, prevFlag));
+          said.push(`${chName(c)} is on your revision list`);
+        } else if ((a.type === "class_test" || a.type === "deadline") && c) {
+          const prevFlag = flagPrev(c.id), prevOn = c.testOn;
+          const note = a.type === "class_test" ? `Class test ${fmtDate(parseDate(a.date))}` : `${a.label || "Due"} ${fmtDate(parseDate(a.date))}`;
+          await setStatus(c.id, { test_on: a.date }); await setFlag(c.id, note);
+          undo.push(async () => { await setStatus(c.id, { test_on: prevOn }); await restoreFlag(c.id, prevFlag); });
+          said.push(a.type === "class_test" ? `the ${subjTitle(c.subject_id)} test is on ${fmtDate(parseDate(a.date))}` : `${a.label || "your deadline"} is on ${fmtDate(parseDate(a.date))}`);
+        } else if (a.type === "exam" && a.subject_id) {
+          const prev = (m.bySubject[a.subject_id] || {}).exam || null;
+          await sb("exam_dates", { method: "POST", prefer: "resolution=merge-duplicates,return=minimal", body: [{ profile_id: profile.id, subject_id: a.subject_id, label: a.label || "Exams", exam_date: a.date, updated_at: new Date().toISOString() }] });
+          undo.push(() => prev ? sb("exam_dates", { method: "POST", prefer: "resolution=merge-duplicates,return=minimal", body: [{ profile_id: profile.id, subject_id: a.subject_id, label: prev.label, exam_date: prev.exam_date, updated_at: new Date().toISOString() }] })
+            : sb(`exam_dates?profile_id=eq.${profile.id}&subject_id=eq.${a.subject_id}`, { method: "DELETE", prefer: "return=minimal" }));
+          said.push(`${subjTitle(a.subject_id)} ${a.label || "exams"} set for ${fmtDate(parseDate(a.date))}`);
+        }
+      }
+      state.qaUndo = async () => { for (const u of undo.reverse()) await u(); };
+      if (!said.length) return "Nothing was changed.";
+      const s = said.join(", ").replace(/, ([^,]*)$/, " and $1");
+      return "Done. " + s.charAt(0).toUpperCase() + s.slice(1) + ".";
+    }
+    const msg = state.qaMsg ? `<div class="qa-msg"><span style="flex:1">${esc(state.qaMsg)}</span>${state.qaUndo ? `<button type="button" class="hs-link" data-undo>Undo</button>` : ""}</div>` : "";
+    state.qaMsg = null;
+    paintInput(msg);
+  }
+
   // ---- homepage ----
-  function renderHome(view, m, { profile, openChapter, openSubject, state }){
+  function renderHome(view, m, { profile, openChapter, openSubject, state, sb, reload }){
     addCss();
     const w = m.week;
     const letters = ["M","T","W","T","F","S","S"], todayKey = dayKey(new Date());
@@ -392,6 +548,7 @@
             <div class="hs-stat"><b>${w.fixed}</b><span>answers fixed</span></div>
           </div></div>
       </div>
+      <div class="qa" id="quickAdd"></div>
       <div class="hs-head"><h3>Where do you want to start today?</h3>${rev.length ? `<button type="button" class="hs-link" data-pick>Can't decide? Pick for me</button>` : ""}</div>
       ${m.subjects.length ? `<div class="hs-grid tiles">${tiles}</div>` : `<div class="hs-empty">No subjects yet.</div>`}
       ${rev.length ? `<div class="hs-head" style="margin-top:6px"><h3 style="font-size:17px">Or choose from your revision list</h3><span class="hs-sub">most urgent first</span></div>
@@ -401,7 +558,8 @@
     view.querySelectorAll("[data-subject]").forEach(b => b.onclick = () => openSubject(b.dataset.subject));
     view.querySelectorAll("[data-open]").forEach(b => b.onclick = () => { const c = m.topics[b.dataset.open]; openChapter(c.id, c.subject_id, b.dataset.tab); });
     const pick = view.querySelector("[data-pick]"); if (pick) pick.onclick = () => { const c = rev[0]; openChapter(c.id, c.subject_id, TAB_FOR[c.stage]); };
-    const all = view.querySelector("[data-all]"); if (all) all.onclick = () => { state.homeShowAll = !showAll; renderHome(view, m, { profile, openChapter, openSubject, state }); };
+    const all = view.querySelector("[data-all]"); if (all) all.onclick = () => { state.homeShowAll = !showAll; renderHome(view, m, { profile, openChapter, openSubject, state, sb, reload }); };
+    if (sb) mountQuickAdd(view.querySelector("#quickAdd"), m, { sb, profile, reload, state });
   }
 
   // ---- subject page: a smart list that shows what matters now ----
