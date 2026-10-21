@@ -607,7 +607,10 @@ async function renderChapter(){
   const disabledSet = new Set(disabledRows.map(r => r.template_id));
   const templateRows = templateRowsAll.filter(r => !disabledSet.has(r.id));
   const PRACTICE_TITLES = ["Flashcards Review", "Quiz Yourself", "Exam Practice"];
-  const learnRows = templateRows.filter(t => !PRACTICE_TITLES.includes(t.title));
+  // Learn order: Video, Slides, Revision Guide first, then anything else in its usual order
+  const LEARN_FIRST = ["Video Overview", "In-Depth Slide Deck", "Revision Guide"];
+  const learnRank = t => { const i = LEARN_FIRST.indexOf(t.title); return i < 0 ? LEARN_FIRST.length : i; };
+  const learnRows = templateRows.filter(t => !PRACTICE_TITLES.includes(t.title)).sort((a, b) => learnRank(a) - learnRank(b) || a.step_order - b.step_order);
   const extraRows = templateRows.filter(t => t.title === "Flashcards Review");
   // The exam practice sheet is a resource on Learn (shown last, not counted in Learn progress)
   const learnExtras = templateRows.filter(t => t.title === "Exam Practice");
