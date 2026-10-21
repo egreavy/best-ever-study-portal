@@ -75,6 +75,16 @@
   .hs-row-t{font-size:17px;font-weight:700;line-height:1.35}
   .hs-row-s{font-size:14px;color:var(--t-muted);line-height:1.4}
   .hs-chev{flex:none;font-size:20px;color:var(--t-muted)}
+  .hs-rowwrap{display:flex;align-items:center;border-top:1px solid var(--t-line)}
+  .hs-rowwrap .hs-row{border-top:none;flex:1;min-width:0;padding-right:8px}
+  .hs-mark{flex:none;width:40px;height:40px;margin-right:12px;border-radius:50%;border:2px solid var(--t-line);background:var(--t-card);color:var(--t-muted);display:grid;place-items:center;cursor:pointer;padding:0}
+  .hs-mark svg{width:18px;height:18px}
+  .hs-mark:hover{border-color:var(--t-accent);color:var(--t-accent)}
+  .hs-mark.on{background:var(--t-accent);border-color:var(--t-accent);color:var(--t-on-accent)}
+  .hs-mark.on svg path{fill:currentColor}
+  .hs-mark:focus-visible{outline:3px solid var(--t-accent);outline-offset:2px}
+  .hs-markkey{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--t-muted);padding:10px 18px 0}
+  .hs-markkey .hs-mark{width:26px;height:26px;margin:0;pointer-events:none}.hs-markkey .hs-mark svg{width:13px;height:13px}
   .hs-fold{background:var(--t-soft2)}
   .hs-fold .hs-show{flex:none;font-size:15px;font-weight:700;color:var(--t-accent)}
   .hs-group{display:block;padding:14px 18px 4px;border-top:1px solid var(--t-line);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--t-muted)}
@@ -88,7 +98,7 @@
   .qa{background:var(--t-card);border-radius:18px;padding:24px 26px;display:flex;flex-direction:column;gap:12px}
   .qa h3{margin:0;font-size:19px}
   .qa-row{display:flex;gap:10px;align-items:center}
-  .qa-box{flex:1;display:flex;align-items:center;gap:8px;border:2px solid var(--t-line);border-radius:14px;padding:6px 8px 6px 14px;background:var(--t-card)}
+  .qa-box{flex:1;min-width:0;display:flex;align-items:center;gap:8px;border:2px solid var(--t-line);border-radius:14px;padding:6px 8px 6px 14px;background:var(--t-card)}
   .qa-box:focus-within{border-color:var(--t-accent)}
   .qa-box input{flex:1;border:none;outline:none;font:inherit;font-size:17px;padding:8px 0;background:transparent;color:var(--t-ink);min-width:0}
   .qa-mic{flex:none;width:40px;height:40px;border-radius:50%;border:2px solid var(--t-ink);background:var(--t-card);color:var(--t-ink);display:grid;place-items:center;cursor:pointer;padding:0}
@@ -252,6 +262,7 @@
     const [n, label] = stepLevel(c);
     return `<span class="hs-steps" aria-label="Step ${n} of 3: ${label}"><span class="hs-arrows" aria-hidden="true">${[1,2,3].map(i => `<i${i <= n ? ' class="on"' : ""}></i>`).join("")}</span><span class="hs-steps-l">${label}</span></span>`;
   }
+  const BOOKMARK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"/></svg>';
   const GO = { learn: "Keep learning ›", test: "Test myself ›", refresh: "Exam prep ›", none: "Start ›" };
   const TAB_FOR = { learn: "learn", test: "test", refresh: "refresh", none: "learn" };
 
@@ -321,21 +332,35 @@
     Object.keys(latest).forEach(qid => { const s = stats[qTopic[qid]]; s.tried++; if (latest[qid] < 1) s.fixes++; else s.right++; });
     Object.keys(latestEver).forEach(qid => { stats[qTopic[qid]].triedEver++; });
 
-    subjects.forEach(s => { m.bySubject[s.id] = { ...s, chapters: [], exam: exams[s.id] || null }; });
+    // Subjects with more than one book (Religion 1, Religion 2) show as one subject
+    const groupName = t => String(t || "").replace(/\s*PolSoc$/i, "").replace(/\s+\d+$/, "").trim();
+    const sibs = {}; subjects.forEach(s => (sibs[groupName(s.title)] = sibs[groupName(s.title)] || []).push(s.id));
+    const examFor = sid => exams[sid] || (sibs[groupName((subjects.find(x => x.id === sid) || {}).title)] || []).map(id => exams[id]).find(Boolean) || null;
+    subjects.forEach(s => { m.bySubject[s.id] = { ...s, fullTitle: s.title, title: groupName(s.title), chapters: [], exam: examFor(s.id) }; });
     topics.forEach(t => {
       const sid = t.subject_id; if (!m.bySubject[sid]) return;
       const st = status[t.id] || {};
       const info = chapterStage({
         learnDone: learnDone[t.id] || 0, learnTotal: (learnSteps[sid] || new Set()).size,
         classDone: !!st.class_done_at, freshSince: st.fresh_since || null,
-        exam: exams[sid] || null, stats: stats[t.id] || { total: 0, tried: 0, fixes: 0, right: 0, triedEver: 0 }
+        exam: examFor(sid), stats: stats[t.id] || { total: 0, tried: 0, fixes: 0, right: 0, triedEver: 0 }
       });
       const ch = { ...t, ...info, flag: flags[t.id] || null, classDoneAt: st.class_done_at || null, testOn: st.test_on || null, line: "" };
       ch.line = statusLine(ch);
       m.topics[t.id] = ch;
       m.bySubject[sid].chapters.push(ch);
     });
-    m.subjects = subjects.map(s => m.bySubject[s.id]);
+    m.realSubjects = subjects.map(s => m.bySubject[s.id]);
+    m.groupOf = {};
+    m.subjects = Object.values(sibs).map(ids => {
+      const list = ids.map(id => m.bySubject[id]).sort((a, b) => a.fullTitle.localeCompare(b.fullTitle));
+      if (list.length === 1) return list[0];
+      const id = "g:" + list.map(x => x.id).join(",");
+      list.forEach((x, i) => { m.groupOf[x.id] = id; x.chapters.forEach(c => { c.book = `Book ${i + 1}`; c.bookIdx = i; }); });
+      const g = { id, title: list[0].title, members: list.map(x => x.id), chapters: list.flatMap(x => x.chapters), exam: list.map(x => x.exam).find(Boolean) || null };
+      m.bySubject[id] = g;
+      return g;
+    });
 
     // this week
     const ws = weekStart(new Date());
@@ -404,7 +429,8 @@
   }
 
   // ---- exam date box (subject pages and the Exam Prep tab) ----
-  function examBox(el, { sb, profile, subjectId, exam, onChange, compact }){
+  function examBox(el, { sb, profile, subjectId, subjectIds, exam, onChange, compact }){
+    const ids = subjectIds && subjectIds.length ? subjectIds : [subjectId];
     function paint(editing){
       const d = exam ? parseDate(exam.exam_date) : null;
       const opens = d ? new Date(d - REFRESH_DAYS * DAY) : null;
@@ -418,12 +444,12 @@
           const f = e.target, date = f.date.value, label = (f.label.value || "").trim() || "Exams";
           if (!date) return;
           f.querySelector("button[type=submit]").disabled = true;
-          await sb("exam_dates", { method: "POST", prefer: "resolution=merge-duplicates,return=minimal", body: [{ profile_id: profile.id, subject_id: subjectId, label, exam_date: date, updated_at: new Date().toISOString() }] });
+          await sb("exam_dates", { method: "POST", prefer: "resolution=merge-duplicates,return=minimal", body: ids.map(id => ({ profile_id: profile.id, subject_id: id, label, exam_date: date, updated_at: new Date().toISOString() })) });
           exam = { label, exam_date: date }; paint(false); if (onChange) onChange(exam);
         };
         const c = el.querySelector("[data-cancel]"); if (c) c.onclick = () => paint(false);
         const r = el.querySelector("[data-remove]"); if (r) r.onclick = async () => {
-          await sb(`exam_dates?profile_id=eq.${profile.id}&subject_id=eq.${subjectId}`, { method: "DELETE", prefer: "return=minimal" });
+          await sb(`exam_dates?profile_id=eq.${profile.id}&subject_id=in.(${ids.join(",")})`, { method: "DELETE", prefer: "return=minimal" });
           exam = null; paint(false); if (onChange) onChange(null);
         };
         return;
@@ -512,7 +538,7 @@
           const now = new Date();
           const r = await fetch("/api/quick-add", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
             text, today: isoDay(now), weekday: now.toLocaleDateString("en-IE", { weekday: "long" }),
-            subjects: m.subjects.map(s => ({ id: s.id, title: s.title })),
+            subjects: (m.realSubjects || m.subjects).map(s => ({ id: s.id, title: s.fullTitle || s.title })),
             chapters: Object.values(m.topics).map(c => ({ id: c.id, subject: subjTitle(c.subject_id), num: c.order_num, title: shortTitle(c.title), state: STATE_WORD(c) }))
           }) });
           const data = await r.json().catch(() => ({}));
@@ -623,7 +649,7 @@
     }).join("");
     const bestNote = best ? [subjTitle(best.subject_id), best.flag && best.flag.note ? best.flag.note : "", best.line].filter(Boolean).join(" · ") : "";
     const row = c => `<button type="button" class="hc-row" data-open="${c.id}" data-tab="${TAB_FOR[c.stage]}">
-        <span class="hc-row-b"><span class="hc-row-t">${esc(shortTitle(c.title))}</span><span class="hc-row-s">${esc(subjTitle(c.subject_id))} · ${esc(c.flag && c.flag.note ? c.flag.note : stepLevel(c)[1].toLowerCase())}</span></span>
+        <span class="hc-row-b"><span class="hc-row-t">${esc(shortTitle(c.title))}</span><span class="hc-row-s">${esc(subjTitle(c.subject_id))}${c.book ? " " + esc(c.book) : ""} · ${esc(c.flag && c.flag.note ? c.flag.note : stepLevel(c)[1].toLowerCase())}</span></span>
         ${stepsArrows(c)}<span class="hs-chev" aria-hidden="true">›</span></button>`;
     view.innerHTML = `<div class="hs hc">
       <div class="hc-top">
@@ -671,9 +697,9 @@
   }
   function renderSubject(view, m, subjectId, { sb, profile, openChapter, goHome, reload, state }){
     addCss();
-    const s = m.bySubject[subjectId];
+    const s = m.bySubject[(m.groupOf && m.groupOf[subjectId]) || subjectId];
     if (!s) { goHome(); return; }
-    const chs = s.chapters.slice().sort((a, b) => (a.order_num || 0) - (b.order_num || 0));
+    const chs = s.chapters.slice().sort((a, b) => (a.bookIdx || 0) - (b.bookIdx || 0) || (a.order_num || 0) - (b.order_num || 0));
     const isTested = c => c.done && (c.stage === "test" || c.stage === "refresh");
     const onTheGo = chs.filter(c => (c.stage !== "none" && !isTested(c)) || (c.flag && !isTested(c)));
     const tested = chs.filter(isTested);
@@ -688,10 +714,12 @@
       const tag = isTested(c) ? "" : stepsMark(c);
       const classBtn = "";
       const note = c.flag && c.flag.note ? ` · ${esc(c.flag.note)}` : "";
-      return `<button type="button" class="hs-row${c.stage === "none" ? " dim" : ""}" data-open="${c.id}" data-tab="${TAB_FOR[c.stage]}">
+      const on = !!c.flag;
+      const mark = `<button type="button" class="hs-mark${on ? " on" : ""}" data-mark="${c.id}" aria-pressed="${on}" aria-label="${on ? "On your revision list. Tap to remove" : "Add to your revision list"}" title="${on ? "On your revision list" : "Add to your revision list"}">${BOOKMARK}</button>`;
+      return `<div class="hs-rowwrap"><button type="button" class="hs-row${c.stage === "none" ? " dim" : ""}" data-open="${c.id}" data-tab="${TAB_FOR[c.stage]}">
         <span class="hs-num${isTested(c) ? " ok" : ""}">${isTested(c) ? "✓" : esc(String(c.order_num ?? "-"))}</span>
-        <span class="hs-row-b"><span class="hs-row-t">${esc(shortTitle(c.title))}</span><span class="hs-row-s">${esc(c.stage === "none" ? (comingUp.includes(c) ? "Coming up next" : "Not started") : c.line)}${note}</span>${classBtn ? `<span style="display:block;margin-top:6px">${classBtn}</span>` : ""}</span>
-        ${tag}<span class="hs-chev" aria-hidden="true">›</span></button>`;
+        <span class="hs-row-b"><span class="hs-row-t">${esc(shortTitle(c.title))}</span><span class="hs-row-s">${c.book ? esc(c.book) + " · " : ""}${esc(c.stage === "none" ? (comingUp.includes(c) ? "Coming up next" : "Not started") : c.line)}${note}</span>${classBtn ? `<span style="display:block;margin-top:6px">${classBtn}</span>` : ""}</span>
+        ${tag}<span class="hs-chev" aria-hidden="true">›</span></button>${mark}</div>`;
     };
     const fold = (key, title, sub, list, icon) => {
       if (!list.length) return "";
@@ -715,11 +743,20 @@
       <div style="display:flex;flex-direction:column;gap:8px">${b.bar}<span class="hs-sub" style="font-size:16px">${esc([...b.parts, `${chs.filter(c => c.stage === "none").length} not started`].join(" · "))}</span></div>
       <div id="hsExam"></div>
       <div class="hs-head"><h3>Chapters</h3></div>
-      ${chs.length ? `<div class="hs-list">${listHtml}</div>` : `<div class="hs-empty">No chapters yet.</div>`}
+      ${chs.length ? `<div class="hs-list"><span class="hs-markkey"><span class="hs-mark on">${BOOKMARK}</span>Tap the bookmark to add a chapter to your revision list</span>${listHtml}</div>` : `<div class="hs-empty">No chapters yet.</div>`}
     </div>`;
-    examBox(view.querySelector("#hsExam"), { sb, profile, subjectId, exam: s.exam, onChange: () => reload() });
+    examBox(view.querySelector("#hsExam"), { sb, profile, subjectId: (s.members || [s.id])[0], subjectIds: s.members || [s.id], exam: s.exam, onChange: () => reload() });
     view.querySelector("[data-home]").onclick = goHome;
     view.querySelectorAll("[data-fold]").forEach(b2 => b2.onclick = () => { open[subjectId + b2.dataset.fold] = !open[subjectId + b2.dataset.fold]; renderSubject(view, m, subjectId, { sb, profile, openChapter, goHome, reload, state }); });
+    view.querySelectorAll("[data-mark]").forEach(el => el.addEventListener("click", async () => {
+      const id = el.dataset.mark, on = el.getAttribute("aria-pressed") === "true";
+      el.disabled = true; el.classList.toggle("on", !on); el.setAttribute("aria-pressed", String(!on));
+      try {
+        if (on) await sb(`topic_flags?topic_id=eq.${id}&profile_id=eq.${profile.id}`, { method: "DELETE", prefer: "return=minimal" });
+        else await sb("topic_flags", { method: "POST", prefer: "resolution=merge-duplicates,return=minimal", body: [{ topic_id: id, profile_id: profile.id, flag_type: "revise", note: "", updated_at: new Date().toISOString() }] });
+      } catch (e) {}
+      reload();
+    }));
     view.querySelectorAll("[data-classdone]").forEach(el => {
       const act = async (e) => { e.stopPropagation(); e.preventDefault(); el.textContent = "Saving…"; await markClassDone(sb, profile, el.dataset.classdone, true); reload(); };
       el.addEventListener("click", act);

@@ -371,7 +371,8 @@
   .cv-tab[aria-selected="true"]{background:var(--t-card);color:var(--t-ink);box-shadow:0 1px 2px rgba(0,0,0,.08);}
   .cv-tab{display:flex;flex-direction:column;align-items:center;gap:1px;line-height:1.2;padding:7px 2px}
   .cv-tab-l{display:inline-flex;align-items:center;gap:7px}
-  .cv-tab-s{font-size:12px;font-weight:700;color:var(--t-muted)}
+  .cv-tab-s{font-size:12px;font-weight:700;color:var(--t-muted);white-space:nowrap}
+  @media (max-width:420px){.cv-tab{font-size:15px}.cv-tab-l{gap:5px}.cv-tab-s{font-size:11px}}
   .cv-tab-s.now{color:var(--t-accent)}
   .cv-tick{width:18px;height:18px;border-radius:50%;background:var(--t-accent);color:var(--t-on-accent);display:inline-grid;place-items:center;font-size:11px}
   .cv-now{width:9px;height:9px;border-radius:50%;background:var(--t-accent);display:inline-block}
@@ -454,6 +455,9 @@
 const SUPABASE_URL = "https://dhxwajidrtyukyxmiyml.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRoeHdhamlkcnR5dWt5eG1peW1sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYzMzYyNzQsImV4cCI6MjA1MTkxMjI3NH0.fnH1eI1vLtQASjII_6K0d6NZevD62tnthXe0uyMgh0s";
 const PROFILE = { id: "0525676f-a10f-424d-b707-8f75e5b3a053", name: "Annabel" };
+// Parent mode: set-up buttons on chapter pages only show on a device where a parent turned them on
+const PARENT_KEY = "sp-parent-mode";
+const isParentMode = () => { try { return localStorage.getItem(PARENT_KEY) === "1"; } catch (e) { return false; } };
 const STEP_COLORS = ["#0f8f76","#e2703a","#3568c9","#cf9a12","#d1477a","#7c5cbf"];
 
 function observeReveal(selector){
@@ -597,8 +601,12 @@ async function renderChapter(){
 
   const topicRows = await sb(`topics?select=id,title,notebook_url,subject_id,order_num&id=eq.${state.topicId}`);
   const topic = topicRows[0];
-  const subjectRows = topic ? await sb(`subjects?select=title&id=eq.${topic.subject_id}`) : [];
-  if (topic) topic.subject_title = subjectRows[0] ? subjectRows[0].title : "";
+  // Subjects with more than one book (Religion 1 and 2) share a name and an exam date
+  const groupName = t => String(t || "").replace(/\s*PolSoc$/i, "").replace(/\s+\d+$/, "").trim();
+  const allSubjects = topic ? await sb(`subjects?select=id,title&user_id=eq.${PROFILE.id}`) : [];
+  const mySubject = allSubjects.find(x => topic && x.id === topic.subject_id);
+  const siblingIds = mySubject ? allSubjects.filter(x => groupName(x.title) === groupName(mySubject.title)).map(x => x.id) : (topic ? [topic.subject_id] : []);
+  if (topic) topic.subject_title = mySubject ? groupName(mySubject.title) : "";
 
   const templateRowsAll = topic
     ? await sb(`nlm_checklist_templates?select=id,step_order,emoji,title,blurb,actions&subject_id=eq.${topic.subject_id}&order=step_order.asc`)
@@ -624,7 +632,7 @@ async function renderChapter(){
 
   const [statusRows, examRows] = topic ? await Promise.all([
     sb(`chapter_status?select=class_done_at,fresh_since&topic_id=eq.${state.topicId}&profile_id=eq.${PROFILE.id}`),
-    sb(`exam_dates?select=label,exam_date&subject_id=eq.${topic.subject_id}&profile_id=eq.${PROFILE.id}`)
+    sb(`exam_dates?select=label,exam_date&subject_id=in.(${siblingIds.join(",")})&profile_id=eq.${PROFILE.id}`)
   ]) : [[], []];
   let classDoneAt = statusRows[0] ? statusRows[0].class_done_at : null;
   let freshSince = statusRows[0] ? statusRows[0].fresh_since : null;
@@ -644,8 +652,11 @@ async function renderChapter(){
   const NOTES = { "Revision Guide": "5 minute read", "Video Overview": "Watch the key ideas", "In-Depth Slide Deck": "Like a full class lesson", "Audio Recap": "Listen anywhere", "Mind Map": "See how it all connects", "Flashcards Review": "Quick recall, little and often", "Quiz Yourself": "A NotebookLM quiz on this chapter", "Exam Practice": "Past paper questions with model answers" };
   const VERB = { "Video Overview": "Watch", "Audio Recap": "Listen" };
 
-  function totalSteps(){ return learnRows.length; }
-  function doneCount(){ return learnRows.filter(t => (doneMap[t.step_order] || {}).done).length; }
+  // Students only see materials that are ready (a link is saved, or already ticked)
+  const isReady = t => { const e = doneMap[t.step_order] || {}; return !!(e.resourceUrl || e.done); };
+  const shownRows = rows => isParentMode() ? rows : rows.filter(t => isReady(t) || (t.title === "Video Overview" && videoRequest && (videoRequest.status === "pending" || videoRequest.status === "processing")));
+  function totalSteps(){ return shownRows(learnRows).length; }
+  function doneCount(){ return shownRows(learnRows).filter(t => (doneMap[t.step_order] || {}).done).length; }
 
   // Parent set-up for a material: prompts, pasting a link, making the video
   function setupHTML(t, actions, entry, isAutoVideo){
@@ -688,7 +699,7 @@ async function renderChapter(){
     let btn;
     if (entry.resourceUrl) btn = `<a class="cv-btn" href="${esc(entry.resourceUrl)}" target="_blank" rel="noopener">${VERB[t.title] || "Open"}${isDone ? " again" : ""}</a>`;
     else if (isAutoVideo && isQueued) btn = `<span class="cv-wait">Being made</span>`;
-    else btn = `<span class="cv-wait">Not ready yet</span>`;
+    else btn = isParentMode() ? `<span class="cv-wait">Not ready yet</span>` : "";
     return `
       <div class="cv-row${isDone ? " done" : ""}">
         <div class="cv-item">
@@ -696,7 +707,7 @@ async function renderChapter(){
           <div class="cv-item-body"><span class="cv-item-title">${esc(name)}</span><span class="cv-item-sub">${esc(note)}</span></div>
           ${btn}
         </div>
-        <details class="cv-setup"><summary>${entry.resourceUrl && !isAutoVideo ? "Change" : "Set up"}</summary><div class="cv-setup-body">${setupHTML(t, actions, entry, isAutoVideo)}</div></details>
+        ${isParentMode() ? `<details class="cv-setup"><summary>${entry.resourceUrl && !isAutoVideo ? "Change" : "Set up"}</summary><div class="cv-setup-body">${setupHTML(t, actions, entry, isAutoVideo)}</div></details>` : ""}
       </div>`;
   }
 
@@ -716,14 +727,14 @@ async function renderChapter(){
       const se = b.querySelector(".cv-tab-s"); se.textContent = sub; se.classList.toggle("now", !!now);
     };
     const learnDoneAll = info.learnTotal > 0 && info.learnDone >= info.learnTotal;
-    if (info.stage === "learn" || info.stage === "none") set("learn", learnDoneAll ? "tick" : "now", "Watch & read · " + (learnDoneAll ? "done" : info.learnDone ? "started" : "start here"), !learnDoneAll);
+    if (info.stage === "learn" || info.stage === "none") set("learn", learnDoneAll ? "tick" : "now", "Watch & read", !learnDoneAll);
     else set("learn", learnDoneAll ? "tick" : "", "Watch & read" + (learnDoneAll ? " · done" : ""), false);
-    if (info.stage === "test") set("test", info.done ? "tick" : "now", "Check yourself · " + (info.done ? "done" : "now"), !info.done);
-    else if (info.tested || (info.stage === "refresh" && (info.stats.triedEver || 0) >= Math.ceil((info.stats.total || 1) * 0.8))) set("test", "tick", "Check yourself · done", false);
+    if (info.stage === "test") set("test", info.done ? "tick" : "now", "Check yourself", !info.done);
+    else if (info.tested || (info.stage === "refresh" && (info.stats.triedEver || 0) >= Math.ceil((info.stats.total || 1) * 0.8))) set("test", "tick", "Check yourself", false);
     else set("test", "", "Check yourself", false);
     const st = info.stats || {}, nPast = st.pastTotal || 0, nEx = st.examTotal || 0;
-    const prepSub = nPast ? `${nPast} past paper question${nPast === 1 ? "" : "s"}` : nEx ? `${nEx} exam question${nEx === 1 ? "" : "s"}` : "Before exams";
-    if (info.stage === "refresh") set("refresh", info.done ? "tick" : "now", info.done ? "Exam ready" : "Exams soon · now", !info.done);
+    const prepSub = nPast ? `${nPast} past paper${nPast === 1 ? "" : "s"}` : nEx ? `${nEx} exam question${nEx === 1 ? "" : "s"}` : "Past papers";
+    if (info.stage === "refresh") set("refresh", info.done ? "tick" : "now", info.done ? "Exam ready" : "Exams soon", !info.done);
     else set("refresh", "", prepSub, false);
     return info;
   }
@@ -853,7 +864,8 @@ async function renderChapter(){
   function refreshSteps(){
     const stepsEl = document.getElementById("stepsContainer");
     if (!stepsEl) return;
-    stepsEl.innerHTML = learnRows.length || learnExtras.length ? learnRows.concat(learnExtras).map(t => stepHTML(t)).join("") : `<p class="cv-empty">No learning materials for this chapter yet.</p>`;
+    const visible = shownRows(learnRows.concat(learnExtras));
+    stepsEl.innerHTML = visible.length ? visible.map(t => stepHTML(t)).join("") : `<p class="cv-empty">The videos and notes for this chapter are on their way. You can still test yourself in Quick Tests.</p>`;
     const extraEl = document.getElementById("stepsContainer2"), extraBox = document.getElementById("extraPractice");
     if (extraEl) extraEl.innerHTML = extraRows.map(t => stepHTML(t)).join("");
     if (extraBox && !extraRows.length && !(document.getElementById("rightSlot") || {}).childElementCount) extraBox.hidden = true;
@@ -876,7 +888,6 @@ async function renderChapter(){
     <h2 class="cv-title">${esc(topic ? topic.title : "")}</h2>
     <div class="cv-meta">
       <button type="button" class="cv-flag${currentFlag.flagType ? " active" : ""}" id="chapFlagToggle">${currentFlag.flagType ? "&check; On my revision list" : "+ Add to revision list"}</button>
-      ${topic && topic.notebook_url ? `<a class="cv-nb" href="${esc(topic.notebook_url)}" target="_blank" rel="noopener">NotebookLM notebook</a>` : ""}
     </div>
     ${currentFlag.flagType ? `
       <div class="flag-note-row">
@@ -929,7 +940,7 @@ async function renderChapter(){
   showTab(state.chapterTab);
   document.querySelectorAll(".cv-tab").forEach(b => b.addEventListener("click", () => { autoTab = false; }));
 
-  if (topic) Stages.examBox(document.getElementById("examSlot"), { sb, profile: PROFILE, subjectId: topic.subject_id, exam, onChange: (e) => { exam = e; paintTabs(); if (practiceApi) practiceApi.refresh(); } });
+  if (topic) Stages.examBox(document.getElementById("examSlot"), { sb, profile: PROFILE, subjectId: topic.subject_id, subjectIds: siblingIds, exam, onChange: (e) => { exam = e; paintTabs(); if (practiceApi) practiceApi.refresh(); } });
 
   if (topic && window.mountPractice) window.mountPractice(document.getElementById("practiceSlot"), {
     topic, profile: PROFILE, sb,
@@ -1066,6 +1077,10 @@ async function renderSettings(){
   const html = parent ? `
     <div class="crumb"><span id="settingsBack">&larr; Settings</span></div>
     <div class="section-head"><h2 class="section-title">Parent set-up</h2></div>
+    <div class="settings-subject"><h3>Set-up buttons</h3>
+      <div class="settings-step-row"><div class="settings-step-body"><div class="settings-step-title">Show set-up buttons on chapter pages</div>
+        <div class="settings-step-blurb">For adding links to videos, slides and guides. Only on this device, so ${esc(PROFILE.name)} doesn't see them on theirs.</div></div>
+        <button class="settings-toggle ${isParentMode() ? "on" : ""}" id="parentModeToggle" aria-label="Show set-up buttons"><span class="knob"></span></button></div></div>
     <div id="voiceCard"></div>
     ${tasksHtml}` : `
     <div class="crumb"><span id="settingsBack">&larr; Home</span></div>
@@ -1095,6 +1110,8 @@ async function renderSettings(){
     state.model = mdl;
     if (mp.isConnected) Decor.panel(mp, { sb, goal: mdl.goal });
   }
+  const pmt = document.getElementById("parentModeToggle");
+  if (pmt) pmt.addEventListener("click", () => { const on = !isParentMode(); try { localStorage.setItem(PARENT_KEY, on ? "1" : "0"); } catch (e) {} pmt.classList.toggle("on", on); });
   if (parent && window.TutorLimits) TutorLimits.voicePanel(document.getElementById("voiceCard"), { sb, profile: PROFILE });
   const ps = document.getElementById("parentSetup");
   if (ps) ps.addEventListener("click", () => { state.parentSetup = true; renderSettings(); window.scrollTo({ top: 0 }); });
@@ -1104,7 +1121,7 @@ async function renderSettings(){
     render();
   });
 
-  document.querySelectorAll(".settings-toggle").forEach(btn => {
+  document.querySelectorAll(".settings-toggle[data-template]").forEach(btn => {
     btn.addEventListener("click", async () => {
       const templateId = btn.dataset.template;
       const isOn = btn.classList.contains("on");
