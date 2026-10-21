@@ -237,20 +237,20 @@
     return "Not started";
   }
   const TAG = { learn: "Learn", test: "Quick Tests", refresh: "Exam Prep" };
-  // Four arrows: not started > learning >> quick tests >>> exam prep >>>>
+  // Three arrows: none lit = not started, 1 = learning, 2 = quick tests, 3 = exam prep
   function stepLevel(c){
-    if (c.stage === "refresh" || c.tested) return [4, "Exam prep"];
-    if (c.stage === "test") return [3, "Quick tests"];
-    if (c.stage === "learn") return [2, "Learning"];
-    return [1, "Not started"];
+    if (c.stage === "refresh" || c.tested) return [3, "Exam prep"];
+    if (c.stage === "test") return [2, "Quick tests"];
+    if (c.stage === "learn") return [1, "Learning"];
+    return [0, "Not started"];
   }
   function stepsArrows(c){
     const [n, label] = stepLevel(c);
-    return `<span class="hs-arrows" role="img" aria-label="Step ${n} of 4: ${label}">${[1,2,3,4].map(i => `<i${i <= n ? ' class="on"' : ""}></i>`).join("")}</span>`;
+    return `<span class="hs-arrows" role="img" aria-label="Step ${n} of 3: ${label}">${[1,2,3].map(i => `<i${i <= n ? ' class="on"' : ""}></i>`).join("")}</span>`;
   }
   function stepsMark(c){
     const [n, label] = stepLevel(c);
-    return `<span class="hs-steps" aria-label="Step ${n} of 4: ${label}"><span class="hs-arrows" aria-hidden="true">${[1,2,3,4].map(i => `<i${i <= n ? ' class="on"' : ""}></i>`).join("")}</span><span class="hs-steps-l">${label}</span></span>`;
+    return `<span class="hs-steps" aria-label="Step ${n} of 3: ${label}"><span class="hs-arrows" aria-hidden="true">${[1,2,3].map(i => `<i${i <= n ? ' class="on"' : ""}></i>`).join("")}</span><span class="hs-steps-l">${label}</span></span>`;
   }
   const GO = { learn: "Keep learning ›", test: "Test myself ›", refresh: "Exam prep ›", none: "Start ›" };
   const TAB_FOR = { learn: "learn", test: "test", refresh: "refresh", none: "learn" };
