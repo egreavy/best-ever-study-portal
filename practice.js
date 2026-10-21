@@ -172,6 +172,28 @@
   .pr-btn[disabled]{opacity:.6;cursor:default}
   .pr-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
   .pr-q{font-size:18px;font-weight:700;line-height:1.5;margin:0}
+  .qd{display:flex;flex-direction:column;gap:10px}
+  .qd-ask{background:color-mix(in srgb,var(--t-accent) 9%,var(--t-card));border-left:4px solid var(--t-accent);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+  .qd blockquote{margin:0;padding:2px 0 2px 12px;border-left:3px solid var(--t-line);font-style:italic;font-size:16px;line-height:1.55}
+  .qd-note{margin:0;font-size:14px;color:var(--t-muted);line-height:1.5}
+  .qd-lead{margin:4px 0 -2px;font-size:14px;font-weight:700;color:var(--t-muted)}
+  .qd-intro p,.qd-body p{margin:0 0 8px;font-size:16px;line-height:1.6}
+  .qd-sec{border:1px solid var(--t-line);border-radius:10px;background:var(--t-card)}
+  .qd .qd-sec>summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;min-height:44px;font-weight:700;font-size:15px}
+  .qd-sec>summary::-webkit-details-marker{display:none}
+  .qd-sec>summary::after{content:"›";transform:rotate(90deg);font-size:20px;color:var(--t-muted);transition:transform .15s}
+  .qd-sec[open]>summary::after{transform:rotate(-90deg)}
+  .qd-sec[open] .qd-tap{display:none}
+  .qd-tap{margin-left:auto;font-weight:500;font-size:13px;color:var(--t-muted)}
+  .qd-body{padding:2px 14px 12px}
+  .qd ul{margin:0 0 8px;padding-left:20px;font-size:16px;line-height:1.6}
+  .qd-src{font-size:13px !important;color:var(--t-muted)}
+  .qd-img{font-size:14px !important;color:var(--t-muted);font-style:italic}
+  .qd-tablewrap{overflow-x:auto;margin:0 0 10px}
+  .qd-table{border-collapse:collapse;font-size:15px;min-width:60%}
+  .qd-table th,.qd-table td{border:1px solid var(--t-line);padding:6px 10px;text-align:left;vertical-align:top}
+  .qd-table th{background:color-mix(in srgb,var(--t-line) 45%,transparent);font-weight:700}
+  .qd-plain p{margin:0 0 8px;font-size:16px;line-height:1.6}
   .pr-meta{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:14px;color:var(--t-muted)}
   .pr-progress{height:6px;background:var(--t-line);border-radius:99px;overflow:hidden}.pr-progress i{display:block;height:100%;background:var(--t-ink)}
   .pr-opts{display:flex;flex-direction:column;gap:8px}
@@ -305,7 +327,73 @@
     return prog.latest[q.id] === 0 ? `You didn't know this one yet${where ? " (" + where + ")" : ""}` : `Half right${where ? " " + where : ""}. Nearly there.`;
   }
   const isPast = q => q.qtype === "exam" && !/^exam-style/i.test(q.source || "");
-  const shortTitle = q => q.qtype === "exam" ? `${isPast(q) ? "Past paper" : "Exam question"}: ${q.prompt}` : q.prompt;
+  // ---- laying out long questions ----
+  // q.display (when set) is the exam wording rearranged with simple line markers:
+  //  "?? " the actual question   "!! " guidance in brackets   "\"\" " a statement/quote the question refers to
+  //  "## " starts a source (document, extract, table)   "| a | b |" table rows (first row = header)
+  //  "- " bullet   "~~ " source line (small print)   "[[image: ...]]" a picture on the exam paper
+  //  other lines are paragraphs; lines like "(50 marks)" are dropped (marks show separately)
+  const marksLine = l => /^\(?\s*\d+\s*marks?\s*\)?\.?$/i.test(l.trim());
+  function qParse(q){
+    if (!q || !q.display) return null;
+    const P = { asks:[], notes:[], quotes:[], intro:[], secs:[] };
+    let cur = null;
+    String(q.display).split("\n").forEach(raw => {
+      const l = raw.trim();
+      if (!l || marksLine(l)) { if (!l) (cur ? cur.lines : P.intro).push(""); return; }
+      if (l.startsWith("?? ")) P.asks.push(l.slice(3).trim());
+      else if (l.startsWith("!! ")) P.notes.push(l.slice(3).trim());
+      else if (l.startsWith('"" ')) P.quotes.push(l.slice(3).trim());
+      else if (l.startsWith("## ")) { cur = { title: l.slice(3).trim(), lines: [] }; P.secs.push(cur); }
+      else (cur ? cur.lines : P.intro).push(l);
+    });
+    return P.asks.length ? P : null;
+  }
+  function linesHtml(lines){
+    let out = "", i = 0;
+    const row = l => l.replace(/^\||\|$/g, "").split("|").map(c => c.trim());
+    while (i < lines.length) {
+      const l = lines[i];
+      if (!l) { i++; continue; }
+      if (l.startsWith("|")) {
+        const rows = []; while (i < lines.length && lines[i].startsWith("|")) { if (!/^\|[\s:|-]+\|?$/.test(lines[i])) rows.push(row(lines[i])); i++; }
+        out += `<div class="qd-tablewrap"><table class="qd-table"><thead><tr>${rows[0].map(c => `<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>${rows.slice(1).map(r => `<tr>${r.map(c => `<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+        continue;
+      }
+      if (l.startsWith("- ")) { let li = ""; while (i < lines.length && lines[i].startsWith("- ")) { li += `<li>${esc(lines[i].slice(2))}</li>`; i++; } out += `<ul>${li}</ul>`; continue; }
+      if (l.startsWith("~~ ")) out += `<p class="qd-src">${esc(l.slice(3))}</p>`;
+      else if (/^\[\[image:/i.test(l)) out += `<p class="qd-img">Picture on the exam paper: ${esc(l.replace(/^\[\[image:\s*/i, "").replace(/\]\]$/, ""))}</p>`;
+      else if (l.startsWith('"" ')) out += `<blockquote>${esc(l.slice(3))}</blockquote>`;
+      else out += `<p>${esc(l)}</p>`;
+      i++;
+    }
+    return out;
+  }
+  // Without a layout: keep the line breaks and turn runs of "a | b" lines into tables
+  function plainHtml(text){
+    const lines = String(text || "").split("\n").map(l => l.trim()).filter(l => !marksLine(l));
+    const conv = lines.map(l => (l.match(/\|/g) || []).length >= 1 && !/^\(/.test(l) ? "|" + l + "|" : l);
+    const fixed = conv.map((l, i) => l.startsWith("|") && !(conv[i-1] || "").startsWith("|") && !(conv[i+1] || "").startsWith("|") ? lines[i] : l);
+    return linesHtml(fixed);
+  }
+  function questionHtml(q){
+    const P = qParse(q);
+    if (!P) return q.qtype === "exam" && /\n/.test(q.prompt || "") ? `<div class="qd qd-plain">${plainHtml(q.prompt)}</div>` : `<p class="pr-q">${esc(q.prompt)}</p>`;
+    const total = P.secs.reduce((n, s) => n + s.lines.join(" ").length, 0);
+    const open = total < 700;
+    // A short lead-in (a sentence or two of context) reads best above the question; a long one goes under it
+    const introText = P.intro.join(" ").trim(), introTop = introText.length > 0 && introText.length < 300;
+    const intro = introText ? `<div class="qd-intro">${linesHtml(P.intro)}</div>` : "";
+    return `<div class="qd">
+      ${introTop ? intro : ""}
+      <div class="qd-ask">${P.asks.map(a => `<p class="pr-q">${esc(a)}</p>`).join("")}${P.quotes.map(x => `<blockquote>${esc(x)}</blockquote>`).join("")}${P.notes.map(x => `<p class="qd-note">${esc(x)}</p>`).join("")}</div>
+      ${!introTop ? intro : ""}
+      ${P.secs.length ? `${!open ? `<p class="qd-lead">Read ${P.secs.length > 1 ? `these ${P.secs.length}` : "this"} first</p>` : ""}${P.secs.map(s => `<details class="qd-sec"${open ? " open" : ""}><summary><span>${esc(s.title)}</span><span class="qd-tap">${open ? "" : "Tap to read"}</span></summary><div class="qd-body">${linesHtml(s.lines)}</div></details>`).join("")}` : ""}
+    </div>`;
+  }
+  // One line that says what the question asks (for lists)
+  const qMain = q => { const P = qParse(q); return P ? P.asks.join(" ") : q.prompt; };
+  const shortTitle = q => q.qtype === "exam" ? `${isPast(q) ? "Past paper" : "Exam question"}: ${qMain(q)}` : q.prompt;
 
   // ---- mount ----
   async function mountPractice(slot, opts){
@@ -313,7 +401,7 @@
     const freshSince = typeof opts.freshSince === "function" ? opts.freshSince : () => opts.freshSince || null;
     if (!slot || !topic) return null;
     addCss();
-    const questions = await sb(`quiz_questions?select=id,qtype,topic_label,difficulty,prompt,options,answer_index,explanation,model_answer,marking_scheme,source,marks&topic_id=eq.${topic.id}&order=id.asc`);
+    const questions = await sb(`quiz_questions?select=id,qtype,topic_label,difficulty,prompt,display,options,answer_index,explanation,model_answer,marking_scheme,source,marks&topic_id=eq.${topic.id}&order=id.asc`);
     if (!questions || !questions.length) return null;
     let prog = await loadProgress(sb, profile, questions, freshSince());
     let session = null;
@@ -423,7 +511,7 @@
       hero.querySelector("button").onclick = () => start("Exam Prep", prepQueue(), "prep");
       const nodes = [hero];
       const row = q => {
-        const b = h(`<button type="button" class="pp-row"><span class="pp-yr">${esc(isPast(q) ? yearOf(q) : "")}</span><span class="pp-b"><span class="pp-s">${esc(isPast(q) ? partOf(q) : "Practice question")} · ${q.marks || 5} marks</span><span class="pp-q">${esc(q.prompt.split("\n")[0])}</span></span>${chip(q)}</button>`);
+        const b = h(`<button type="button" class="pp-row"><span class="pp-yr">${esc(isPast(q) ? yearOf(q) : "")}</span><span class="pp-b"><span class="pp-s">${esc(isPast(q) ? partOf(q) : "Practice question")} · ${q.marks || 5} marks</span><span class="pp-q">${esc(q.display ? qMain(q) : q.prompt.split("\n")[0])}</span></span>${chip(q)}</button>`);
         b.onclick = () => start("Exam Prep", [q], "prep");
         return b;
       };
@@ -581,7 +669,7 @@
         <div class="pr-row" style="justify-content:space-between"><button type="button" class="pr-btn ghost" data-stop>Stop</button><span class="pr-small" style="font-variant-numeric:tabular-nums">${entry.again ? "Improving your answer" : retry ? "Second try" : `Question ${session.i+1} of ${session.total}`}</span></div>
         <div class="pr-progress"><i style="width:${Math.min(session.i,session.total)/session.total*100}%"></i></div>
         <div class="pr-meta"><span>${label}</span>${session.today ? `<span class="pr-today" data-ring></span>` : ""}</div>
-        <p class="pr-q">${esc(q.prompt)}</p></div>`);
+        ${questionHtml(q)}</div>`);
       card.querySelector("[data-stop]").onclick = () => session.results.length ? finish() : home();
       session.t0 = session.t0 || Date.now();
       if (q.qtype === "mcq") mcqView(card, q, retry); else writtenView(card, q, retry, entry);
