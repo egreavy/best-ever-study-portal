@@ -51,6 +51,9 @@
   .coach-top .tutor-icon svg{width:20px;height:20px}
   .coach-title{flex:1 1 160px;min-width:0;font-weight:700;font-size:15px;line-height:1.3}
   .coach-title small{display:block;font-weight:400;color:var(--t-muted);font-size:13px}
+  .coach.ended{background:var(--t-soft);border-color:var(--t-line);padding:10px 14px;gap:4px}
+  .coach.ended .tutor-icon{display:none}
+  .coach.ended .coach-title{font-size:14px;color:var(--t-muted)}
   `;
 
 
@@ -229,8 +232,9 @@ ${notes || "(no notes for this chapter)"}`;
     const finish = (msg) => {
       if (finished) return; finished = true; coachBusy = false; convo = null;
       save();
-      orb.disabled = true; orb.className = "tutor-orb"; orb.textContent = "Call ended";
-      endBtn.hidden = true; status.textContent = msg || "";
+      orb.hidden = true; endBtn.hidden = true; status.textContent = msg || "";
+      box.classList.add("ended");
+      const tt = box.querySelector(".coach-title"); if (tt) tt.innerHTML = "Tutor call finished";
       if (onEnd) onEnd({ talked: transcript.length > 0 });
     };
     let stopTimer = null;

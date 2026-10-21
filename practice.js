@@ -590,7 +590,15 @@
       const tk = wrap.querySelector("[data-talk]");
       if (tk) tk.onclick = () => { showOpts(false);
         window.coachAnswer(cslot, { topic, profile, sb, question:q, answer:text, feedback:f,
-          onEnd: () => { showOpts(true); const a = wrap.querySelector("[data-again]"); a.classList.add("main"); a.focus({ preventScroll:true }); } }); };
+          onEnd: ({ failed }) => {
+            showOpts(true);
+            if (failed) return;
+            // After a call: one clear next step (write it again); talking again stays possible
+            const st2 = wrap.querySelector("[data-steps]"); if (st2) st2.classList.remove("main");
+            const t2 = wrap.querySelector("[data-talk]"); if (t2) { t2.querySelector(".pr-li-title").textContent = "Talk it through again"; t2.querySelector(".pr-li-note").textContent = "Another short voice call"; }
+            const a = wrap.querySelector("[data-again]"); a.classList.add("main"); a.querySelector(".pr-li-title").textContent = "Write it again now"; a.querySelector(".pr-li-note").textContent = "Add the points you just talked through"; a.focus({ preventScroll:true });
+            wrap.querySelector(".pr-nx-l").after(cslot);
+          } }); };
       // Straight under the mark and summary, so the next step is the first thing he sees
       const head = card.querySelector(":scope > .pr-row");
       if (head) head.after(wrap); else card.append(wrap);
