@@ -35,6 +35,12 @@
   .pr-prog-top{display:flex;justify-content:space-between;align-items:baseline;gap:6px 16px;flex-wrap:wrap}
   .pr-prog .pr-hero-title{font-size:20px}
   .pr-last{font-size:15px;color:var(--t-muted)}.pr-last b{color:var(--t-ink)}
+  .pr-sum{display:flex;flex-direction:column;gap:6px}
+  .pr-sum-l{margin:0;display:flex;gap:4px 12px;flex-wrap:wrap;font-size:16px;line-height:1.45}
+  .pr-sum-l .k{color:var(--t-muted);min-width:9.5em}
+  .pr-viewprog{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--t-line);padding-top:10px}
+  .pr-viewprog summary{cursor:pointer;font-weight:700;font-size:15px;min-height:32px;display:flex;align-items:center}
+  .pr-viewprog[open]>*:not(summary){margin-top:8px}
   .pr-bar3{display:flex;height:12px;border-radius:99px;background:var(--t-line);overflow:hidden}
   .pr-bar3 i{display:block;height:100%}.pr-bar3 i.r{background:var(--t-accent)}.pr-bar3 i.f{background:#E0A43A}
   .pr-legend{display:flex;gap:6px 18px;flex-wrap:wrap;font-size:14px;color:var(--t-muted)}
@@ -355,7 +361,7 @@
       const weakDesc = parts.length ? parts.join(", plus ").replace(/^t/, "T") + "." + (ws.length > 15 ? " Up to 15 at a time, hardest first." : "") : "You've never got one wrong here. Try Start from scratch instead.";
       const wrap = h(`<div><p class="pp-before">Before your exam</p><div class="pr-refresh">
         <div class="pr-card"><span class="pr-pill">Best when exams are close</span><h3 style="font-size:20px">Focus on weak spots</h3><p class="pr-sub">${esc(weakDesc)}</p><div class="pr-side-btn"><button type="button" class="pr-btn big" data-weak${ws.length ? "" : " disabled"}>Start</button></div></div>
-        <div class="pr-card"><span class="pr-pill" style="visibility:hidden">.</span><h3 style="font-size:20px">Start from scratch</h3><p class="pr-sub">Every question comes back as new. Your first results are kept, so you'll see how much stuck.</p>${fresh ? `<p class="pr-small">You started fresh on ${esc(new Date(fresh).toLocaleDateString("en-IE", { day:"numeric", month:"short" }))}: ${plural(known().length, "right", "right")} so far, ${fixes().length} to fix, ${untried().length} to go.</p>` : ""}<div class="pr-side-btn"><button type="button" class="pr-btn big ghost" data-fresh>${fresh ? "Start fresh again" : "Start fresh"}</button></div></div>
+        <div class="pr-card"><span class="pr-pill" style="visibility:hidden">.</span><h3 style="font-size:20px">Start from scratch</h3><p class="pr-sub">Every question comes back as new. Your first results are kept, so you'll see how much stuck.</p>${fresh ? `<p class="pr-small">You started fresh on ${esc(new Date(fresh).toLocaleDateString("en-IE", { day:"numeric", month:"short" }))}: ${plural(known().length, "right", "right")} so far, ${fixes().length} to try again, ${untried().length} to go.</p>` : ""}<div class="pr-side-btn"><button type="button" class="pr-btn big ghost" data-fresh>${fresh ? "Start fresh again" : "Start fresh"}</button></div></div>
       </div></div>`);
       wrap.querySelector("[data-weak]").onclick = () => {
         const hardOnes = shuffle(ws.filter(q => prog.everWeak.has(q.id))), newOnes = shuffle(ws.filter(q => !prog.everWeak.has(q.id)));
@@ -433,9 +439,9 @@
       const k = day(att[0].created_at), first = {};
       att.filter(a => day(a.created_at) === k).forEach(a => { first[a.question_id] = Number(a.result); });
       const vals = Object.values(first); if (vals.length < 3) return null;
-      const right = vals.filter(v => v >= 1).length, pct = Math.round(vals.reduce((n, v) => n + v, 0) / vals.length * 100);
+      const right = vals.filter(v => v >= 1).length, half = vals.filter(v => v > 0 && v < 1).length, pct = Math.round(vals.reduce((n, v) => n + v, 0) / vals.length * 100);
       const days = Math.round((new Date(new Date().toDateString()) - new Date(new Date(att[0].created_at).toDateString())) / 86400000);
-      return { n: vals.length, right, pct, when: days <= 0 ? "today" : days === 1 ? "yesterday" : days < 7 ? `${days} days ago` : "on " + new Date(att[0].created_at).toLocaleDateString("en-IE", { day: "numeric", month: "short" }) };
+      return { n: vals.length, right, half, pct, when: days <= 0 ? "today" : days === 1 ? "yesterday" : days < 7 ? `${days} days ago` : "on " + new Date(att[0].created_at).toLocaleDateString("en-IE", { day: "numeric", month: "short" }) };
     }
     function home(){
       session = null; setChrome(true);
@@ -445,16 +451,34 @@
       const nRight = quick.filter(q => prog.latest[q.id] >= 1).length, nFix = fx.length, nNew = quick.length - nRight - nFix;
       const last = lastGo(quick);
       const pctW = n => quick.length ? (n / quick.length * 100).toFixed(1) + "%" : "0";
-      const mainLabel = nFix || nNew ? (nRight + nFix ? "Carry on" : "Start testing") : "Test the whole chapter again";
-      const mainNote = nFix || nNew ? [nFix ? `${nFix} to fix first` : "", nNew ? `${nNew} new` : ""].filter(Boolean).join(", then ") : "You've got every question right. Mix them up and check it stuck.";
+      const tried = nRight + nFix;
+      const mainLabel = nFix || nNew ? (tried ? "Start practice" : "Start testing") : "Test the whole chapter again";
+      const nextText = nFix ? plural(nFix, "question to try again", "questions to try again") + (nNew ? `, then ${nNew} new` : "")
+        : nNew ? plural(nNew, "new question", "new questions") : "Mix them all up and check it stuck";
+      // Weak spot: the topic with the most questions to try again
+      const wc = {}; fx.filter(q => q.qtype !== "exam" && q.topic_label).forEach(q => { wc[q.topic_label] = (wc[q.topic_label] || 0) + 1; });
+      const weak = Object.keys(wc).sort((a, b) => wc[b] - wc[a])[0];
+      // Secure: latest answer right, and right on at least two different days
+      const qids = new Set(quick.map(q => q.id)), rightDays = {};
+      (prog.att || []).forEach(a => { if (!qids.has(a.question_id) || Number(a.result) < 1) return; (rightDays[a.question_id] = rightDays[a.question_id] || new Set()).add(new Date(a.created_at).toDateString()); });
+      const nSecure = quick.filter(q => prog.latest[q.id] >= 1 && rightDays[q.id] && rightDays[q.id].size >= 2).length;
+      const line = (k, v) => `<p class="pr-sum-l"><span class="k">${k}</span><span class="v">${v}</span></p>`;
       const hero = h(`<div class="pr-card pr-prog">
-          <div class="pr-prog-top"><span class="pr-hero-title">${nRight + nFix ? "Your progress on this chapter" : "Test yourself on this chapter"}</span>${last ? `<span class="pr-last">Last tested ${esc(last.when)}: <b>${last.right} of ${last.n} right</b> · ${last.pct}%</span>` : ""}</div>
-          <div class="pr-bar3" aria-hidden="true"><i class="r" style="width:${pctW(nRight)}"></i><i class="f" style="width:${pctW(nFix)}"></i></div>
-          <div class="pr-legend"><span><i class="r"></i>${nRight} right</span><span><i class="f"></i>${nFix} to fix</span><span><i></i>${nNew} not tried yet</span></div>
-          <div class="pr-row" style="margin-top:4px"><button type="button" class="pr-btn big" data-run>${mainLabel}</button>${nFix && (nRight + nFix) ? `<button type="button" class="pr-btn big ghost" data-fixonly>Just the ${nFix} to fix</button>` : ""}</div>
-          <span class="pr-small">${esc(mainNote)}</span></div>`);
+          <span class="pr-hero-title">${tried ? "Your progress on this chapter" : "Test yourself on this chapter"}</span>
+          <div class="pr-sum">
+            ${last ? line(`Last practice ${esc(last.when)}`, `<b>${last.right} of ${last.n} right</b>${last.half ? `, ${last.half} half right` : ""}`) : ""}
+            ${line("Next", `<b>${esc(nextText)}</b>`)}
+            ${weak ? line("Weak spot", esc(weak)) : ""}
+          </div>
+          <div class="pr-row" style="margin-top:4px"><button type="button" class="pr-btn big" data-run>${mainLabel}</button></div>
+          ${tried ? `<details class="pr-viewprog"><summary>View progress</summary>
+            <p class="pr-small">Your latest answer to each of the ${quick.length} questions:</p>
+            <div class="pr-bar3" aria-hidden="true"><i class="r" style="width:${pctW(nRight)}"></i><i class="f" style="width:${pctW(nFix)}"></i></div>
+            <div class="pr-legend"><span><i class="r"></i>${nRight} right last time</span><span><i class="f"></i>${nFix} to try again</span><span><i></i>${nNew} not tried yet</span></div>
+            <p class="pr-small"><b>${nSecure} of ${quick.length} secure</b>: right on two different days. That's when you really know it.</p>
+            <p class="pr-small">"Last practice" counts your first answer to each question that day, so it can be lower than "right last time" once you've had another go.</p>
+          </details>` : ""}</div>`);
       hero.querySelector("[data-run]").onclick = () => nFix || nNew ? runToday() : start("Whole chapter", shuffle(quick.slice()), undefined, true);
-      const fo = hero.querySelector("[data-fixonly]"); if (fo) fo.onclick = () => start("Try Again", fx, undefined, true);
       const nodes = [hero];
       if (paperSlot) paperSlot.replaceChildren();
       slot.replaceChildren(...nodes);
@@ -792,7 +816,8 @@
         if (pct < 70) { msg = `Go back over the material first, then test yourself again.`; btn = h(`<button type="button" class="pr-btn">Review the material ›</button>`); btn.onclick = () => { home(); goTo("learn"); }; }
         else if (pct >= 80) { msg = ex.length ? `You know this well. Time to try exam questions.` : `You know this well.`; if (ex.length) { btn = h(`<button type="button" class="pr-btn">Go to Exam Prep ›</button>`); btn.onclick = () => { home(); goTo("refresh"); }; } }
         else { msg = `Nearly there. Try the ones you missed again, then you're ready for exam questions.`; const fx = quickFixes(); if (fx.length) { btn = h(`<button type="button" class="pr-btn">Try Again (${fx.length})</button>`); btn.onclick = () => start("Try Again", fx); } }
-        card.querySelector("h3").after(h(`<div class="pr-score-msg ${pct >= 80 ? "good" : pct < 70 ? "low" : ""}"><span class="pr-score">${pct}%</span><span>${esc(msg)}</span></div>`));
+        const half = R.filter(r => r.v > 0 && r.v < 1).length;
+        card.querySelector("h3").after(h(`<div class="pr-score-msg ${pct >= 80 ? "good" : pct < 70 ? "low" : ""}"><span class="pr-score">${good.length}/${R.length}</span><span><b>right</b>${half ? `, ${half} half right` : ""}<br>${esc(msg)}</span></div>`));
         if (btn) acts.prepend(btn); else card.querySelector("[data-home]").classList.remove("ghost");
       }
       const wasToday = session.today, mins = todayMins(), stoppedEarly = session.i < session.queue.length - 1;

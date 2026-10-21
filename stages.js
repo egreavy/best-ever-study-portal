@@ -254,14 +254,14 @@
     const st = s.stats || {};
     if (s.stage === "refresh") {
       if (s.done) return "Exam ready";
-      if (s.freshSince) return st.fixes ? `Exam prep · ${plural(st.fixes, "to fix", "to fix")}` : `Exam prep · ${plural((st.total||0) - (st.tried||0), "question", "questions")} to go`;
+      if (s.freshSince) return st.fixes ? `Exam prep · ${st.fixes} to try again` : `Exam prep · ${plural((st.total||0) - (st.tried||0), "question", "questions")} to go`;
       return `Exams ${untilText(s.examDate)}${st.lastAt ? " · last tested " + ago(st.lastAt) : ""}`;
     }
     if (s.stage === "test") {
       if (!st.total) return "Questions coming soon";
       if (s.done) return st.lastAt ? `Tested · last time ${ago(st.lastAt)}` : "Tested";
       const parts = [];
-      if (st.fixes) parts.push(`${st.fixes} to fix`);
+      if (st.fixes) parts.push(`${st.fixes} to try again`);
       else if (!st.tried) parts.push("not tested yet");
       else parts.push(`${plural(st.total - st.tried, "question", "questions")} still to try`);
       return parts.join(" · ");
@@ -746,7 +746,7 @@
       const k = `${now ? "Now · " : ""}${subjTitle(c.subject_id)}${c.book ? " " + c.book : ""}`;
       const tried = (st.quickRight || 0) + (st.quickFix || 0);
       const note = now
-        ? (tried ? `${st.quickRight || 0} right · ${st.quickFix || 0} to fix${st.quickNew ? ` · ${st.quickNew} new` : ""}${st.lastTestedAt ? ` · last tested ${ago(st.lastTestedAt)}: ${st.lastPct}%` : ""}` : `${plural(st.quickNew || 0, "question", "questions")} · not tested yet`)
+        ? (tried ? `${st.quickFix ? `${st.quickFix} to try again` : st.quickNew ? `${st.quickNew} new` : "All right last time"}${st.lastTestedAt ? ` · last tested ${ago(st.lastTestedAt)}` : ""}` : `${plural(st.quickNew || 0, "question", "questions")} · not tested yet`)
         : p.why === "unfinished" ? `Started ${ago(st.lastAt)} · ${st.quickLeft} left` : p.why === "list" ? `From your revision list · ${tried ? st.quickLeft + " left" : "not tested yet"}` : `${plural(st.quickLeft, "question", "questions")} · not tested yet`;
       const go = now ? (todayMin >= goalMin ? "Keep going" : tried ? "Continue" : "Start") : "";
       return `<button type="button" class="pl-row${now ? " now" : ""}" data-today="${c.id}"><span class="pl-b"><span class="pl-k">${esc(k)}</span><span class="pl-t">Ch ${esc(String(c.order_num ?? ""))}: ${esc(shortTitle(c.title))}</span>${progBar(st, now ? 10 : 7)}<span class="pl-n">${esc(note)}</span></span>${now ? `<span class="pl-go">${go}</span>` : `<span class="hs-chev" aria-hidden="true">›</span>`}</button>`;
