@@ -44,7 +44,9 @@ A full-marks model answer, for your reference only: ${q.model_answer || "(none)"
 
 ${hasImages ? "The student's answer is in the attached photo(s) or screenshot(s). Read it carefully, including handwriting." : ""}${typed ? `\nThe student's typed answer:\n"""${typed}"""` : ""}
 
-Rules:
+${q.qtype !== "exam" ? `IMPORTANT: this is a quick short-answer check, not an exam question. In "summary", "went_well", "to_improve", "example" and "next_step", never mention marks, scoring, full marks or losing marks. Just say plainly what is right and what is missing. (Still fill in the number fields.)
+
+` : ""}Rules:
 - Never take marks off for spelling, grammar or handwriting. Mark the ideas.
 - Be specific: say which point earned marks and exactly what was missing.
 - Feedback in plain, short sentences a 16-year-old can act on. No jargon. Calm and matter-of-fact: no exclamation marks, no gushing praise (great, amazing, excellent); say specifically what earned marks.

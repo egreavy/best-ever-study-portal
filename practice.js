@@ -88,11 +88,13 @@
   .pr-nextup .lab{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--t-accent)}
   .pr-nextup b{font-size:18px;line-height:1.3}
   .pr-nextup .pr-btn{align-self:flex-start;margin-top:4px}
+  .pr-verd{display:flex;align-items:center;gap:8px}
+  .pr-tick{flex:none;width:24px;height:24px;border-radius:50%;background:var(--t-accent);color:var(--t-on-accent);display:grid;place-items:center;font-size:13px;font-weight:700;animation:prPlus .4s ease-out}
   .pr-plus{display:inline-block;background:var(--t-accent);color:var(--t-on-accent);font-weight:700;font-size:13px;border-radius:999px;padding:1px 9px;margin-right:8px;animation:prPlus .5s ease-out}
   .pr-opt.pop{animation:prPop .45s ease-out}
   @keyframes prPop{0%{transform:scale(1);box-shadow:0 0 0 0 rgba(31,111,92,.35)}40%{transform:scale(1.02)}100%{transform:scale(1);box-shadow:0 0 0 12px rgba(31,111,92,0)}}
   @keyframes prPlus{0%{transform:translateY(6px);opacity:0}100%{transform:none;opacity:1}}
-  @media (prefers-reduced-motion:reduce){.pr-opt.pop,.pr-plus{animation:none}}
+  @media (prefers-reduced-motion:reduce){.pr-opt.pop,.pr-plus,.pr-tick{animation:none}}
   .pr-score-msg{display:flex;align-items:center;gap:16px;border-radius:12px;padding:14px 16px;background:var(--t-soft);font-size:16px;line-height:1.45}
   .pr-score-msg.good{background:var(--t-accent-tint)}
   .pr-score-msg.low{background:var(--t-warn-tint)}
@@ -524,7 +526,7 @@
           if (!ok) b.classList.add("wrong"); else b.classList.add("pop");
           if (!retry) { session.results.push({ q, v: ok?1:0 }); save(q.id, ok?1:0, "quiz"); }
           if (!ok && !retry) session.queue.push({ q, retry:true });
-          card.append(h(`<div class="pr-fb ${ok?"good":""}">${ok && !retry ? `<span class="pr-plus">+1</span>` : ""}<strong>${ok?"Right.":"Not this one."}</strong><span>${esc(q.explanation||"")}</span>${!ok&&!retry?`<span class="pr-tip">You'll get another go at the end.</span>`:""}</div>`));
+          card.append(h(`<div class="pr-fb ${ok?"good":""}"><span class="pr-verd">${ok ? `<span class="pr-tick" aria-hidden="true">&#10003;</span>` : ""}<strong>${ok?"Right.":"Not this one."}</strong></span><span>${esc(q.explanation||"")}</span>${!ok&&!retry?`<span class="pr-tip">You'll get another go at the end.</span>`:""}</div>`));
           nextBtn(card);
         };
         opts.append(b);
@@ -651,7 +653,9 @@
       if (entry.again) {
         ta.value = entry.prev || "";
         box.querySelector(".pr-tip").textContent = entry.added && entry.added.length
-          ? `All steps done. Your new sentences are added at the end of your answer. Read it through, move things around if you like, then check it.${entry.before ? ` Last time: ${entry.before.marks_awarded} out of ${entry.before.marks_available}.` : ""}`
+          ? `All steps done. Your new sentences are added at the end of your answer. Read it through, move things around if you like, then check it.${entry.before && isExam ? ` Last time: ${entry.before.marks_awarded} out of ${entry.before.marks_available}.` : ""}`
+          : !isExam
+          ? "Have another go, using the tips below."
           : entry.before
           ? `Last time: ${entry.before.marks_awarded} out of ${entry.before.marks_available}. Add the points you talked through, then check it again.`
           : "Add the points you talked through, then check it again.";
@@ -692,13 +696,13 @@
           box.remove();
           const list = a => a.length ? `<ul>${a.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "";
           const fbEl = h(`<div class="pr-fb ${v===1?"good":""}">
-            <div class="pr-row" style="gap:16px">${isExam ? `<span class="pr-score">${f.marks_awarded}/${f.marks_available}</span>` : ""}<span>${entry.before && f.marks_awarded > entry.before.marks_awarded ? `<span class="pr-up">Up from ${entry.before.marks_awarded} to ${f.marks_awarded}. </span>` : ""}${esc(f.summary||"")}</span></div>
+            <div class="pr-row" style="gap:16px">${isExam ? `<span class="pr-score">${f.marks_awarded}/${f.marks_available}</span>` : `<span class="pr-verd">${v === 1 ? `<span class="pr-tick" aria-hidden="true">&#10003;</span><strong>Got it.</strong>` : `<strong>${v ? "Nearly." : "Not yet."}</strong>`}</span>`}<span>${entry.before && f.marks_awarded > entry.before.marks_awarded ? `<span class="pr-up">${isExam ? `Up from ${entry.before.marks_awarded} to ${f.marks_awarded} marks.` : "Better than last time."} </span>` : ""}${esc(f.summary||"")}</span></div>
             ${f.went_well.length ? `<h4>What you got right</h4>${list(f.went_well)}` : ""}
             ${f.to_improve.length ? `<h4>${isExam ? "How to get more marks" : "To make it better"}</h4>${list(f.to_improve)}` : ""}
             ${f.example ? `<h4>For example</h4><span>${esc(f.example)}</span>` : ""}
           </div>`);
           card.append(fbEl);
-          if (f.to_improve.length && (!f.marks_available || f.marks_awarded < f.marks_available)) improveRow(fbEl, q, text || f.transcription || "", f, entry);
+          if (f.to_improve.length && (isExam || v < 1) && (!f.marks_available || f.marks_awarded < f.marks_available)) improveRow(fbEl, q, text || f.transcription || "", f, entry);
           card.append(h(modelBlock()));
           nextBtn(card);
         } catch (e) {
