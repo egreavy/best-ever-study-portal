@@ -31,6 +31,15 @@
   .pr-card details ol,.pr-right ol{margin:8px 0 0;padding-left:22px;display:flex;flex-direction:column;gap:6px;font-size:14px;line-height:1.45;color:var(--t-muted)}
   .pr-hero{align-items:center;text-align:center;gap:8px;padding:24px 20px}
   .pr-hero-title{font-size:22px;font-weight:700;line-height:1.25}
+  .pr-prog{gap:10px;padding:22px 24px}
+  .pr-prog-top{display:flex;justify-content:space-between;align-items:baseline;gap:6px 16px;flex-wrap:wrap}
+  .pr-prog .pr-hero-title{font-size:20px}
+  .pr-last{font-size:15px;color:var(--t-muted)}.pr-last b{color:var(--t-ink)}
+  .pr-bar3{display:flex;height:12px;border-radius:99px;background:var(--t-line);overflow:hidden}
+  .pr-bar3 i{display:block;height:100%}.pr-bar3 i.r{background:var(--t-accent)}.pr-bar3 i.f{background:#E0A43A}
+  .pr-legend{display:flex;gap:6px 18px;flex-wrap:wrap;font-size:14px;color:var(--t-muted)}
+  .pr-legend span{display:inline-flex;align-items:center;gap:6px}
+  .pr-legend i{width:10px;height:10px;border-radius:3px;background:var(--t-line);display:inline-block}.pr-legend i.r{background:var(--t-accent)}.pr-legend i.f{background:#E0A43A}
   .pr-hero .pr-btn.big{margin-top:6px;font-size:18px;padding:14px 36px;min-height:54px}
   .ft{background:var(--t-card);border:2px solid var(--t-accent-border);border-radius:16px;padding:16px 18px;display:flex;align-items:center;gap:14px;text-align:left;font:inherit;color:var(--t-ink);cursor:pointer;width:100%;box-sizing:border-box;height:100%}
   .ft:hover{border-color:var(--t-accent)}
@@ -238,7 +247,7 @@
     });
     (rev||[]).forEach(r => { if (!reviews[r.question_id]) reviews[r.question_id] = r; });
     const lastAt = att && att[0] ? new Date(att[0].created_at) : null;
-    return { latest, src, when, reviews, everWeak, ever, lastAt };
+    return { latest, src, when, reviews, everWeak, ever, lastAt, att: att || [] };
   }
   async function record(sb, profile, qid, result, source){
     await sb("quiz_attempts", { method:"POST", prefer:"return=minimal", body:[{ profile_id: profile.id, question_id: qid, result, source }] });
@@ -401,14 +410,36 @@
 
     // ---- Test tab ----
     function setChrome(show, where){ hideDuring.forEach(el => { if (el) el.hidden = !show; }); prepHide.forEach(el => { if (el) el.hidden = !show; }); }
+    // The last day he tested this chapter: first answer to each quick question that day
+    function lastGo(quick){
+      const ids = new Set(quick.map(q => q.id)), att = (prog.att || []).filter(a => ids.has(a.question_id) && a.source !== "tutor");
+      if (!att.length) return null;
+      const day = d => { const x = new Date(d); return x.getFullYear() + "-" + x.getMonth() + "-" + x.getDate(); };
+      const k = day(att[0].created_at), first = {};
+      att.filter(a => day(a.created_at) === k).forEach(a => { first[a.question_id] = Number(a.result); });
+      const vals = Object.values(first); if (vals.length < 3) return null;
+      const right = vals.filter(v => v >= 1).length, pct = Math.round(vals.reduce((n, v) => n + v, 0) / vals.length * 100);
+      const days = Math.round((new Date(new Date().toDateString()) - new Date(new Date(att[0].created_at).toDateString())) / 86400000);
+      return { n: vals.length, right, pct, when: days <= 0 ? "today" : days === 1 ? "yesterday" : days < 7 ? `${days} days ago` : new Date(att[0].created_at).toLocaleDateString("en-IE", { day: "numeric", month: "short" }) };
+    }
     function home(){
       session = null; setChrome(true);
-      const pick = todaysPick(), fx = quickFixes();
-      const hero = h(`<div class="pr-card pr-hero">
-          <span class="pr-hero-title">Your Daily Practice</span>
-          <span class="pr-sub">10 minutes · ${esc(todaysCaption(pick))}</span>
-          <button type="button" class="pr-btn big" data-today>Start my 10 minutes</button></div>`);
-      hero.querySelector("[data-today]").onclick = () => start("Your Daily Practice", pick);
+      const fx = quickFixes();
+      // Where he is on this chapter's quick questions, and how the last go went
+      const quick = questions.filter(q => q.qtype !== "exam");
+      const nRight = quick.filter(q => prog.latest[q.id] >= 1).length, nFix = fx.length, nNew = quick.length - nRight - nFix;
+      const last = lastGo(quick);
+      const pctW = n => quick.length ? (n / quick.length * 100).toFixed(1) + "%" : "0";
+      const mainLabel = nFix || nNew ? (nRight + nFix ? "Carry on" : "Start testing") : "Test the whole chapter again";
+      const mainNote = nFix || nNew ? [nFix ? `${nFix} to fix first` : "", nNew ? `${nNew} new` : ""].filter(Boolean).join(", then ") : "You've got every question right. Mix them up and check it stuck.";
+      const hero = h(`<div class="pr-card pr-prog">
+          <div class="pr-prog-top"><span class="pr-hero-title">${nRight + nFix ? "Your progress on this chapter" : "Test yourself on this chapter"}</span>${last ? `<span class="pr-last">Last time (${esc(last.when)}): <b>${last.right} of ${last.n} right</b> · ${last.pct}%</span>` : ""}</div>
+          <div class="pr-bar3" aria-hidden="true"><i class="r" style="width:${pctW(nRight)}"></i><i class="f" style="width:${pctW(nFix)}"></i></div>
+          <div class="pr-legend"><span><i class="r"></i>${nRight} right</span><span><i class="f"></i>${nFix} to fix</span><span><i></i>${nNew} not tried yet</span></div>
+          <div class="pr-row" style="margin-top:4px"><button type="button" class="pr-btn big" data-run>${mainLabel}</button>${nFix && (nRight + nFix) ? `<button type="button" class="pr-btn big ghost" data-fixonly>Just the ${nFix} to fix</button>` : ""}</div>
+          <span class="pr-small">${esc(mainNote)}</span></div>`);
+      hero.querySelector("[data-run]").onclick = () => nFix || nNew ? runToday() : start("Whole chapter", shuffle(quick.slice()), undefined, true);
+      const fo = hero.querySelector("[data-fixonly]"); if (fo) fo.onclick = () => start("Try Again", fx, undefined, true);
       const nodes = [hero];
       if (paperSlot) paperSlot.replaceChildren();
       slot.replaceChildren(...nodes);
@@ -419,7 +450,6 @@
           const b = h(`<button type="button" class="pr-choice"${disabled ? " disabled" : ""}><span class="pr-li-body"><span class="pr-li-title">${esc(title)}</span><span class="pr-li-note">${esc(note)}</span></span>${badge ? `<span class="pr-badge">${badge}</span>` : ""}<span class="pr-chev" aria-hidden="true">›</span></button>`);
           b.onclick = fn; box.append(b);
         };
-        add("Try Again", fx.length ? "Questions you got wrong last time" : "Nothing to fix right now", () => start("Try Again", fx), !fx.length, fx.length || "");
         add("Quick Quiz", "Multiple choice, one tap answers", () => start("Quick Quiz", shuffle(mcq)), !mcq.length);
         if (rec.length) add("Short Answer Practice", "Write a line or two, then compare", () => start("Short Answer Practice", shuffle(rec)));
         const nodes2 = [box];
