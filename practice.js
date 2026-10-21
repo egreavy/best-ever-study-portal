@@ -88,6 +88,7 @@
   .pr-btn svg{width:18px;height:18px;margin-right:6px;flex:none}
   .pr-improve{display:flex;flex-direction:column;gap:10px;margin:4px 0 6px}
   .pr-up{font-weight:700;color:var(--t-accent)}
+  .pr-heard{margin:4px 2px 0;font-size:14px;color:var(--t-muted);font-style:italic}.pr-heard:empty{display:none}
   .pr-mine summary{cursor:pointer;font-weight:700;font-size:14px;color:var(--t-muted)}.pr-mine span{display:block;margin-top:6px;white-space:pre-wrap;font-size:15px;line-height:1.55;border-left:4px solid var(--t-line);padding-left:10px}
   .pr-ring{position:relative;display:inline-grid;place-items:center;flex:none}.pr-ring svg{position:absolute;inset:0}.pr-ring b{position:relative;font-size:12px;font-weight:700}
   .pr-today{display:inline-flex;align-items:center;gap:8px;font-weight:700;color:var(--t-ink)}
@@ -206,19 +207,32 @@
     btn.onclick = () => {
       if (rec) return stop();
       rec = new SR(); rec.lang = "en-IE"; rec.continuous = true; rec.interimResults = true;
-      base = ta.value ? ta.value.replace(/\s*$/, " ") : "";
+      // Only ever ADD newly finished words at the cursor. Never rewrite the whole box, so text the
+      // student has typed or deleted stays exactly as they left it.
+      const heard = h(`<p class="pr-heard" aria-live="polite"></p>`); row.closest(".pr-answer").after(heard);
       rec.onresult = (e) => {
-        let finalText = "", interim = "";
-        for (let i = 0; i < e.results.length; i++) { const r = e.results[i]; if (r.isFinal) finalText += r[0].transcript; else interim += r[0].transcript; }
-        ta.value = (base + finalText + interim).replace(/^\s+/, "");
+        let interim = "";
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          const r = e.results[i];
+          if (r.isFinal) {
+            const t = r[0].transcript.trim(); if (!t) continue;
+            const at = ta.selectionStart ?? ta.value.length, before = ta.value.slice(0, at), after = ta.value.slice(at);
+            const ins = (before && !/\s$/.test(before) ? " " : "") + t + (after && !/^\s/.test(after) ? " " : "");
+            ta.value = before + ins + after;
+            ta.selectionStart = ta.selectionEnd = at + ins.length;
+          } else interim += r[0].transcript;
+        }
+        heard.textContent = interim ? "Hearing: " + interim : "";
       };
+      const typed = () => stop();
+      ta.addEventListener("keydown", typed, { once: true });
       rec.onerror = (e) => {
         status.textContent = e.error === "not-allowed" || e.error === "service-not-allowed"
           ? "The browser blocked the microphone. Allow it for this site (the icon in the address bar), then try again."
           : e.error === "no-speech" ? "Didn't hear anything. Tap the microphone and try again." : "Speaking didn't work this time. Try again, or type your answer.";
         status.hidden = false;
       };
-      rec.onend = () => { rec = null; btn.classList.remove("on"); btn.setAttribute("aria-label", "Speak your answer"); btn.title = "Speak your answer"; btn.setAttribute("aria-pressed", "false"); base = ta.value; };
+      rec.onend = () => { rec = null; heard.remove(); ta.removeEventListener("keydown", typed); btn.classList.remove("on"); btn.setAttribute("aria-label", "Speak your answer"); btn.title = "Speak your answer"; btn.setAttribute("aria-pressed", "false"); };
       try {
         rec.start(); status.hidden = true;
         btn.classList.add("on"); btn.setAttribute("aria-label", "Stop speaking"); btn.title = "Stop speaking"; btn.setAttribute("aria-pressed", "true");

@@ -602,7 +602,7 @@
         if (rec) { try { rec.stop(); } catch (e) {} return; }
         rec = new SR(); rec.lang = "en-IE"; rec.interimResults = true; rec.continuous = true;
         const base = input.value ? input.value.replace(/\s*$/, " ") : "";
-        rec.onresult = (e) => { let t = ""; for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript; input.value = (base + t).replace(/^\s+/, ""); };
+        rec.onresult = (e) => { for (let i = e.resultIndex; i < e.results.length; i++) { const r = e.results[i]; if (r.isFinal && r[0].transcript.trim()) input.value = (input.value.replace(/\s*$/, " ") + r[0].transcript.trim()).replace(/^\s+/, ""); } };
         rec.onerror = (e) => { err.textContent = e.error === "not-allowed" ? "The browser blocked the microphone. Allow it for this site, or type instead." : "Didn't catch that. Try again or type it."; err.hidden = false; };
         rec.onend = () => { rec = null; mic.classList.remove("on"); };
         try { rec.start(); mic.classList.add("on"); err.hidden = true; } catch (e) { rec = null; }
