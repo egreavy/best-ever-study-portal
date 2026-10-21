@@ -194,6 +194,7 @@
   .qd-table th,.qd-table td{border:1px solid var(--t-line);padding:6px 10px;text-align:left;vertical-align:top}
   .qd-table th{background:color-mix(in srgb,var(--t-line) 45%,transparent);font-weight:700}
   .qd-plain p{margin:0 0 8px;font-size:16px;line-height:1.6}
+  @media (max-width:600px){.qd-table{font-size:13.5px}.qd-table th,.qd-table td{padding:5px 6px}.qd-body{padding:2px 10px 10px}}
   .pr-meta{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:14px;color:var(--t-muted)}
   .pr-progress{height:6px;background:var(--t-line);border-radius:99px;overflow:hidden}.pr-progress i{display:block;height:100%;background:var(--t-ink)}
   .pr-opts{display:flex;flex-direction:column;gap:8px}
