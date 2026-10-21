@@ -420,7 +420,7 @@
       const vals = Object.values(first); if (vals.length < 3) return null;
       const right = vals.filter(v => v >= 1).length, pct = Math.round(vals.reduce((n, v) => n + v, 0) / vals.length * 100);
       const days = Math.round((new Date(new Date().toDateString()) - new Date(new Date(att[0].created_at).toDateString())) / 86400000);
-      return { n: vals.length, right, pct, when: days <= 0 ? "today" : days === 1 ? "yesterday" : days < 7 ? `${days} days ago` : new Date(att[0].created_at).toLocaleDateString("en-IE", { day: "numeric", month: "short" }) };
+      return { n: vals.length, right, pct, when: days <= 0 ? "today" : days === 1 ? "yesterday" : days < 7 ? `${days} days ago` : "on " + new Date(att[0].created_at).toLocaleDateString("en-IE", { day: "numeric", month: "short" }) };
     }
     function home(){
       session = null; setChrome(true);
@@ -433,7 +433,7 @@
       const mainLabel = nFix || nNew ? (nRight + nFix ? "Carry on" : "Start testing") : "Test the whole chapter again";
       const mainNote = nFix || nNew ? [nFix ? `${nFix} to fix first` : "", nNew ? `${nNew} new` : ""].filter(Boolean).join(", then ") : "You've got every question right. Mix them up and check it stuck.";
       const hero = h(`<div class="pr-card pr-prog">
-          <div class="pr-prog-top"><span class="pr-hero-title">${nRight + nFix ? "Your progress on this chapter" : "Test yourself on this chapter"}</span>${last ? `<span class="pr-last">Last time (${esc(last.when)}): <b>${last.right} of ${last.n} right</b> · ${last.pct}%</span>` : ""}</div>
+          <div class="pr-prog-top"><span class="pr-hero-title">${nRight + nFix ? "Your progress on this chapter" : "Test yourself on this chapter"}</span>${last ? `<span class="pr-last">Last tested ${esc(last.when)}: <b>${last.right} of ${last.n} right</b> · ${last.pct}%</span>` : ""}</div>
           <div class="pr-bar3" aria-hidden="true"><i class="r" style="width:${pctW(nRight)}"></i><i class="f" style="width:${pctW(nFix)}"></i></div>
           <div class="pr-legend"><span><i class="r"></i>${nRight} right</span><span><i class="f"></i>${nFix} to fix</span><span><i></i>${nNew} not tried yet</span></div>
           <div class="pr-row" style="margin-top:4px"><button type="button" class="pr-btn big" data-run>${mainLabel}</button>${nFix && (nRight + nFix) ? `<button type="button" class="pr-btn big ghost" data-fixonly>Just the ${nFix} to fix</button>` : ""}</div>

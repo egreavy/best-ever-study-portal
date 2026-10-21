@@ -154,6 +154,21 @@
   .hc-hero .go{margin-top:8px;align-self:stretch;max-width:420px;background:var(--t-card);color:var(--t-accent);border:none;border-radius:999px;padding:15px 24px;font:inherit;font-size:18px;font-weight:700;cursor:pointer}
   .hc-hero .go:focus-visible{outline:3px solid var(--t-card);outline-offset:3px}
   .hc-hero .nt{font-size:13px;opacity:.85}
+  .pl{background:var(--t-card);border-radius:22px;padding:22px 24px;display:flex;flex-direction:column;gap:12px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+  .pl-head{display:flex;align-items:center;gap:16px}
+  .pl-head b{font-size:20px;display:block}.pl-head span.s{font-size:15px;color:var(--t-muted)}
+  .pl-then{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--t-muted);margin-top:2px}
+  .pl-row{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:14px;border:1px solid var(--t-line);background:var(--t-card);text-align:left;font:inherit;color:var(--t-ink);cursor:pointer;width:100%}
+  .pl-row:hover{border-color:var(--t-accent)}
+  .pl-row.now{background:var(--t-accent-tint);border:2px solid var(--t-accent)}
+  .pl-row:focus-visible{outline:3px solid var(--t-accent);outline-offset:2px}
+  .pl-b{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+  .pl-k{font-size:12px;font-weight:700;color:var(--t-muted);text-transform:uppercase;letter-spacing:.05em}
+  .pl-t{font-size:17px;font-weight:700;line-height:1.3}
+  .pl-n{font-size:13px;color:var(--t-muted)}
+  .pl-bar{display:flex;border-radius:99px;background:var(--t-line);overflow:hidden}.pl-bar i{display:block;height:100%}.pl-bar i.r{background:var(--t-accent)}.pl-bar i.f{background:#E0A43A}
+  .pl-go{flex:none;background:var(--t-accent);color:var(--t-on-accent);font-weight:700;font-size:16px;padding:11px 22px;border-radius:999px}
+  @media (max-width:520px){.pl{padding:18px 16px}.pl-row.now{flex-wrap:wrap}.pl-row.now .pl-go{width:100%;text-align:center}}
   .hc-qa-open{border:2px dashed var(--t-line);background:none;border-radius:14px;padding:13px 16px;font:inherit;font-size:16px;font-weight:700;color:var(--t-accent);text-align:left;cursor:pointer;width:100%}
   .hc-today{display:flex;align-items:center;gap:12px}
   .hc-today span{font-size:14px;color:var(--t-muted);line-height:1.35}
@@ -294,6 +309,23 @@
     if (rev[0]) return { c: rev[0], why: "list" };
     return chs[0] ? { c: chs[0], why: "new" } : null;
   }
+  // Today's plan: the chapter to do now, then up to two more
+  function todayPlan(m){
+    const now = leftOff(m); if (!now) return [];
+    const out = [now], seen = new Set([now.c.id]);
+    while (out.length < 3) {
+      const chs = Object.values(m.topics).filter(c => !seen.has(c.id) && c.stats && c.stats.quickLeft > 0);
+      const started = chs.filter(c => c.stats.lastAt).sort((a, b) => a.stats.lastAt - b.stats.lastAt);
+      const rev = revisionList(m).filter(c => !seen.has(c.id) && c.stats && c.stats.quickLeft > 0);
+      const n = started[0] ? { c: started[0], why: "unfinished" } : rev[0] ? { c: rev[0], why: "list" } : chs[0] ? { c: chs[0], why: "new" } : null;
+      if (!n) break; out.push(n); seen.add(n.c.id);
+    }
+    return out;
+  }
+  function progBar(st, h){
+    const t = st.quickTotal || 1, w = n => ((n || 0) / t * 100).toFixed(1) + "%";
+    return `<span class="pl-bar" style="height:${h}px" aria-hidden="true"><i class="r" style="width:${w(st.quickRight)}"></i><i class="f" style="width:${w(st.quickFix)}"></i></span>`;
+  }
   function ringSvg(size, frac, label, stroke){
     const r = (size - stroke) / 2, c = 2 * Math.PI * r, f = Math.max(0, Math.min(1, frac));
     return `<span class="ring" style="width:${size}px;height:${size}px" aria-hidden="true"><svg width="${size}" height="${size}"><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--t-line)" stroke-width="${stroke}"/><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--t-accent)" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${(c * f).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 ${size/2} ${size/2})"/></svg><b>${label}</b></span>`;
@@ -366,7 +398,13 @@
     Object.keys(qCount).forEach(tid => { stats[tid] = { total: qCount[tid], tried: 0, fixes: 0, right: 0, triedEver: 0, lastAt: lastAt[tid] || null, quickLeft: 0 }; });
     Object.keys(latest).forEach(qid => { const s = stats[qTopic[qid]]; s.tried++; if (latest[qid] < 1) s.fixes++; else s.right++; });
     // quick-test questions still to try or fix in each chapter (what "today's 30 minutes" works through)
-    Object.keys(qQuick).forEach(qid => { const s = stats[qTopic[qid]]; if (s && (latest[qid] === undefined || latest[qid] < 1)) s.quickLeft++; });
+    Object.keys(qQuick).forEach(qid => { const s = stats[qTopic[qid]]; if (!s) return; s.quickTotal = (s.quickTotal || 0) + 1;
+      if (latest[qid] === undefined) s.quickNew = (s.quickNew || 0) + 1; else if (latest[qid] < 1) s.quickFix = (s.quickFix || 0) + 1; else s.quickRight = (s.quickRight || 0) + 1;
+      if (latest[qid] === undefined || latest[qid] < 1) s.quickLeft++; });
+    // last day each chapter was tested: first answer to each quick question that day
+    const lastDay = {}, firstOnDay = {};
+    for (let i = (raw.attempts || []).length - 1; i >= 0; i--) { const a = raw.attempts[i], tid = qTopic[a.question_id]; if (!tid || !qQuick[a.question_id]) continue; const k = dayKey(a.created_at); if (!lastDay[tid]) lastDay[tid] = { k, at: new Date(a.created_at) }; if (lastDay[tid].k !== k) continue; (firstOnDay[tid] = firstOnDay[tid] || {})[a.question_id] = Number(a.result); }
+    Object.keys(firstOnDay).forEach(tid => { const v = Object.values(firstOnDay[tid]), s = stats[tid]; if (!s || v.length < 3) return; s.lastPct = Math.round(v.reduce((n, x) => n + x, 0) / v.length * 100); s.lastTestedAt = lastDay[tid].at; });
     Object.keys(latestEver).forEach(qid => { stats[qTopic[qid]].triedEver++; });
 
     // Subjects with more than one book (Religion 1, Religion 2) show as one subject
@@ -688,19 +726,26 @@
         <span class="hc-row-b"><span class="hc-row-t">${esc(shortTitle(c.title))}</span><span class="hc-row-s">${esc(subjTitle(c.subject_id))}${c.book ? " " + esc(c.book) : ""} · ${esc(c.flag && c.flag.note ? c.flag.note : stepLevel(c)[1].toLowerCase())}</span></span>
         ${stepsArrows(c)}<span class="hs-chev" aria-hidden="true">›</span></button>`;
     const goalMin = m.goal ? m.goal.minutes : DAILY_GOAL, todayMin = m.goal ? m.goal.today : 0;
-    const lo = leftOff(m);
-    const heroHtml = lo ? (() => {
-      const c = lo.c, st = c.stats || {};
-      const lab = lo.why === "left" ? "Pick up where you left off" : lo.why === "list" ? "From your revision list" : "Start here";
-      const sub = lo.why === "left" ? `${plural(st.quickLeft, "question", "questions")} to go · last time ${ago(st.lastAt)}` : `${plural(st.quickLeft, "question", "questions")} to try`;
-      const btn = todayMin >= goalMin ? "Keep going" : todayMin > 0 ? `Carry on · ${goalMin - todayMin} minutes to go` : `Start today's ${goalMin} minutes`;
-      return `<div class="hc-hero"><span class="lab">${lab}</span><span class="tt">${esc(subjTitle(c.subject_id))}${c.book ? " " + esc(c.book) : ""} · Ch ${esc(String(c.order_num ?? ""))}: ${esc(shortTitle(c.title))}</span><span class="ss">${esc(sub)}</span><button type="button" class="go" data-today="${c.id}">${esc(btn)}</button><span class="nt">When this chapter's done, we'll line up the next one.</span></div>`;
-    })() : "";
+    const plan = todayPlan(m);
+    const planRow = (p, i) => {
+      const c = p.c, st = c.stats || {}, now = i === 0;
+      const k = `${now ? "Now · " : ""}${subjTitle(c.subject_id)}${c.book ? " " + c.book : ""}`;
+      const tried = (st.quickRight || 0) + (st.quickFix || 0);
+      const note = now
+        ? (tried ? `${st.quickRight || 0} right · ${st.quickFix || 0} to fix${st.quickNew ? ` · ${st.quickNew} new` : ""}${st.lastTestedAt ? ` · last tested ${ago(st.lastTestedAt)}: ${st.lastPct}%` : ""}` : `${plural(st.quickNew || 0, "question", "questions")} · not tested yet`)
+        : p.why === "unfinished" ? `Started ${ago(st.lastAt)} · ${st.quickLeft} left` : p.why === "list" ? `From your revision list · ${tried ? st.quickLeft + " left" : "not tested yet"}` : `${plural(st.quickLeft, "question", "questions")} · not tested yet`;
+      const go = now ? (todayMin >= goalMin ? "Keep going" : tried ? "Continue" : "Start") : "";
+      return `<button type="button" class="pl-row${now ? " now" : ""}" data-today="${c.id}"><span class="pl-b"><span class="pl-k">${esc(k)}</span><span class="pl-t">Ch ${esc(String(c.order_num ?? ""))}: ${esc(shortTitle(c.title))}</span>${progBar(st, now ? 10 : 7)}<span class="pl-n">${esc(note)}</span></span>${now ? `<span class="pl-go">${go}</span>` : `<span class="hs-chev" aria-hidden="true">›</span>`}</button>`;
+    };
+    const heroHtml = plan.length ? `<div class="pl">
+      <div class="pl-head">${ringSvg(64, todayMin / goalMin, todayMin + "m", 7)}<span><b>Today's plan</b><span class="s">${todayMin >= goalMin ? `${goalMin} minutes done. Every extra minute counts.` : `${todayMin} of ${goalMin} minutes of testing. ${goalMin - todayMin} to go.`}</span></span></div>
+      ${planRow(plan[0], 0)}
+      ${plan.length > 1 ? `<span class="pl-then">Then</span>${plan.slice(1).map((p, i) => planRow(p, i + 1)).join("")}` : ""}
+    </div>` : "";
     view.innerHTML = `<div class="hs hc">
       <div class="hc-top">
         <div class="hc-hello"><h2>${hello}, ${esc(profile.name)}</h2><span>${m.goal && m.goal.streakNow ? `${plural(m.goal.streakNow, "day", "days")} in a row · ` : ""}${goalMin} minutes of testing a day</span></div>
         <div class="hc-meta">
-          <div class="hc-today">${ringSvg(56, todayMin / goalMin, todayMin + "m", 6)}<span>${todayMin >= goalMin ? `Today's ${goalMin} done.<br>Every extra minute counts.` : `${todayMin} of ${goalMin} min<br>today`}</span></div>
           <button type="button" class="hs-link hc-weeklink" data-week aria-expanded="${!!weekOpen}">This week: ${hm(w.testSec)} testing</button>
         </div>
       </div>
@@ -731,7 +776,7 @@
     view.querySelector("[data-week]").onclick = () => { state.weekOpen = !weekOpen; again(); };
     view.querySelectorAll("[data-spend]").forEach(b => b.onclick = async () => { b.disabled = true; await Decor.spend(sb, b.dataset.spend); if (openSettings) openSettings(); });
     const qaBtn = view.querySelector("[data-qa]"); if (qaBtn) qaBtn.onclick = () => { state.qaOpen = true; again(); const i = view.querySelector("#quickAdd input"); if (i) i.focus(); };
-    const td = view.querySelector("[data-today]"); if (td) td.onclick = () => { const c = m.topics[td.dataset.today]; state.todayRun = c.id; openChapter(c.id, c.subject_id, "test"); };
+    view.querySelectorAll("[data-today]").forEach(td => td.onclick = () => { const c = m.topics[td.dataset.today]; state.todayRun = c.id; openChapter(c.id, c.subject_id, "test"); });
     if (sb && view.querySelector("#quickAdd")) mountQuickAdd(view.querySelector("#quickAdd"), m, { sb, profile, reload, state });
   }
 
