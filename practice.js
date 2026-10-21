@@ -90,11 +90,11 @@
   .pr-up{font-weight:700;color:var(--t-accent)}
   .pr-heard{margin:4px 2px 0;font-size:14px;color:var(--t-muted);font-style:italic}.pr-heard:empty{display:none}
   .pr-mine summary{cursor:pointer;font-weight:700;font-size:14px;color:var(--t-muted)}.pr-mine span{display:block;margin-top:6px;white-space:pre-wrap;font-size:15px;line-height:1.55;border-left:4px solid var(--t-line);padding-left:10px}
-  .pr-ring{position:relative;display:inline-grid;place-items:center;flex:none}.pr-ring svg{position:absolute;inset:0}.pr-ring b{position:relative;font-size:12px;font-weight:700}
+  .pr-ring{position:relative;display:inline-grid;place-items:center;flex:none}.pr-ring svg{position:absolute;inset:0}.pr-ring b{position:relative;font-size:16px;font-weight:700;color:var(--t-accent)}
   .pr-today{display:inline-flex;align-items:center;gap:8px;font-weight:700;color:var(--t-ink)}
   .pr-goalhit{background:var(--t-accent-tint);border-radius:10px;padding:10px 14px;font-size:15px;line-height:1.45}
   .pr-todaybox{display:flex;align-items:center;gap:14px;background:var(--t-soft);border-radius:12px;padding:12px 16px;font-size:16px;line-height:1.45}
-  .pr-todaybox .pr-ring b{font-size:15px}
+  .pr-todaybox .pr-ring b{font-size:24px}
   .pr-nextup{background:var(--t-accent-tint);border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:8px;font-size:15px;line-height:1.5}
   .pr-nextup .lab{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--t-accent)}
   .pr-nextup b{font-size:18px;line-height:1.3}
@@ -500,13 +500,13 @@
     const todayMins = () => session ? Math.floor(session.base + sessionSec(session) / 60) : 0;
     function ringHtml(size, mins, stroke){
       const r = (size - stroke) / 2, c = 2 * Math.PI * r, f = Math.max(0, Math.min(1, mins / dailyGoal));
-      return `<span class="pr-ring" style="width:${size}px;height:${size}px" aria-hidden="true"><svg width="${size}" height="${size}"><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--t-line)" stroke-width="${stroke}"/><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--t-accent)" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${(c * f).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 ${size/2} ${size/2})"/></svg><b>${mins}</b></span>`;
+      return `<span class="pr-ring" style="width:${size}px;height:${size}px" aria-hidden="true"><svg width="${size}" height="${size}"><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--t-line)" stroke-width="${stroke}"/><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--t-accent)" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${(c * f).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 ${size/2} ${size/2})"/></svg>${mins >= dailyGoal ? "<b>&#10003;</b>" : ""}</span>`;
     }
     function paintRing(){
       if (!session || !session.today) return;
       const el = session.where.querySelector("[data-ring]"); if (!el) return;
       const m = todayMins();
-      el.innerHTML = `${ringHtml(40, m, 5)}<span>${m >= dailyGoal ? `${m} min today` : `${m} of ${dailyGoal} min today`}</span>`;
+      el.innerHTML = `${ringHtml(40, m, 5)}<span>${m >= dailyGoal ? `${m} min tested today` : `${m} of ${dailyGoal} min tested today`}</span>`;
       if (m >= dailyGoal && !session.hit) {
         session.hit = true;
         const card = session.where.querySelector(".pr-card");

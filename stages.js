@@ -146,7 +146,7 @@
   .hc-stats span{font-size:13px;color:var(--t-muted)}
   .qa .step-h h3,.hc-card .step-h h3{margin:0;font-size:20px}
   .hc-card{background:var(--t-card);border-radius:18px;padding:24px 26px;display:flex;flex-direction:column;gap:20px}
-  .ring{position:relative;display:inline-grid;place-items:center;flex:none}.ring svg{position:absolute;inset:0}.ring b{position:relative;font-size:14px;font-weight:700;color:var(--t-ink)}
+  .ring{position:relative;display:inline-grid;place-items:center;flex:none}.ring svg{position:absolute;inset:0}.ring b{position:relative;font-size:22px;font-weight:700;color:var(--t-accent)}
   .hc-hero{background:var(--t-accent);color:var(--t-on-accent);border-radius:22px;padding:24px 24px;display:flex;flex-direction:column;gap:8px}
   .hc-hero .lab{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;opacity:.85}
   .hc-hero .tt{font-size:23px;font-weight:700;line-height:1.25}
@@ -752,7 +752,7 @@
       return `<button type="button" class="pl-row${now ? " now" : ""}" data-today="${c.id}"><span class="pl-b"><span class="pl-k">${esc(k)}</span><span class="pl-t">Ch ${esc(String(c.order_num ?? ""))}: ${esc(shortTitle(c.title))}</span>${progBar(st, now ? 10 : 7)}<span class="pl-n">${esc(note)}</span></span>${now ? `<span class="pl-go">${go}</span>` : `<span class="hs-chev" aria-hidden="true">›</span>`}</button>`;
     };
     const heroHtml = plan.length ? `<div class="pl">
-      <div class="pl-head">${ringSvg(64, todayMin / goalMin, todayMin + "m", 7)}<span><b>Today's plan</b><span class="s">${todayMin >= goalMin ? `${goalMin} minutes done. Every extra minute counts.` : `${todayMin} of ${goalMin} minutes of testing. ${goalMin - todayMin} to go.`}</span></span></div>
+      <div class="pl-head">${ringSvg(56, todayMin / goalMin, todayMin >= goalMin ? "&#10003;" : "", 7)}<span><b>Today's plan</b><span class="s">${todayMin >= goalMin ? `${todayMin} minutes tested today. Your ${goalMin} are done, and every extra minute counts.` : todayMin ? `${todayMin} of ${goalMin} minutes tested today. ${goalMin - todayMin} to go.` : `${goalMin} minutes of testing today.`}</span></span></div>
       ${planRow(plan[0], 0)}
       ${plan.length > 1 ? `<span class="pl-then">Then</span>${plan.slice(1).map((p, i) => planRow(p, i + 1)).join("")}` : ""}
     </div>` : "";
