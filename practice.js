@@ -82,6 +82,12 @@
   .pr-choose-label{font-size:14px;font-weight:700;color:var(--t-muted);margin:4px 0 6px}
   .pr-choices{background:var(--t-card);border-radius:14px;padding:2px 20px;margin:0 0 10px;display:flex;flex-direction:column}
   .pr-choices .pr-choose-label{margin:12px 0 2px}
+  .pr-more>summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;min-height:44px;margin:0;font-size:15px}
+  .pr-more>summary::-webkit-details-marker{display:none}
+  .pr-more>summary::after{content:"›";font-size:20px;transform:rotate(90deg);transition:transform .15s}
+  .pr-more[open]>summary::after{transform:rotate(-90deg)}
+  .pr-more[open]{padding-bottom:4px}
+  .pr-runrow{align-items:center;gap:8px 14px}.pr-est{font-size:15px;color:var(--t-muted)}
   .pr-choice{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:11px 0;border:none;border-bottom:1px solid var(--t-line);background:none;text-align:left;font:inherit;color:inherit;cursor:pointer;width:100%}
   .pr-choice:last-child{border-bottom:none}
   .pr-choice .pr-li-body{flex:1}
@@ -331,6 +337,17 @@
       want("mcq", 10 - Math.min(2, rec.length));
       return shuffle(pick.slice(0, 3)).concat(shuffle(pick.slice(3)));
     }
+    // Quick Tests run in rounds of 10: questions to try again first (not ones he just saw), then new ones
+    const ROUND = 10;
+    const estMin = list => Math.max(2, Math.round(list.reduce((n, q) => n + (q.qtype === "mcq" ? 25 : 90), 0) / 60));
+    let lastRound = new Set();
+    function roundList(){
+      const quick = questions.filter(q => q.qtype !== "exam");
+      const left = quick.filter(q => prog.latest[q.id] === undefined || prog.latest[q.id] < 1);
+      const fx = left.filter(q => prog.latest[q.id] !== undefined), fresh = left.filter(q => prog.latest[q.id] === undefined);
+      const list = shuffle(fx.filter(q => !lastRound.has(q.id))).concat(shuffle(fresh), shuffle(fx.filter(q => lastRound.has(q.id))));
+      return (list.length ? list : shuffle(quick.slice())).slice(0, ROUND);
+    }
     function todaysCaption(pick){
       const fx = quickFixes();
       const f = pick.filter(q => fx.includes(q)).length;
@@ -452,9 +469,10 @@
       const last = lastGo(quick);
       const pctW = n => quick.length ? (n / quick.length * 100).toFixed(1) + "%" : "0";
       const tried = nRight + nFix;
-      const mainLabel = nFix || nNew ? (tried ? "Start practice" : "Start testing") : "Test the whole chapter again";
-      const nextText = nFix ? plural(nFix, "question to try again", "questions to try again") + (nNew ? `, then ${nNew} new` : "")
-        : nNew ? plural(nNew, "new question", "new questions") : "Mix them all up and check it stuck";
+      const mainLabel = tried ? "Start practice" : "Start testing";
+      const round = roundList(), rFix = round.filter(q => fx.includes(q)).length, rNew = round.filter(q => prog.latest[q.id] === undefined).length;
+      const nextText = !nFix && !nNew ? `${round.length} mixed questions to check it stuck`
+        : [rFix ? `${rFix} to try again` : "", rNew ? `${rNew} new` : ""].filter(Boolean).join(" and ");
       // Weak spot: the topic with the most questions to try again
       const wc = {}; fx.filter(q => q.qtype !== "exam" && q.topic_label).forEach(q => { wc[q.topic_label] = (wc[q.topic_label] || 0) + 1; });
       const weak = Object.keys(wc).sort((a, b) => wc[b] - wc[a])[0];
@@ -466,11 +484,11 @@
       const hero = h(`<div class="pr-card pr-prog">
           <span class="pr-hero-title">${tried ? "Your progress on this chapter" : "Test yourself on this chapter"}</span>
           <div class="pr-sum">
-            ${last ? line(`Last practice ${esc(last.when)}`, `<b>${last.right} of ${last.n} right</b>${last.half ? `, ${last.half} half right` : ""}`) : ""}
-            ${line("Next", `<b>${esc(nextText)}</b>`)}
+            ${last ? line("Last practice", `${esc(last.when.replace(/^on /, ""))}: <b>${last.right} of ${last.n} right</b>${last.half ? `, ${last.half} half right` : ""}`) : ""}
+            ${line("This round", `<b>${esc(nextText)}</b>`)}
             ${weak ? line("Weak spot", esc(weak)) : ""}
           </div>
-          <div class="pr-row" style="margin-top:4px"><button type="button" class="pr-btn big" data-run>${mainLabel}</button></div>
+          <div class="pr-row pr-runrow" style="margin-top:4px"><button type="button" class="pr-btn big" data-run>${mainLabel}</button><span class="pr-est">${plural(round.length, "question", "questions")} · about ${estMin(round)} min</span></div>
           ${tried ? `<details class="pr-viewprog"><summary>View progress</summary>
             <p class="pr-small">Your latest answer to each of the ${quick.length} questions:</p>
             <div class="pr-bar3" aria-hidden="true"><i class="r" style="width:${pctW(nRight)}"></i><i class="f" style="width:${pctW(nFix)}"></i></div>
@@ -478,13 +496,13 @@
             <p class="pr-small"><b>${nSecure} of ${quick.length} secure</b>: right on two different days. That's when you really know it.</p>
             <p class="pr-small">"Last practice" counts your first answer to each question that day, so it can be lower than "right last time" once you've had another go.</p>
           </details>` : ""}</div>`);
-      hero.querySelector("[data-run]").onclick = () => nFix || nNew ? runToday() : start("Whole chapter", shuffle(quick.slice()), undefined, true);
+      hero.querySelector("[data-run]").onclick = () => runToday();
       const nodes = [hero];
       if (paperSlot) paperSlot.replaceChildren();
       slot.replaceChildren(...nodes);
 
       if (moreSlot) {
-        const box = h(`<div class="pr-choices"><p class="pr-choose-label">Quick options</p></div>`);
+        const box = h(`<details class="pr-choices pr-more"><summary class="pr-choose-label">More ways to practise</summary></details>`);
         const add = (title, note, fn, disabled, badge) => {
           const b = h(`<button type="button" class="pr-choice"${disabled ? " disabled" : ""}><span class="pr-li-body"><span class="pr-li-title">${esc(title)}</span><span class="pr-li-note">${esc(note)}</span></span>${badge ? `<span class="pr-badge">${badge}</span>` : ""}<span class="pr-chev" aria-hidden="true">›</span></button>`);
           b.onclick = fn; box.append(b);
@@ -492,7 +510,8 @@
         add("Quick Quiz", "Multiple choice, one tap answers", () => start("Quick Quiz", shuffle(mcq)), !mcq.length);
         if (rec.length) add("Short Answer Practice", "Write a line or two, then compare", () => start("Short Answer Practice", shuffle(rec)));
         const nodes2 = [box];
-        if (ex.length && prepSlot) {
+        // Only once he's earned it: 80%+ on his last go
+        if (ex.length && prepSlot && last && last.pct >= 80) {
           const nx = h(`<button type="button" class="pp-next"><span class="pr-li-body"><span class="pr-li-title">Know this chapter well?</span><span class="pr-li-note">Move on to Exam Prep and try ${ex.some(isPast) ? "a real past paper question" : "an exam question"}.</span></span><b class="go">Exam Prep ›</b></button>`);
           nx.onclick = () => goTo("refresh");
           nodes2.push(nx);
@@ -539,12 +558,10 @@
     }
     // Work through this chapter's quick-test questions that are left (new ones and ones to fix)
     function runToday(){
-      const quick = questions.filter(q => q.qtype !== "exam");
-      const left = quick.filter(q => prog.latest[q.id] === undefined || prog.latest[q.id] < 1);
-      const fx = shuffle(left.filter(q => prog.latest[q.id] !== undefined)), fresh = shuffle(left.filter(q => prog.latest[q.id] === undefined));
-      const list = fx.concat(fresh);
+      const list = roundList();
+      lastRound = new Set(list.map(q => q.id));
       goTo("test");
-      start("Today's testing", list.length ? list : todaysPick(), undefined, true);
+      start("Practice round", list, undefined, true);
     }
 
     function start(name, list, where, today){
@@ -829,11 +846,12 @@
         const done = mins >= dailyGoal;
         (card.querySelector(".pr-score-msg") || card.querySelector("h3")).after(h(`<div class="pr-todaybox">${ringHtml(64, mins, 7)}<span>${done ? `<b>${mins} minutes</b> of testing today. Your ${dailyGoal} are done, and every extra minute counts.` : `<b>${mins} of ${dailyGoal} minutes</b> today. ${dailyGoal - mins} to go.`}</span></div>`));
         const leftHere = questions.filter(q => q.qtype !== "exam" && (prog.latest[q.id] === undefined || prog.latest[q.id] < 1)).length;
-        const pick = stoppedEarly && leftHere ? Promise.resolve({ here: true, left: leftHere, title: `Carry on with ${String(topic.title).replace(/^Ch\s*\d+\s*:\s*/i, "")}` }) : (nextUp ? nextUp(topic.id) : Promise.resolve(null));
+        const chTitle = String(topic.title).replace(/^Ch\s*\d+\s*:\s*/i, ""), nextN = Math.min(ROUND, leftHere);
+        const pick = leftHere ? Promise.resolve({ here: true, left: leftHere, title: stoppedEarly ? `Carry on with ${chTitle}` : `Another ${nextN} on ${chTitle}`, keep: stoppedEarly ? "Keep going" : `Another ${nextN}` }) : (nextUp ? nextUp(topic.id) : Promise.resolve(null));
         pick.then(n => {
           if (!n || !card.isConnected) return;
-          const box = h(`<div class="pr-nextup"><span class="lab">Next up</span><b>${esc(n.title)}</b><span>${esc(n.here ? `${plural(n.left, "question", "questions")} left in this chapter.` : n.why === "unfinished" ? `You started this one ${n.when || "before"}. ${plural(n.left, "question", "questions")} left.` : `${plural(n.left, "question", "questions")} to try.`)}</span>
-            <button type="button" class="pr-btn big" data-keep>Keep going</button>
+          const box = h(`<div class="pr-nextup"><span class="lab">Next up</span><b>${esc(n.title)}</b><span>${esc(n.here ? `About ${estMin(roundList())} min. ${plural(n.left, "question", "questions")} left in this chapter.` : n.why === "unfinished" ? `You started this one ${n.when || "before"}. ${plural(n.left, "question", "questions")} left.` : `${plural(n.left, "question", "questions")} to try.`)}</span>
+            <button type="button" class="pr-btn big" data-keep>${esc(n.keep || "Keep going")}</button>
             <div class="pr-row"><button type="button" class="pp-link" data-choose style="margin:0">Choose a different chapter</button></div></div>`);
           box.querySelector("[data-keep]").onclick = () => n.here ? runToday() : (openToday && openToday(n));
           box.querySelector("[data-choose]").onclick = () => goHome && goHome();

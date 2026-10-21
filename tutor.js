@@ -298,7 +298,7 @@ ${notes || "(no notes for this chapter)"}`;
     card.innerHTML = `
       <div class="tutor-top">
         <span class="tutor-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v5"/></svg></span>
-        <span class="tutor-body"><span class="tutor-tag">Live voice tutor</span><h3>Practise with Your Tutor</h3><span class="tutor-sub">Talk it through and get help when stuck</span></span>
+        <span class="tutor-body"><span class="tutor-tag">Voice tutor</span><h3>Practise aloud</h3><span class="tutor-sub">Answer questions out loud with your tutor, and get help when stuck</span></span>
         <button class="tutor-orb" type="button" id="tutorOrb">Start talking</button>
       </div>
       <p class="tutor-status" id="tutorStatus" aria-live="polite"></p>
