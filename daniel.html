@@ -608,7 +608,9 @@ async function renderChapter(){
   const templateRows = templateRowsAll.filter(r => !disabledSet.has(r.id));
   const PRACTICE_TITLES = ["Flashcards Review", "Quiz Yourself", "Exam Practice"];
   const learnRows = templateRows.filter(t => !PRACTICE_TITLES.includes(t.title));
-  const extraRows = templateRows.filter(t => PRACTICE_TITLES.includes(t.title) && t.title !== "Quiz Yourself");
+  const extraRows = templateRows.filter(t => t.title === "Flashcards Review");
+  // The exam practice sheet is a resource on Learn (shown last, not counted in Learn progress)
+  const learnExtras = templateRows.filter(t => t.title === "Exam Practice");
   let knowStats = null;
   const progressRows = await sb(`nlm_progress?select=step_order,done,resource_url&topic_id=eq.${state.topicId}&profile_id=eq.${PROFILE.id}`);
   const confidenceRows = await sb(`nlm_confidence?select=rating&topic_id=eq.${state.topicId}&profile_id=eq.${PROFILE.id}`);
@@ -854,7 +856,7 @@ async function renderChapter(){
   function refreshSteps(){
     const stepsEl = document.getElementById("stepsContainer");
     if (!stepsEl) return;
-    stepsEl.innerHTML = learnRows.length ? learnRows.map(t => stepHTML(t)).join("") : `<p class="cv-empty">No learning materials for this chapter yet.</p>`;
+    stepsEl.innerHTML = learnRows.length || learnExtras.length ? learnRows.concat(learnExtras).map(t => stepHTML(t)).join("") : `<p class="cv-empty">No learning materials for this chapter yet.</p>`;
     const extraEl = document.getElementById("stepsContainer2"), extraBox = document.getElementById("extraPractice");
     if (extraEl) extraEl.innerHTML = extraRows.map(t => stepHTML(t)).join("");
     if (extraBox && !extraRows.length && !(document.getElementById("rightSlot") || {}).childElementCount) extraBox.hidden = true;
@@ -898,7 +900,7 @@ async function renderChapter(){
       <div id="practiceSlot"><div class="cv-card cv-empty">Quizzes for this chapter are coming soon. Use the extra practice below for now.</div></div>
       <div class="pr-pair" id="pairRow"><div id="paperSlot"></div><div id="tutorSlot"></div></div>
       <div id="practiceMoreSlot"></div>
-      <details class="cv-card cv-more" id="extraPractice"><summary>More: flashcards, print sheet, questions you've got right</summary><div class="cv-list" id="stepsContainer2"></div><div id="rightSlot"></div></details>
+      <details class="cv-card cv-more" id="extraPractice"><summary>More: flashcards, questions you've got right</summary><div class="cv-list" id="stepsContainer2"></div><div id="rightSlot"></div></details>
     </section>
 
     <section id="tab-refresh" role="tabpanel" aria-labelledby="tabbtn-refresh" hidden>
