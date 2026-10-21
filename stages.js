@@ -356,11 +356,20 @@
     ]);
     const topicIds = topics.map(t => t.id);
     const questions = [];
-    for (let i = 0; i < topicIds.length; i += 60) {
-      const part = await sb(`quiz_questions?select=id,topic_id,qtype&topic_id=in.${inList(topicIds.slice(i, i + 60))}`);
-      (part || []).forEach(q => questions.push(q));
+    // The database returns at most 1,000 rows per request, so page through every batch
+    for (let i = 0; i < topicIds.length; i += 40) {
+      for (let off = 0; ; off += 1000) {
+        const part = await sb(`quiz_questions?select=id,topic_id,qtype&topic_id=in.${inList(topicIds.slice(i, i + 40))}&order=id.asc&limit=1000&offset=${off}`) || [];
+        part.forEach(q => questions.push(q));
+        if (part.length < 1000) break;
+      }
     }
-    const attempts = await sb(`quiz_attempts?select=question_id,result,created_at&profile_id=eq.${profile.id}&order=created_at.asc&limit=20000`);
+    const attempts = [];
+    for (let off = 0; ; off += 1000) {
+      const part = await sb(`quiz_attempts?select=question_id,result,created_at&profile_id=eq.${profile.id}&order=created_at.asc&limit=1000&offset=${off}`) || [];
+      part.forEach(a => attempts.push(a));
+      if (part.length < 1000 || off > 50000) break;
+    }
     return { subjects, topics, templatesAll, disabled, progress, status, exams, flags, timeRows, questions, attempts };
   }
 
