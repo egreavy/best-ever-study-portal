@@ -79,6 +79,9 @@
   .pr-btn svg{width:18px;height:18px;margin-right:6px;flex:none}
   .pr-improve{display:flex;flex-direction:column;gap:10px;margin:4px 0 6px}
   .pr-up{font-weight:700;color:var(--t-accent)}
+  .pr-score-msg{display:flex;align-items:center;gap:16px;border-radius:12px;padding:14px 16px;background:var(--t-soft);font-size:16px;line-height:1.45}
+  .pr-score-msg.good{background:var(--t-accent-tint)}
+  .pr-score-msg.low{background:var(--t-warn-tint)}
   .pr-nx-l{font-size:14px;font-weight:700;color:var(--t-muted)}
   .pr-nx{display:flex;align-items:center;gap:14px;padding:12px 14px;border-radius:14px;border:2px solid var(--t-line);background:var(--t-card);text-align:left;font:inherit;color:var(--t-ink);cursor:pointer;width:100%}
   .pr-nx:hover{border-color:var(--t-accent)}
@@ -268,22 +271,29 @@
     const known = () => questions.filter(q => prog.latest[q.id] >= 1);
     const untried = () => questions.filter(q => prog.latest[q.id] === undefined);
 
+    // Quick Tests: multiple choice and short answers only (exam questions live in Exam Prep)
+    const quickFixes = () => fixes().filter(q => q.qtype !== "exam");
     function todaysPick(){
-      const pick = fixes().slice(0, 3);
+      const pick = quickFixes().slice(0, 3);
       const fill = (pool, n) => shuffle(pool.filter(q => !pick.includes(q))).slice(0, n).forEach(q => pick.push(q));
-      const newMcq = untried().filter(q => q.qtype === "mcq");
-      const mcqN = Math.max(0, 8 - pick.length - 2);
-      fill(newMcq.length >= mcqN ? newMcq : mcq, mcqN);
-      if (!pick.some(q => q.qtype === "recall")) fill(rec, 1);
-      return pick;
+      const want = (type, n) => {
+        const have = pick.filter(q => q.qtype === type).length, need = Math.max(0, n - have);
+        const pool = type === "mcq" ? mcq : rec, fresh = pool.filter(q => prog.latest[q.id] === undefined && !pick.includes(q));
+        fill(fresh.length >= need ? fresh : pool, need);
+      };
+      want("recall", rec.length ? 2 : 0);
+      want("mcq", 10 - Math.min(2, rec.length));
+      return shuffle(pick.slice(0, 3)).concat(shuffle(pick.slice(3)));
     }
     function todaysCaption(pick){
-      const f = pick.filter(q => fixes().includes(q)).length;
-      const m = pick.filter(q => q.qtype === "mcq" && !fixes().includes(q)).length;
+      const fx = quickFixes();
+      const f = pick.filter(q => fx.includes(q)).length;
+      const m = pick.filter(q => q.qtype === "mcq" && !fx.includes(q)).length;
+      const r = pick.filter(q => q.qtype === "recall" && !fx.includes(q)).length;
       const parts = [];
       if (f) parts.push(`${f} to try again`);
-      if (m) parts.push(`${m} new multiple choice`);
-      if (pick.some(q => q.qtype === "recall" && !fixes().includes(q))) parts.push("1 short answer");
+      if (m) parts.push(`${m} multiple choice`);
+      if (r) parts.push(plural(r, "short answer", "short answers"));
       return parts.join(" · ");
     }
 
@@ -377,7 +387,7 @@
     function setChrome(show, where){ hideDuring.forEach(el => { if (el) el.hidden = !show; }); prepHide.forEach(el => { if (el) el.hidden = !show; }); }
     function home(){
       session = null; setChrome(true);
-      const pick = todaysPick(), fx = fixes();
+      const pick = todaysPick(), fx = quickFixes();
       const hero = h(`<div class="pr-card pr-hero">
           <span class="pr-hero-title">Your Daily Practice</span>
           <span class="pr-sub">10 minutes · ${esc(todaysCaption(pick))}</span>
@@ -662,8 +672,19 @@
       const card = h(`<div class="pr-card"><h3>${esc(session.name)}: done</h3>
         <p class="pr-next">${R.length ? `You answered ${plural(R.length, "question", "questions")}. ${plural(good.length, "was", "were")} right${gaps.length ? `, and ${plural(gaps.length, "goes", "go")} on your Try Again list` : ""}.` : "No answers saved this time."}</p>
         ${gaps.length ? `<div class="pr-fb"><h4>To try again next time</h4><ul>${gaps.map(r=>`<li>${esc(shortTitle(r.q))}</li>`).join("")}</ul><span class="pr-tip">Your tutor will start with these too.</span></div>` : ""}
-        <div class="pr-row"><button type="button" class="pr-btn" data-home>Back to ${session.where === prepSlot ? "Exam Prep" : "Quick Tests"}</button></div></div>`);
+        <div class="pr-row" data-acts><button type="button" class="pr-btn${session.where !== prepSlot && R.length >= 3 ? " ghost" : ""}" data-home>Back to ${session.where === prepSlot ? "Exam Prep" : "Quick Tests"}</button></div></div>`);
       card.querySelector("[data-home]").onclick = () => home();
+      // After a quick test: under 70% -> review the material; 80%+ -> on to exam questions
+      if (session.where !== prepSlot && R.length >= 3) {
+        const pct = Math.round(R.reduce((n, r) => n + r.v, 0) / R.length * 100);
+        const acts = card.querySelector("[data-acts]");
+        let msg, btn;
+        if (pct < 70) { msg = `Go back over the material first, then test yourself again.`; btn = h(`<button type="button" class="pr-btn">Review the material ›</button>`); btn.onclick = () => { home(); goTo("learn"); }; }
+        else if (pct >= 80) { msg = ex.length ? `You know this well. Time to try exam questions.` : `You know this well.`; if (ex.length) { btn = h(`<button type="button" class="pr-btn">Go to Exam Prep ›</button>`); btn.onclick = () => { home(); goTo("refresh"); }; } }
+        else { msg = `Nearly there. Try the ones you missed again, then you're ready for exam questions.`; const fx = quickFixes(); if (fx.length) { btn = h(`<button type="button" class="pr-btn">Try Again (${fx.length})</button>`); btn.onclick = () => start("Try Again", fx); } }
+        card.querySelector("h3").after(h(`<div class="pr-score-msg ${pct >= 80 ? "good" : pct < 70 ? "low" : ""}"><span class="pr-score">${pct}%</span><span>${esc(msg)}</span></div>`));
+        if (btn) acts.prepend(btn); else card.querySelector("[data-home]").classList.remove("ghost");
+      }
       logTime(session);
       const where = session.where;
       session = null;
