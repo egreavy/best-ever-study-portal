@@ -313,12 +313,17 @@
   function todayPlan(m){
     const now = leftOff(m); if (!now) return [];
     const out = [now], seen = new Set([now.c.id]);
+    // Mix subjects: prefer chapters from a subject not already in the plan. Only chapters he has
+    // started testing or put on his revision list (never a random untouched chapter).
+    const subj = c => (m.groupOf && m.groupOf[c.subject_id]) || c.subject_id;
+    const used = new Set([subj(now.c)]);
     while (out.length < 3) {
-      const chs = Object.values(m.topics).filter(c => !seen.has(c.id) && c.stats && c.stats.quickLeft > 0);
-      const started = chs.filter(c => c.stats.lastAt).sort((a, b) => a.stats.lastAt - b.stats.lastAt);
-      const rev = revisionList(m).filter(c => !seen.has(c.id) && c.stats && c.stats.quickLeft > 0);
-      const n = started[0] ? { c: started[0], why: "unfinished" } : rev[0] ? { c: rev[0], why: "list" } : chs[0] ? { c: chs[0], why: "new" } : null;
-      if (!n) break; out.push(n); seen.add(n.c.id);
+      const started = Object.values(m.topics).filter(c => !seen.has(c.id) && c.stats && c.stats.quickLeft > 0 && c.stats.lastAt).sort((a, b) => a.stats.lastAt - b.stats.lastAt)
+        .map(c => ({ c, why: "unfinished" }));
+      const rev = revisionList(m).filter(c => !seen.has(c.id) && c.stats && c.stats.quickLeft > 0).map(c => ({ c, why: "list" }));
+      const pool = started.concat(rev);
+      const n = pool.find(p => !used.has(subj(p.c))) || pool[0];
+      if (!n) break; out.push(n); seen.add(n.c.id); used.add(subj(n.c));
     }
     return out;
   }
