@@ -722,7 +722,7 @@
           <div class="hc-list">${rest.slice(0, showAll ? rest.length : 3).map(row).join("")}</div>
           ${rest.length > 3 ? `<button type="button" class="hs-link" style="align-self:flex-start" data-all>${showAll ? "Show fewer" : `See all ${rest.length}`}</button>` : ""}</div>` : ""}
       </div>
-      ${state && state.qaOpen ? `<div class="qa" id="quickAdd"></div>` : `<button type="button" class="hc-qa-open" data-qa>+ What's new at school?</button>`}
+      <div class="qa" id="quickAdd"></div>
     </div>`;
     view.querySelectorAll("[data-subject]").forEach(b => b.onclick = () => openSubject(b.dataset.subject));
     view.querySelectorAll("[data-open]").forEach(b => b.onclick = () => { const c = m.topics[b.dataset.open]; openChapter(c.id, c.subject_id, b.dataset.tab); });
