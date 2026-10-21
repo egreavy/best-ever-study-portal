@@ -635,7 +635,7 @@ async function renderChapter(){
   progressRows.forEach(r => { doneMap[r.step_order] = { done: !!r.done, resourceUrl: r.resource_url || "" }; });
   const confidenceRating = confidenceRows[0] ? parseInt(confidenceRows[0].rating, 10) : null;
 
-  const NAMES = { "Revision Guide": "Revision guide", "Video Overview": "Video", "In-Depth Slide Deck": "Slides", "Audio Recap": "Audio recap", "Mind Map": "Mind map", "Flashcards Review": "Flashcards", "Quiz Yourself": "NotebookLM quiz", "Exam Practice": "Exam practice sheet to print" };
+  const NAMES = { "Revision Guide": "Revision guide", "Video Overview": "Video", "In-Depth Slide Deck": "Slides", "Audio Recap": "Audio recap", "Mind Map": "Mind map", "Flashcards Review": "Flashcards", "Quiz Yourself": "NotebookLM quiz", "Exam Practice": "Past Papers - Analysis & Answers" };
   const NOTES = { "Revision Guide": "5 minute read", "Video Overview": "Watch the key ideas", "In-Depth Slide Deck": "Like a full class lesson", "Audio Recap": "Listen anywhere", "Mind Map": "See how it all connects", "Flashcards Review": "Quick recall, little and often", "Quiz Yourself": "A NotebookLM quiz on this chapter", "Exam Practice": "Past paper questions with model answers" };
   const VERB = { "Video Overview": "Watch", "Audio Recap": "Listen" };
 
@@ -900,7 +900,6 @@ async function renderChapter(){
       <div id="practiceSlot"><div class="cv-card cv-empty">Quizzes for this chapter are coming soon. Use the extra practice below for now.</div></div>
       <div class="pr-pair" id="pairRow"><div id="paperSlot"></div><div id="tutorSlot"></div></div>
       <div id="practiceMoreSlot"></div>
-      <details class="cv-card cv-more" id="extraPractice"><summary>More: flashcards, questions you've got right</summary><div class="cv-list" id="stepsContainer2"></div><div id="rightSlot"></div></details>
     </section>
 
     <section id="tab-refresh" role="tabpanel" aria-labelledby="tabbtn-refresh" hidden>
