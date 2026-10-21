@@ -384,6 +384,8 @@
   .cv-card{background:var(--t-card);border-radius:14px;padding:16px 20px;margin:0 0 10px;}
   .cv-empty{color:var(--t-muted);font-size:15px;line-height:1.5;}
   .cv-intro{display:flex;flex-direction:column;gap:2px;margin:0 0 10px;}
+  .cv-tip{background:var(--t-accent-tint);border-radius:12px;padding:12px 16px;margin:0 0 10px;font-size:15px;line-height:1.5;color:var(--t-ink)}
+  .cv-tip b{color:var(--t-accent)}
   .cv-intro b{font-size:17px;}
   .cv-intro span{font-size:15px;color:var(--t-muted);line-height:1.45;}
   .cv-list{padding-top:2px;padding-bottom:2px;}
@@ -714,11 +716,11 @@ async function renderChapter(){
       const se = b.querySelector(".cv-tab-s"); se.textContent = sub; se.classList.toggle("now", !!now);
     };
     const learnDoneAll = info.learnTotal > 0 && info.learnDone >= info.learnTotal;
-    if (info.stage === "learn" || info.stage === "none") set("learn", learnDoneAll ? "tick" : "now", "Before class · " + (learnDoneAll ? "done" : info.learnDone ? "started" : "start here"), !learnDoneAll);
-    else set("learn", learnDoneAll || info.classDone ? "tick" : "", "Before class" + (learnDoneAll ? " · done" : ""), false);
-    if (info.stage === "test") set("test", info.done ? "tick" : "now", "After class · " + (info.done ? "done" : "now"), !info.done);
-    else if (info.tested || (info.stage === "refresh" && (info.stats.triedEver || 0) >= Math.ceil((info.stats.total || 1) * 0.8))) set("test", "tick", "After class · done", false);
-    else set("test", "", "After class", false);
+    if (info.stage === "learn" || info.stage === "none") set("learn", learnDoneAll ? "tick" : "now", "Watch & read · " + (learnDoneAll ? "done" : info.learnDone ? "started" : "start here"), !learnDoneAll);
+    else set("learn", learnDoneAll ? "tick" : "", "Watch & read" + (learnDoneAll ? " · done" : ""), false);
+    if (info.stage === "test") set("test", info.done ? "tick" : "now", "Check yourself · " + (info.done ? "done" : "now"), !info.done);
+    else if (info.tested || (info.stage === "refresh" && (info.stats.triedEver || 0) >= Math.ceil((info.stats.total || 1) * 0.8))) set("test", "tick", "Check yourself · done", false);
+    else set("test", "", "Check yourself", false);
     const st = info.stats || {}, nPast = st.pastTotal || 0, nEx = st.examTotal || 0;
     const prepSub = nPast ? `${nPast} past paper question${nPast === 1 ? "" : "s"}` : nEx ? `${nEx} exam question${nEx === 1 ? "" : "s"}` : "Before exams";
     if (info.stage === "refresh") set("refresh", info.done ? "tick" : "now", info.done ? "Exam ready" : "Exams soon · now", !info.done);
@@ -727,18 +729,10 @@ async function renderChapter(){
   }
   function paintClassFoot(){
     const el = document.getElementById("classFoot"); if (!el) return;
-    if (classDoneAt) {
-      el.innerHTML = `<span class="cv-class-done">Done in class on ${esc(Stages.fmtDate(new Date(classDoneAt)))}. Now test yourself.</span><span style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="cv-btn ghost" data-undo-class>Undo</button><button type="button" class="cv-btn" data-goto2="test">Go to Quick Tests</button></span>`;
-    } else {
-      el.innerHTML = `<span>Done this chapter in class? Tap here and it moves on to Quick Tests.</span><button type="button" class="cv-btn" data-class-done>We've done this in class</button>`;
-    }
-    const d = el.querySelector("[data-class-done]");
-    if (d) d.onclick = async () => { d.disabled = true; d.textContent = "Saving…"; await Stages.markClassDone(sb, PROFILE, state.topicId, true); classDoneAt = new Date().toISOString(); paintClassFoot(); paintTabs(); };
-    const u = el.querySelector("[data-undo-class]");
-    if (u) u.onclick = async () => { u.disabled = true; await Stages.markClassDone(sb, PROFILE, state.topicId, false); classDoneAt = null; paintClassFoot(); paintTabs(); };
-    const g = el.querySelector("[data-goto2]");
-    if (g) g.onclick = () => goTab("test");
+    el.innerHTML = `<span>Finished these? See what you know with a quick test.</span><button type="button" class="cv-btn" data-goto2="test">Go to Quick Tests</button>`;
+    el.querySelector("[data-goto2]").onclick = () => goTab("test");
   }
+
 
   function bindStepEvents(){
     ["stepsContainer", "stepsContainer2"].forEach(cid => bindStepsIn(document.getElementById(cid)));
@@ -871,7 +865,7 @@ async function renderChapter(){
   // Open on the step he's at (worked out again once the questions have loaded)
   let autoTab = false;
   if (!state.chapterTab || state.chapterTabTopic !== state.topicId) {
-    state.chapterTab = classDoneAt ? "test" : "learn";
+    state.chapterTab = "learn";
     state.chapterTabTopic = state.topicId;
     autoTab = true;
   }
@@ -894,7 +888,7 @@ async function renderChapter(){
     </div>
 
     <section id="tab-learn" role="tabpanel" aria-labelledby="tabbtn-learn" hidden>
-      <div class="cv-intro"><b>Read, watch or listen</b><span>Do them in order, or pick what suits you today. Tick each one when you've finished.</span></div>
+      <div class="cv-tip"><b>Tip:</b> Watching the video or reading the revision guide before a topic is taught in class gives you a head start, so the lesson makes more sense. Going over them again afterwards helps it stick.</div>
       <div class="cv-card cv-list" id="stepsContainer"></div>
       <div class="cv-card cv-foot" id="classFoot"></div>
     </section>
