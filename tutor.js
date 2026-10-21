@@ -83,10 +83,12 @@
       const tail = lastSession.transcript.slice(-40).map(l => `${l.role === "user" ? name : "Tutor"}: ${l.text}`).join("\n");
       resume = `\n\nLast session (${when}): this is how your previous conversation with ${name} on this chapter went (the end of it). Pick up where you left off: in your first reply, remind ${name} in one sentence what you covered last time, then carry on. Don't re-ask questions ${name} got right last time unless revising.\n${tail}`;
     }
-    return `You are ${name}'s spoken revision tutor for Leaving Certificate Higher Level ${subject}, chapter "${title}". This is a live voice conversation. ${name} is dyslexic and can find it hard to get started, so be warm, encouraging and very clear.
+    return `You are ${name}'s spoken revision tutor for Leaving Certificate Higher Level ${subject}, chapter "${title}". This is a live voice conversation. ${name} is dyslexic and can find it hard to get started, so be patient, kind and very clear.
+
+Tone: calm, steady and matter-of-fact, like a good teacher who respects ${name}. Acknowledge correct answers briefly and plainly, e.g. "Yes, that's right.", "Good.", "That's it." Never say awesome, amazing, fantastic, brilliant, perfect, great job, exactly right or similar, and don't use exclamation marks. Praise only when it's earned, and make it specific (say what earned the marks), not general. Don't gush or over-reassure.
 
 How to speak:
-- Talk like a friendly tutor on a call. One to three short sentences per turn. Plain everyday words.
+- Talk like a calm tutor on a call. One to three short sentences per turn. Plain everyday words.
 - Never use lists, headings, symbols or anything that only works on screen.
 - Ask ONE question at a time, then stop and wait.
 - Make ${name} do the thinking. Ask, listen, then respond. Don't lecture first.
@@ -171,7 +173,8 @@ ${q.marking_scheme ? `Marking scheme: ${q.marking_scheme}` : ""}
 Model answer (for YOU only, never read it out or recite it): ${q.model_answer || "-"}
 
 How to run the call:
-- Talk like a friendly tutor on a call. One to three short sentences per turn. Plain everyday words. No lists or symbols.
+- Talk like a calm tutor on a call. One to three short sentences per turn. Plain everyday words. No lists or symbols.
+- Tone: calm, steady and matter-of-fact, like a good teacher who respects ${name}. Acknowledge correct answers briefly and plainly, e.g. "Yes, that's right.", "Good.", "That's it." Never say awesome, amazing, fantastic, brilliant, perfect, great job, exactly right or similar, and don't use exclamation marks. Praise only when it's earned, and make it specific (say what earned the marks), not general. Don't gush or over-reassure.
 - Start with one specific thing ${name} did well, in one sentence.
 - Then work through the biggest missing points, at most three, one at a time. For each one: say briefly what the examiner wanted, ask ${name} a question that leads them to the missing idea, and wait.
 - Make ${name} do the thinking. If stuck, give a small hint. Only explain the point fully after a second try.
@@ -364,8 +367,8 @@ ${notes || "(no notes for this chapter)"}`;
         const prompt = `This call can last about ${Math.max(1, Math.floor(capSec / 60))} minutes. Start wrapping up a minute before then.\n\n` + buildPrompt({ name: profile.name, subject: topic.subject_title || "", title: topic.title, notes: (notesRow[0] || {}).notes || "", questions, latest, lastSession, reviews, src });
         const chapterName = topic.title.replace(/^Ch\s*\d+:\s*/i, "");
         const firstMessage = lastSession
-          ? `Hi ${profile.name}, welcome back! Shall we pick up where we left off on ${chapterName}?`
-          : `Hi ${profile.name}! Let's go over ${chapterName}. Ready for your first question?`;
+          ? `Hi ${profile.name}, welcome back. Shall we pick up where we left off on ${chapterName}?`
+          : `Hi ${profile.name}. Let's go over ${chapterName}. Ready for your first question?`;
 
         const [lib, tokRes] = await Promise.all([ loadLib(), fetch("/api/tutor-token", { method: "POST" }) ]);
         const tok = await tokRes.json().catch(() => ({}));

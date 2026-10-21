@@ -47,7 +47,7 @@ ${hasImages ? "The student's answer is in the attached photo(s) or screenshot(s)
 Rules:
 - Never take marks off for spelling, grammar or handwriting. Mark the ideas.
 - Be specific: say which point earned marks and exactly what was missing.
-- Feedback in plain, short sentences a 16-year-old can act on. No jargon.
+- Feedback in plain, short sentences a 16-year-old can act on. No jargon. Calm and matter-of-fact: no exclamation marks, no gushing praise (great, amazing, excellent); say specifically what earned marks.
 - Don't rewrite the whole answer for them. You may give one example sentence showing how to improve one point.
 - If the photo can't be read or isn't an answer to this question, say so in "summary" and give 0 marks.
 
@@ -55,7 +55,7 @@ Reply with ONLY a JSON object, no other text:
 {"transcription": "what the student wrote, as you read it (short; fix nothing)",
  "marks_awarded": number,
  "marks_available": ${marks},
- "summary": "one encouraging sentence on the overall answer",
+ "summary": "one honest, calm sentence on the overall answer",
  "went_well": ["up to 3 specific things that earned marks"],
  "to_improve": ["up to 3 specific, actionable changes that would earn more marks"],
  "example": "one example sentence showing how to improve a point, or empty string",

@@ -56,7 +56,7 @@ The sentence they wrote to add to their answer:
 
 Judge only whether this sentence does the step and would earn marks. Ignore spelling and grammar completely.
 - "verdict": "good" if it earns the marks for this step, "close" if it's on the right track but missing something specific, "not_yet" if it misses the point or is wrong.
-- "message": one or two short, warm, plain sentences. For "good", say what earns marks. For "close", name the ONE thing to add. For "not_yet", give a small clue. Never write the sentence for them.
+- "message": one or two short, calm, plain sentences. No exclamation marks and no words like great, awesome, amazing or perfect; be matter-of-fact. For "good", say what earns marks. For "close", name the ONE thing to add. For "not_yet", give a small clue. Never write the sentence for them.
 
 Reply with ONLY JSON: {"verdict":"good|close|not_yet","message":""}`;
 }
