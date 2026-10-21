@@ -88,6 +88,7 @@
   .pr-btn svg{width:18px;height:18px;margin-right:6px;flex:none}
   .pr-improve{display:flex;flex-direction:column;gap:10px;margin:4px 0 6px}
   .pr-up{font-weight:700;color:var(--t-accent)}
+  .pr-mine summary{cursor:pointer;font-weight:700;font-size:14px;color:var(--t-muted)}.pr-mine span{display:block;margin-top:6px;white-space:pre-wrap;font-size:15px;line-height:1.55;border-left:4px solid var(--t-line);padding-left:10px}
   .pr-ring{position:relative;display:inline-grid;place-items:center;flex:none}.pr-ring svg{position:absolute;inset:0}.pr-ring b{position:relative;font-size:12px;font-weight:700}
   .pr-today{display:inline-flex;align-items:center;gap:8px;font-weight:700;color:var(--t-ink)}
   .pr-goalhit{background:var(--t-accent-tint);border-radius:10px;padding:10px 14px;font-size:15px;line-height:1.45}
@@ -740,6 +741,8 @@
             ${f.example ? `<h4>For example</h4><span>${esc(f.example)}</span>` : ""}
           </div>`);
           card.append(fbEl);
+          const shown = text || f.transcription || "";
+          if (shown) fbEl.append(h(`<details class="pr-mine"><summary>Your answer, as it was marked</summary><span>${esc(shown)}</span></details>`));
           if (f.to_improve.length && (isExam || v < 1) && (!f.marks_available || f.marks_awarded < f.marks_available)) improveRow(fbEl, q, text || f.transcription || "", f, entry);
           card.append(h(modelBlock()));
           nextBtn(card);
