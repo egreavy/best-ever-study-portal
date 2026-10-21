@@ -1,6 +1,6 @@
 // Rewards and "My page": a faint scrapbook behind the study pages.
 // Everyone starts with 1 writing, 1 sticker and 1 photo. Milestones (a 5 day streak,
-// 140 minutes of testing, a 30 day streak, then every extra 140 minutes or 5 day streak)
+// 300 minutes of testing, a 30 day streak, then every extra 300 minutes or 5 day streak)
 // each let the student choose +1 sticker, +1 writing or +1 photo.
 // Choices are saved in student_settings; photos in scrapbook_photos (small JPEGs).
 (function(){
@@ -27,11 +27,11 @@
     if (!goal) return [];
     const runs = goal.runs || [], out = [];
     if (runs.some(r => r >= 5)) out.push("a 5 day streak");
-    if ((goal.testMin || 0) >= 140) out.push("140 minutes of testing");
+    if ((goal.testMin || 0) >= 300) out.push("300 minutes of testing");
     if (runs.some(r => r >= 30)) out.push("a 30 day streak");
     const blocks = runs.reduce((n, r) => n + Math.floor(r / 5), 0);
     for (let i = 1; i < blocks; i++) out.push("another 5 day streak");
-    for (let i = 1; i < Math.floor((goal.testMin || 0) / 140); i++) out.push(`${(i + 1) * 140} minutes of testing`);
+    for (let i = 1; i < Math.floor((goal.testMin || 0) / 300); i++) out.push(`${(i + 1) * 300} minutes of testing`);
     return out;
   }
   function nextUp(goal){
@@ -39,7 +39,7 @@
     const runs = goal.runs || [], s = goal.streakNow || 0, t = goal.testMin || 0, list = [];
     if (!runs.some(r => r >= 5)) list.push({ name: "5 day streak", have: s, need: 5, unit: "days" });
     else list.push({ name: "Next 5 day streak", have: s % 5, need: 5, unit: "days" });
-    list.push({ name: t >= 140 ? `${(Math.floor(t / 140) + 1) * 140} minutes of testing` : "140 minutes of testing", have: Math.round(t % 140), need: 140, unit: "minutes" });
+    list.push({ name: t >= 300 ? `${(Math.floor(t / 300) + 1) * 300} minutes of testing` : "300 minutes of testing", have: Math.round(t % 300), need: 300, unit: "minutes" });
     if (!runs.some(r => r >= 30)) list.push({ name: "30 day streak", have: s, need: 30, unit: "days" });
     return list;
   }
@@ -255,7 +255,7 @@
       ${left ? `<div class="mp-pick" style="margin-top:12px"><b>You have ${left === 1 ? "a reward" : left + " rewards"} to choose</b><span class="mp-sub" style="color:inherit">For ${esc(earned(goal).slice(-left).join(", "))}.</span>${pickButtons()}</div>` : ""}
       <div class="mp-sec" style="border-top:none"><div class="mp-hrow"><span class="mp-h">Rewards</span><span class="mp-sub">Each one lets you choose +1 writing, sticker or photo</span></div>
         <div class="mp-goals">${goals}</div>
-        <span class="mp-sub">Right now your page can have ${al.writing} writing, ${al.sticker} sticker${al.sticker === 1 ? "" : "s"} and ${al.photo} photo${al.photo === 1 ? "" : "s"}. A streak day is ${goal ? goal.minutes : 14} minutes or more.</span>
+        <span class="mp-sub">Right now your page can have ${al.writing} writing, ${al.sticker} sticker${al.sticker === 1 ? "" : "s"} and ${al.photo} photo${al.photo === 1 ? "" : "s"}. A streak day is ${goal ? goal.minutes : 30} minutes or more of testing.</span>
         <div class="mp-toggle"><span>Show my page decorations</span><button type="button" class="settings-toggle ${data.decor_on ? "on" : ""}" data-decor aria-label="Show decorations"><span class="knob"></span></button></div>
       </div>
       <div class="mp-sec"><div class="mp-hrow"><span class="mp-h">Write something</span><span class="mp-count">${ws.length} of ${al.writing}</span></div>

@@ -958,9 +958,21 @@ async function renderChapter(){
       if (autoTab) { autoTab = false; const t = { learn: "learn", none: "learn", test: "test", refresh: "refresh" }[info.stage]; if (t !== state.chapterTab) showTab(t); }
     },
     onStartFresh: async () => { freshSince = new Date().toISOString(); await Stages.startFresh(sb, PROFILE, state.topicId); },
-    hideDuring: [document.getElementById("pairRow"), document.getElementById("practiceMoreSlot"), document.getElementById("extraPractice")]
+    hideDuring: [document.getElementById("pairRow"), document.getElementById("practiceMoreSlot"), document.getElementById("extraPractice")],
+    dailyGoal: Stages.DAILY_GOAL,
+    goHome,
+    // After a chapter in "today's 30 minutes": the next chapter to carry on with
+    nextUp: async (excludeId) => {
+      const { model } = await loadModel(); state.model = model;
+      const n = Stages.nextUp(model, excludeId); if (!n) return null;
+      const c = n.c, subj = (model.bySubject[c.subject_id] || {}).title || "";
+      return { id: c.id, subject_id: c.subject_id, why: n.why, left: c.stats.quickLeft, when: c.stats.lastAt ? Stages.ago(c.stats.lastAt) : "",
+        title: `${n.why === "unfinished" ? "Finish " : ""}${subj}${c.book ? " " + c.book : ""} · Ch ${c.order_num ?? ""}: ${String(c.title).replace(/^Ch\s*\d+\s*:\s*/i, "")}` };
+    },
+    openToday: (n) => { state.todayRun = n.id; openChapter(n.id, n.subject_id, "test"); }
   }).then(api => {
     practiceApi = api;
+    if (api && state.todayRun === state.topicId) { state.todayRun = null; autoTab = false; api.runToday(); }
     if (!api && autoTab) { autoTab = false; paintTabs(); }
   });
   if (topic && window.mountTutor) window.mountTutor(document.getElementById("tutorSlot"), { topic, profile: PROFILE, sb });

@@ -79,6 +79,20 @@
   .pr-btn svg{width:18px;height:18px;margin-right:6px;flex:none}
   .pr-improve{display:flex;flex-direction:column;gap:10px;margin:4px 0 6px}
   .pr-up{font-weight:700;color:var(--t-accent)}
+  .pr-ring{position:relative;display:inline-grid;place-items:center;flex:none}.pr-ring svg{position:absolute;inset:0}.pr-ring b{position:relative;font-size:12px;font-weight:700}
+  .pr-today{display:inline-flex;align-items:center;gap:8px;font-weight:700;color:var(--t-ink)}
+  .pr-goalhit{background:var(--t-accent-tint);border-radius:10px;padding:10px 14px;font-size:15px;line-height:1.45}
+  .pr-todaybox{display:flex;align-items:center;gap:14px;background:var(--t-soft);border-radius:12px;padding:12px 16px;font-size:16px;line-height:1.45}
+  .pr-todaybox .pr-ring b{font-size:15px}
+  .pr-nextup{background:var(--t-accent-tint);border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:8px;font-size:15px;line-height:1.5}
+  .pr-nextup .lab{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--t-accent)}
+  .pr-nextup b{font-size:18px;line-height:1.3}
+  .pr-nextup .pr-btn{align-self:flex-start;margin-top:4px}
+  .pr-plus{display:inline-block;background:var(--t-accent);color:var(--t-on-accent);font-weight:700;font-size:13px;border-radius:999px;padding:1px 9px;margin-right:8px;animation:prPlus .5s ease-out}
+  .pr-opt.pop{animation:prPop .45s ease-out}
+  @keyframes prPop{0%{transform:scale(1);box-shadow:0 0 0 0 rgba(31,111,92,.35)}40%{transform:scale(1.02)}100%{transform:scale(1);box-shadow:0 0 0 12px rgba(31,111,92,0)}}
+  @keyframes prPlus{0%{transform:translateY(6px);opacity:0}100%{transform:none;opacity:1}}
+  @media (prefers-reduced-motion:reduce){.pr-opt.pop,.pr-plus{animation:none}}
   .pr-score-msg{display:flex;align-items:center;gap:16px;border-radius:12px;padding:14px 16px;background:var(--t-soft);font-size:16px;line-height:1.45}
   .pr-score-msg.good{background:var(--t-accent-tint)}
   .pr-score-msg.low{background:var(--t-warn-tint)}
@@ -257,7 +271,7 @@
 
   // ---- mount ----
   async function mountPractice(slot, opts){
-    const { topic, profile, sb, moreSlot, paperSlot, refreshSlot, prepSlot, rightSlot, goTo = () => {}, onStats = () => {}, onStartFresh = async () => {}, hideDuring = [], prepHide = [] } = opts;
+    const { topic, profile, sb, moreSlot, paperSlot, refreshSlot, prepSlot, rightSlot, goTo = () => {}, onStats = () => {}, onStartFresh = async () => {}, hideDuring = [], prepHide = [], nextUp = null, openToday = null, goHome = null, dailyGoal = 30 } = opts;
     const freshSince = typeof opts.freshSince === "function" ? opts.freshSince : () => opts.freshSince || null;
     if (!slot || !topic) return null;
     addCss();
@@ -427,10 +441,46 @@
       }
     }
 
-    function start(name, list, where){
+    // ---- today's 30 minutes ----
+    const startOfToday = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+    async function todayBase(){
+      try {
+        const rows = await sb(`study_time?select=seconds&profile_id=eq.${profile.id}&kind=eq.test&created_at=gte.${encodeURIComponent(startOfToday().toISOString())}`);
+        return (rows || []).reduce((n, r) => n + (Number(r.seconds) || 0), 0) / 60;
+      } catch (e) { return 0; }
+    }
+    const sessionSec = s => s && s.results.length ? Math.min(Math.round((Date.now() - s.t0) / 1000), s.results.length * 300 + 60, 7200) : 0;
+    const todayMins = () => session ? Math.floor(session.base + sessionSec(session) / 60) : 0;
+    function ringHtml(size, mins, stroke){
+      const r = (size - stroke) / 2, c = 2 * Math.PI * r, f = Math.max(0, Math.min(1, mins / dailyGoal));
+      return `<span class="pr-ring" style="width:${size}px;height:${size}px" aria-hidden="true"><svg width="${size}" height="${size}"><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--t-line)" stroke-width="${stroke}"/><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--t-accent)" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${(c * f).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 ${size/2} ${size/2})"/></svg><b>${mins}</b></span>`;
+    }
+    function paintRing(){
+      if (!session || !session.today) return;
+      const el = session.where.querySelector("[data-ring]"); if (!el) return;
+      const m = todayMins();
+      el.innerHTML = `${ringHtml(40, m, 5)}<span>${m >= dailyGoal ? `${m} min today` : `${m} of ${dailyGoal} min today`}</span>`;
+      if (m >= dailyGoal && !session.hit) {
+        session.hit = true;
+        const card = session.where.querySelector(".pr-card");
+        if (card && session.base < dailyGoal) card.querySelector(".pr-progress").after(h(`<div class="pr-goalhit"><b>${dailyGoal} minutes done today.</b> Every extra minute counts, so keep going if you can.</div>`));
+      }
+    }
+    // Work through this chapter's quick-test questions that are left (new ones and ones to fix)
+    function runToday(){
+      const quick = questions.filter(q => q.qtype !== "exam");
+      const left = quick.filter(q => prog.latest[q.id] === undefined || prog.latest[q.id] < 1);
+      const fx = shuffle(left.filter(q => prog.latest[q.id] !== undefined)), fresh = shuffle(left.filter(q => prog.latest[q.id] === undefined));
+      const list = fx.concat(fresh);
+      goTo("test");
+      start("Today's testing", list.length ? list : todaysPick(), undefined, true);
+    }
+
+    function start(name, list, where, today){
       if (!list || !list.length) return;
       if (session) { logTime(session); home(); }
-      session = { name, queue: list.map(q => ({ q, retry:false })), i:0, results:[], total:list.length, t0: Date.now(), where: where === "prep" && prepSlot ? prepSlot : slot };
+      session = { name, queue: list.map(q => ({ q, retry:false })), i:0, results:[], total:list.length, t0: Date.now(), where: where === "prep" && prepSlot ? prepSlot : slot, today: !!today, base: 0 };
+      if (today) todayBase().then(m => { if (session) { session.base = m; paintRing(); } });
       setChrome(false);
       next();
     }
@@ -442,12 +492,13 @@
       const card = h(`<div class="pr-card">
         <div class="pr-row" style="justify-content:space-between"><button type="button" class="pr-btn ghost" data-stop>Stop</button><span class="pr-small" style="font-variant-numeric:tabular-nums">${entry.again ? "Improving your answer" : retry ? "Second try" : `Question ${session.i+1} of ${session.total}`}</span></div>
         <div class="pr-progress"><i style="width:${Math.min(session.i,session.total)/session.total*100}%"></i></div>
-        <div class="pr-meta"><span>${label}</span></div>
+        <div class="pr-meta"><span>${label}</span>${session.today ? `<span class="pr-today" data-ring></span>` : ""}</div>
         <p class="pr-q">${esc(q.prompt)}</p></div>`);
       card.querySelector("[data-stop]").onclick = () => session.results.length ? finish() : home();
       session.t0 = session.t0 || Date.now();
       if (q.qtype === "mcq") mcqView(card, q, retry); else writtenView(card, q, retry, entry);
       session.where.replaceChildren(card);
+      paintRing();
       card.scrollIntoView({ block:"start", behavior:"smooth" });
     }
 
@@ -470,10 +521,10 @@
         b.onclick = () => {
           const ok = oi === q.answer_index;
           opts.querySelectorAll(".pr-opt").forEach((x,p) => { x.disabled = true; if (order[p] === q.answer_index) x.classList.add("right"); });
-          if (!ok) b.classList.add("wrong");
+          if (!ok) b.classList.add("wrong"); else b.classList.add("pop");
           if (!retry) { session.results.push({ q, v: ok?1:0 }); save(q.id, ok?1:0, "quiz"); }
           if (!ok && !retry) session.queue.push({ q, retry:true });
-          card.append(h(`<div class="pr-fb ${ok?"good":""}"><strong>${ok?"Correct.":"Not this one."}</strong><span>${esc(q.explanation||"")}</span>${!ok&&!retry?`<span class="pr-tip">You'll get another go at the end.</span>`:""}</div>`));
+          card.append(h(`<div class="pr-fb ${ok?"good":""}">${ok && !retry ? `<span class="pr-plus">+1</span>` : ""}<strong>${ok?"Right.":"Not this one."}</strong><span>${esc(q.explanation||"")}</span>${!ok&&!retry?`<span class="pr-tip">You'll get another go at the end.</span>`:""}</div>`));
           nextBtn(card);
         };
         opts.append(b);
@@ -671,7 +722,7 @@
       const R = session.results, good = R.filter(r => r.v >= 1), gaps = R.filter(r => r.v < 1);
       const card = h(`<div class="pr-card"><h3>${esc(session.name)}: done</h3>
         <p class="pr-next">${R.length ? `You answered ${plural(R.length, "question", "questions")}. ${plural(good.length, "was", "were")} right${gaps.length ? `, and ${plural(gaps.length, "goes", "go")} on your Try Again list` : ""}.` : "No answers saved this time."}</p>
-        ${gaps.length ? `<div class="pr-fb"><h4>To try again next time</h4><ul>${gaps.map(r=>`<li>${esc(shortTitle(r.q))}</li>`).join("")}</ul><span class="pr-tip">Your tutor will start with these too.</span></div>` : ""}
+        ${gaps.length > 4 ? `<details class="pr-fb"><summary style="cursor:pointer;font-weight:700">${gaps.length} to try again next time</summary><ul style="margin-top:6px">${gaps.map(r=>`<li>${esc(shortTitle(r.q))}</li>`).join("")}</ul><span class="pr-tip">Your tutor will start with these too.</span></details>` : gaps.length ? `<div class="pr-fb"><h4>To try again next time</h4><ul>${gaps.map(r=>`<li>${esc(shortTitle(r.q))}</li>`).join("")}</ul><span class="pr-tip">Your tutor will start with these too.</span></div>` : ""}
         <div class="pr-row" data-acts><button type="button" class="pr-btn${session.where !== prepSlot && R.length >= 3 ? " ghost" : ""}" data-home>Back to ${session.where === prepSlot ? "Exam Prep" : "Quick Tests"}</button></div></div>`);
       card.querySelector("[data-home]").onclick = () => home();
       // After a quick test: under 70% -> review the material; 80%+ -> on to exam questions
@@ -685,10 +736,29 @@
         card.querySelector("h3").after(h(`<div class="pr-score-msg ${pct >= 80 ? "good" : pct < 70 ? "low" : ""}"><span class="pr-score">${pct}%</span><span>${esc(msg)}</span></div>`));
         if (btn) acts.prepend(btn); else card.querySelector("[data-home]").classList.remove("ghost");
       }
+      const wasToday = session.today, mins = todayMins(), stoppedEarly = session.i < session.queue.length - 1;
       logTime(session);
       const where = session.where;
       session = null;
       where.replaceChildren(card);
+      if (wasToday) {
+        const done = mins >= dailyGoal;
+        (card.querySelector(".pr-score-msg") || card.querySelector("h3")).after(h(`<div class="pr-todaybox">${ringHtml(64, mins, 7)}<span>${done ? `<b>${mins} minutes</b> of testing today. Your ${dailyGoal} are done, and every extra minute counts.` : `<b>${mins} of ${dailyGoal} minutes</b> today. ${dailyGoal - mins} to go.`}</span></div>`));
+        const leftHere = questions.filter(q => q.qtype !== "exam" && (prog.latest[q.id] === undefined || prog.latest[q.id] < 1)).length;
+        const pick = stoppedEarly && leftHere ? Promise.resolve({ here: true, left: leftHere, title: `Carry on with ${String(topic.title).replace(/^Ch\s*\d+\s*:\s*/i, "")}` }) : (nextUp ? nextUp(topic.id) : Promise.resolve(null));
+        pick.then(n => {
+          if (!n || !card.isConnected) return;
+          const box = h(`<div class="pr-nextup"><span class="lab">Next up</span><b>${esc(n.title)}</b><span>${esc(n.here ? `${plural(n.left, "question", "questions")} left in this chapter.` : n.why === "unfinished" ? `You started this one ${n.when || "before"}. ${plural(n.left, "question", "questions")} left.` : `${plural(n.left, "question", "questions")} to try.`)}</span>
+            <button type="button" class="pr-btn big" data-keep>Keep going</button>
+            <div class="pr-row"><button type="button" class="pp-link" data-choose style="margin:0">Choose a different chapter</button></div></div>`);
+          box.querySelector("[data-keep]").onclick = () => n.here ? runToday() : (openToday && openToday(n));
+          box.querySelector("[data-choose]").onclick = () => goHome && goHome();
+          card.querySelector(".pr-todaybox").after(box);
+          card.querySelectorAll("[data-acts] .pr-btn").forEach(b => b.classList.add("ghost"));
+          const hb = card.querySelector("[data-home]"); hb.textContent = "Stop for now"; hb.classList.add("ghost"); hb.onclick = () => goHome ? goHome() : home();
+          box.querySelector("[data-keep]").focus({ preventScroll:true });
+        });
+      }
       card.scrollIntoView({ block:"start", behavior:"smooth" });
     }
 
@@ -699,7 +769,7 @@
 
     paintStats();
     home();
-    return { refresh: paintStats, startToday: () => start("Your Daily Practice", todaysPick()) };
+    return { refresh: paintStats, startToday: () => start("Your Daily Practice", todaysPick()), runToday };
   }
   window.mountPractice = mountPractice;
 })();

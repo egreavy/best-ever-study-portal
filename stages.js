@@ -146,6 +146,17 @@
   .hc-stats span{font-size:13px;color:var(--t-muted)}
   .qa .step-h h3,.hc-card .step-h h3{margin:0;font-size:20px}
   .hc-card{background:var(--t-card);border-radius:18px;padding:24px 26px;display:flex;flex-direction:column;gap:20px}
+  .ring{position:relative;display:inline-grid;place-items:center;flex:none}.ring svg{position:absolute;inset:0}.ring b{position:relative;font-size:14px;font-weight:700;color:var(--t-ink)}
+  .hc-hero{background:var(--t-accent);color:var(--t-on-accent);border-radius:22px;padding:24px 24px;display:flex;flex-direction:column;gap:8px}
+  .hc-hero .lab{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;opacity:.85}
+  .hc-hero .tt{font-size:23px;font-weight:700;line-height:1.25}
+  .hc-hero .ss{font-size:15px;line-height:1.45;opacity:.9}
+  .hc-hero .go{margin-top:8px;align-self:stretch;max-width:420px;background:var(--t-card);color:var(--t-accent);border:none;border-radius:999px;padding:15px 24px;font:inherit;font-size:18px;font-weight:700;cursor:pointer}
+  .hc-hero .go:focus-visible{outline:3px solid var(--t-card);outline-offset:3px}
+  .hc-hero .nt{font-size:13px;opacity:.85}
+  .hc-qa-open{border:2px dashed var(--t-line);background:none;border-radius:14px;padding:13px 16px;font:inherit;font-size:16px;font-weight:700;color:var(--t-accent);text-align:left;cursor:pointer;width:100%}
+  .hc-today{display:flex;align-items:center;gap:12px}
+  .hc-today span{font-size:14px;color:var(--t-muted);line-height:1.35}
   .hc-best{background:var(--t-accent-tint);border-radius:14px;padding:18px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
   .hc-best-b{flex:1 1 240px;display:flex;flex-direction:column;gap:3px;min-width:0}
   .hc-eyebrow{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--t-accent)}
@@ -263,6 +274,30 @@
     return `<span class="hs-steps" aria-label="Step ${n} of 3: ${label}"><span class="hs-arrows" aria-hidden="true">${[1,2,3].map(i => `<i${i <= n ? ' class="on"' : ""}></i>`).join("")}</span><span class="hs-steps-l">${label}</span></span>`;
   }
   const BOOKMARK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"/></svg>';
+  const DAILY_GOAL = 30;
+  // Where to pick up: the chapter tested most recently that still has quick-test questions left
+  function leftOff(m){
+    const chs = Object.values(m.topics).filter(c => c.stats && c.stats.total);
+    const started = chs.filter(c => c.stats.lastAt && c.stats.quickLeft > 0).sort((a, b) => b.stats.lastAt - a.stats.lastAt);
+    if (started[0]) return { c: started[0], why: "left" };
+    const rev = revisionList(m).filter(c => c.stats && c.stats.quickLeft > 0);
+    if (rev[0]) return { c: rev[0], why: "list" };
+    const any = chs.filter(c => c.stats.quickLeft > 0).sort((a, b) => (a.order_num || 0) - (b.order_num || 0));
+    return any[0] ? { c: any[0], why: "start" } : null;
+  }
+  // What to do next after finishing a chapter: another started-but-unfinished chapter (oldest first), then the revision list
+  function nextUp(m, excludeId){
+    const chs = Object.values(m.topics).filter(c => c.id !== excludeId && c.stats && c.stats.quickLeft > 0);
+    const started = chs.filter(c => c.stats.lastAt).sort((a, b) => a.stats.lastAt - b.stats.lastAt);
+    if (started[0]) return { c: started[0], why: "unfinished" };
+    const rev = revisionList(m).filter(c => c.id !== excludeId && c.stats && c.stats.quickLeft > 0);
+    if (rev[0]) return { c: rev[0], why: "list" };
+    return chs[0] ? { c: chs[0], why: "new" } : null;
+  }
+  function ringSvg(size, frac, label, stroke){
+    const r = (size - stroke) / 2, c = 2 * Math.PI * r, f = Math.max(0, Math.min(1, frac));
+    return `<span class="ring" style="width:${size}px;height:${size}px" aria-hidden="true"><svg width="${size}" height="${size}"><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--t-line)" stroke-width="${stroke}"/><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--t-accent)" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${(c * f).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 ${size/2} ${size/2})"/></svg><b>${label}</b></span>`;
+  }
   const GO = { learn: "Keep learning ›", test: "Test myself ›", refresh: "Exam prep ›", none: "Start ›" };
   const TAB_FOR = { learn: "learn", test: "test", refresh: "refresh", none: "learn" };
 
@@ -285,7 +320,7 @@
     const topicIds = topics.map(t => t.id);
     const questions = [];
     for (let i = 0; i < topicIds.length; i += 60) {
-      const part = await sb(`quiz_questions?select=id,topic_id&topic_id=in.${inList(topicIds.slice(i, i + 60))}`);
+      const part = await sb(`quiz_questions?select=id,topic_id,qtype&topic_id=in.${inList(topicIds.slice(i, i + 60))}`);
       (part || []).forEach(q => questions.push(q));
     }
     const attempts = await sb(`quiz_attempts?select=question_id,result,created_at&profile_id=eq.${profile.id}&order=created_at.asc&limit=20000`);
@@ -314,8 +349,8 @@
     const status = {}; (raw.status || []).forEach(r => { status[r.topic_id] = r; });
     const exams = {}; (raw.exams || []).forEach(r => { exams[r.subject_id] = r; });
     const flags = {}; (raw.flags || []).forEach(r => { flags[r.topic_id] = r; });
-    const qTopic = {}, qCount = {};
-    (raw.questions || []).forEach(q => { qTopic[q.id] = q.topic_id; qCount[q.topic_id] = (qCount[q.topic_id] || 0) + 1; });
+    const qTopic = {}, qCount = {}, qQuick = {};
+    (raw.questions || []).forEach(q => { qTopic[q.id] = q.topic_id; qCount[q.topic_id] = (qCount[q.topic_id] || 0) + 1; if (q.qtype !== "exam") qQuick[q.id] = true; });
 
     // results per topic, honouring "start fresh"
     const latest = {}, latestEver = {}, lastAt = {};
@@ -328,8 +363,10 @@
       if (!fresh || at >= fresh) latest[a.question_id] = Number(a.result);
     });
     const stats = {};
-    Object.keys(qCount).forEach(tid => { stats[tid] = { total: qCount[tid], tried: 0, fixes: 0, right: 0, triedEver: 0, lastAt: lastAt[tid] || null }; });
+    Object.keys(qCount).forEach(tid => { stats[tid] = { total: qCount[tid], tried: 0, fixes: 0, right: 0, triedEver: 0, lastAt: lastAt[tid] || null, quickLeft: 0 }; });
     Object.keys(latest).forEach(qid => { const s = stats[qTopic[qid]]; s.tried++; if (latest[qid] < 1) s.fixes++; else s.right++; });
+    // quick-test questions still to try or fix in each chapter (what "today's 30 minutes" works through)
+    Object.keys(qQuick).forEach(qid => { const s = stats[qTopic[qid]]; if (s && (latest[qid] === undefined || latest[qid] < 1)) s.quickLeft++; });
     Object.keys(latestEver).forEach(qid => { stats[qTopic[qid]].triedEver++; });
 
     // Subjects with more than one book (Religion 1, Religion 2) show as one subject
@@ -381,18 +418,17 @@
     let streak = 0, d = startOfDay(new Date());
     if (!days.has(dayKey(d))) d = new Date(d - DAY);
     while (days.has(dayKey(d))) { streak++; d = new Date(d - DAY); }
-    // minutes per day (testing, tutor and learning all count) and completed goal weeks
+    // minutes of TESTING per day (quick tests, exam questions, tutor) and completed goal weeks
     const dayMin = {};
     const addMin = (d, mins) => { const k = dayKey(d); dayMin[k] = (dayMin[k] || 0) + mins; };
-    (raw.timeRows || []).forEach(r => addMin(r.created_at, r.seconds / 60));
-    learnEvents.forEach(e => addMin(e.at, e.min));
-    const GOAL_MIN = 14, GOAL_DAYS = 5;
+    (raw.timeRows || []).forEach(r => { if (r.kind === "test") addMin(r.created_at, r.seconds / 60); });
+    const GOAL_MIN = DAILY_GOAL, GOAL_DAYS = 5;
     const goodDaysIn = (start) => { let n = 0; for (let i = 0; i < 7; i++) if ((dayMin[dayKey(new Date(start.getTime() + i * DAY))] || 0) >= GOAL_MIN) n++; return n; };
     let weeksDone = 0;
     for (let k = 1; k <= 57; k++) { if (goodDaysIn(new Date(ws.getTime() - k * 7 * DAY)) >= GOAL_DAYS) weeksDone++; }
     const thisWeekGood = goodDaysIn(ws);
     if (thisWeekGood >= GOAL_DAYS) weeksDone++;
-    // streaks of days with 14+ minutes, and all-time testing minutes
+    // streaks of days with 30+ minutes of testing, and all-time testing minutes
     const runs = []; let run = 0, streakNow = 0;
     for (let d = new Date(startOfDay(new Date()) - 400 * DAY); d <= new Date(); d = new Date(d.getTime() + DAY)) {
       if ((dayMin[dayKey(d)] || 0) >= GOAL_MIN) run++; else { if (run) runs.push(run); run = 0; }
@@ -512,7 +548,7 @@
       return (chs.find(c => c.stage === "none") || chs[0] || {}).id || null;
     };
     function paintInput(msgHtml, value){
-      el.innerHTML = `<div class="step-h"><span class="step-n" aria-hidden="true">1</span><div><h3>What's new at school?</h3><span class="hs-sub">Say or type what's coming up, what you did in class, or any tests.</span></div></div>
+      el.innerHTML = `<div class="step-h"><div><h3>What's new at school?</h3><span class="hs-sub">Say or type what's coming up, what you did in class, or any tests.</span></div></div>
         <form class="qa-row"><div class="qa-box"><input type="text" name="t" autocomplete="off" aria-label="What's new at school" placeholder='e.g. "econ ch 3 coming up, we did polsoc ch 5, geog test friday"'>${SR ? `<button type="button" class="qa-mic" aria-label="Speak" title="Speak">${QA_MIC}</button>` : ""}</div><button class="hs-btn ghost" type="submit" style="min-height:48px;padding:10px 22px;font-size:16px">Add</button></form>
         <p class="qa-err" hidden></p>${msgHtml || ""}`;
       const form = el.querySelector("form"), input = form.t, err = el.querySelector(".qa-err");
@@ -566,7 +602,7 @@
         return `<div class="qa-item"><span class="qa-ic ${ic[0]}">${ic[1]}</span><span class="qa-b"><span class="k">${esc(k)}</span><span class="t">${a.type === "unclear" || a.type === "exam" || a.type === "deadline" ? t : esc(t)}</span><span class="w">${w}</span></span>${can ? `<input type="checkbox" class="qa-check" data-i="${i}" checked aria-label="Include this">` : ""}</div>`;
       };
       const usable = actions.some(a => a.type !== "unclear");
-      el.innerHTML = `<div class="step-h"><span class="step-n" aria-hidden="true">1</span><div><h3>What's new at school?</h3><span class="hs-sub">You said: "${esc(text)}"</span></div></div>
+      el.innerHTML = `<div class="step-h"><div><h3>What's new at school?</h3><span class="hs-sub">You said: "${esc(text)}"</span></div></div>
         <b style="font-size:17px">Here's what I'll do</b>
         <div class="qa-list">${actions.map(item).join("")}</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap">${usable ? `<button class="hs-btn" type="button" data-ok style="min-height:48px;padding:10px 24px;font-size:16px">Looks right</button>` : ""}<button class="hs-btn ghost" type="button" data-again style="min-height:48px;padding:10px 22px;font-size:16px">Start again</button></div>
@@ -651,14 +687,24 @@
     const row = c => `<button type="button" class="hc-row" data-open="${c.id}" data-tab="${TAB_FOR[c.stage]}">
         <span class="hc-row-b"><span class="hc-row-t">${esc(shortTitle(c.title))}</span><span class="hc-row-s">${esc(subjTitle(c.subject_id))}${c.book ? " " + esc(c.book) : ""} · ${esc(c.flag && c.flag.note ? c.flag.note : stepLevel(c)[1].toLowerCase())}</span></span>
         ${stepsArrows(c)}<span class="hs-chev" aria-hidden="true">›</span></button>`;
+    const goalMin = m.goal ? m.goal.minutes : DAILY_GOAL, todayMin = m.goal ? m.goal.today : 0;
+    const lo = leftOff(m);
+    const heroHtml = lo ? (() => {
+      const c = lo.c, st = c.stats || {};
+      const lab = lo.why === "left" ? "Pick up where you left off" : lo.why === "list" ? "From your revision list" : "Start here";
+      const sub = lo.why === "left" ? `${plural(st.quickLeft, "question", "questions")} to go · last time ${ago(st.lastAt)}` : `${plural(st.quickLeft, "question", "questions")} to try`;
+      const btn = todayMin >= goalMin ? "Keep going" : todayMin > 0 ? `Carry on · ${goalMin - todayMin} minutes to go` : `Start today's ${goalMin} minutes`;
+      return `<div class="hc-hero"><span class="lab">${lab}</span><span class="tt">${esc(subjTitle(c.subject_id))}${c.book ? " " + esc(c.book) : ""} · Ch ${esc(String(c.order_num ?? ""))}: ${esc(shortTitle(c.title))}</span><span class="ss">${esc(sub)}</span><button type="button" class="go" data-today="${c.id}">${esc(btn)}</button><span class="nt">When this chapter's done, we'll line up the next one.</span></div>`;
+    })() : "";
     view.innerHTML = `<div class="hs hc">
       <div class="hc-top">
-        <div class="hc-hello"><h2>${hello}, ${esc(profile.name)}</h2><span>Learn it. Test it. Prep it for the exam.</span></div>
+        <div class="hc-hello"><h2>${hello}, ${esc(profile.name)}</h2><span>${m.goal && m.goal.streakNow ? `${plural(m.goal.streakNow, "day", "days")} in a row · ` : ""}${goalMin} minutes of testing a day</span></div>
         <div class="hc-meta">
-          ${m.goal ? `<span class="hc-streak" title="A streak day is ${m.goal.minutes} minutes or more">${m.goal.streakNow ? `${plural(m.goal.streakNow, "day", "day")} streak` : `Today: ${m.goal.today} of ${m.goal.minutes} min`}</span>` : ""}
+          <div class="hc-today">${ringSvg(56, todayMin / goalMin, todayMin + "m", 6)}<span>${todayMin >= goalMin ? `Today's ${goalMin} done.<br>Every extra minute counts.` : `${todayMin} of ${goalMin} min<br>today`}</span></div>
           <button type="button" class="hs-link hc-weeklink" data-week aria-expanded="${!!weekOpen}">This week: ${hm(w.testSec)} testing</button>
         </div>
       </div>
+      ${heroHtml}
       ${weekOpen ? `<div class="hc-week">
         <div class="hc-days" aria-label="Days studied this week">${dots}</div>
         <div class="hc-stats">
@@ -669,14 +715,14 @@
         </div>
         ${m.goal ? `<span class="hc-goal">A streak day is ${m.goal.minutes} minutes or more. Today: ${m.goal.today} of ${m.goal.minutes} minutes.${window.Decor ? (() => { const n = Decor.nextUp(m.goal)[0]; return n ? ` Next reward: ${n.name} (${n.have} of ${n.need} ${n.unit}).` : ""; })() : ""}</span>` : ""}</div>` : ""}
       ${cele ? `<div class="hc-cele"><span class="hc-cele-b"><b>Reward earned for ${esc(cele.why[cele.why.length - 1])}!</b><span>Choose one for your page${cele.left > 1 ? ` (${cele.left} to choose)` : ""}.</span></span><span class="hc-cele-btns"><button type="button" class="hs-btn" data-spend="sticker">+1 sticker</button><button type="button" class="hs-btn" data-spend="writing">+1 writing</button><button type="button" class="hs-btn" data-spend="photo">+1 photo</button></span></div>` : ""}
-      <div class="qa" id="quickAdd"></div>
       <div class="hc-card">
-        <div class="step-h"><span class="step-n" aria-hidden="true">2</span><h3>Where do you want to start?</h3></div>
+        <h3 style="margin:0;font-size:19px">Or choose yourself</h3>
         ${m.subjects.length ? `<div class="hc-sec"><span class="hc-label">Pick a subject</span><div class="hc-chips">${chips}</div></div>` : `<div class="hs-empty">No subjects yet.</div>`}
-        ${rest.length ? `<div class="hc-sec"><span class="hc-label">Or choose a topic from your revision list</span>
+        ${rest.length ? `<div class="hc-sec"><span class="hc-label">My revision list</span>
           <div class="hc-list">${rest.slice(0, showAll ? rest.length : 3).map(row).join("")}</div>
           ${rest.length > 3 ? `<button type="button" class="hs-link" style="align-self:flex-start" data-all>${showAll ? "Show fewer" : `See all ${rest.length}`}</button>` : ""}</div>` : ""}
       </div>
+      ${state && state.qaOpen ? `<div class="qa" id="quickAdd"></div>` : `<button type="button" class="hc-qa-open" data-qa>+ What's new at school?</button>`}
     </div>`;
     view.querySelectorAll("[data-subject]").forEach(b => b.onclick = () => openSubject(b.dataset.subject));
     view.querySelectorAll("[data-open]").forEach(b => b.onclick = () => { const c = m.topics[b.dataset.open]; openChapter(c.id, c.subject_id, b.dataset.tab); });
@@ -684,7 +730,9 @@
     const all = view.querySelector("[data-all]"); if (all) all.onclick = () => { state.homeShowAll = !showAll; again(); };
     view.querySelector("[data-week]").onclick = () => { state.weekOpen = !weekOpen; again(); };
     view.querySelectorAll("[data-spend]").forEach(b => b.onclick = async () => { b.disabled = true; await Decor.spend(sb, b.dataset.spend); if (openSettings) openSettings(); });
-    if (sb) mountQuickAdd(view.querySelector("#quickAdd"), m, { sb, profile, reload, state });
+    const qaBtn = view.querySelector("[data-qa]"); if (qaBtn) qaBtn.onclick = () => { state.qaOpen = true; again(); const i = view.querySelector("#quickAdd input"); if (i) i.focus(); };
+    const td = view.querySelector("[data-today]"); if (td) td.onclick = () => { const c = m.topics[td.dataset.today]; state.todayRun = c.id; openChapter(c.id, c.subject_id, "test"); };
+    if (sb && view.querySelector("#quickAdd")) mountQuickAdd(view.querySelector("#quickAdd"), m, { sb, profile, reload, state });
   }
 
   // ---- subject page: a smart list that shows what matters now ----
@@ -765,5 +813,5 @@
     view.querySelectorAll("[data-open]").forEach(b2 => b2.addEventListener("click", (e) => { if (e.target.closest("[data-classdone]")) return; openChapter(b2.dataset.open, subjectId, b2.dataset.tab); }));
   }
 
-  window.Stages = { loadOverview, buildModel, renderHome, renderSubject, chapterStage, statusLine, examBox, markClassDone, startFresh, parseDate, fmtDate, untilText, REFRESH_DAYS, PRACTICE_TITLES, addCss };
+  window.Stages = { ago, leftOff, nextUp, ringSvg, DAILY_GOAL, loadOverview, buildModel, renderHome, renderSubject, chapterStage, statusLine, examBox, markClassDone, startFresh, parseDate, fmtDate, untilText, REFRESH_DAYS, PRACTICE_TITLES, addCss };
 })();
