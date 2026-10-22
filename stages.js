@@ -600,12 +600,21 @@
       const c = m.topics[q.topic_id]; if (!c) return;
       const mm = /^((?:19|20)\d{2})\s*State Exam\s*[-–·]?\s*(.*)$/i.exec(q.source || ""); if (!mm) return;
       const year = mm[1], rest = (mm[2] || "").trim(), cut = rest.indexOf(",");
-      const part = (cut > 0 ? rest.slice(0, cut) : rest).trim() || "Questions", label = (cut > 0 ? rest.slice(cut + 1) : "").trim();
+      const part = (cut > 0 ? rest.slice(0, cut) : rest).trim() || "Questions";
+      let label = (cut > 0 ? rest.slice(cut + 1) : "").trim(), sub = "";
+      const lm = /^(.*?):\s*(Q.*)$/i.exec(label); if (lm) { sub = lm[1].trim(); label = lm[2].trim(); }   // "Short Answer Questions: Q1 (a)"
+      label = label.replace(/^Question\s*/i, "Q").replace(/\s+/g, " ");
+      const norm = label.replace(/\s+/g, "").toLowerCase();
       const key = (m.groupOf && m.groupOf[c.subject_id]) || c.subject_id;
       const P = m.papers[key] = m.papers[key] || {};
-      (P[year] = P[year] || []).push({ id: q.id, topic_id: q.topic_id, marks: q.marks || 0, part, label, sort: wordNum(rest), v: latestEver[q.id], best: bestRev[q.id] || null });
+      (P[year] = P[year] || []).push({ id: q.id, topic_id: q.topic_id, marks: q.marks || 0, part, sub, label, norm, sort: wordNum(part).toLowerCase() + " | " + norm, v: latestEver[q.id], best: bestRev[q.id] || null });
     });
-    Object.values(m.papers).forEach(P => Object.values(P).forEach(list => list.sort((a, b) => a.sort.localeCompare(b.sort, undefined, { numeric: true }))));
+    Object.values(m.papers).forEach(P => Object.keys(P).forEach(y => {
+      // the same question saved twice ("Q1(c)" and "Q1 (c)"): keep one, preferring the one he's answered
+      const seen = {};
+      P[y].forEach(q => { const k = q.part.toLowerCase() + "|" + q.norm; const o = seen[k]; if (!o || (o.v === undefined && q.v !== undefined) || (!o.sub && q.sub && (o.v === undefined) === (q.v === undefined))) seen[k] = q; });
+      P[y] = Object.values(seen).sort((a, b) => a.sort.localeCompare(b.sort, undefined, { numeric: true }));
+    }));
     // the next exams coming up, across subjects
     const today0 = startOfDay(new Date());
     const ups = m.subjects.map(sj => sj.exam && parseDate(sj.exam.exam_date) >= today0 ? { label: sj.exam.label, date: parseDate(sj.exam.exam_date), iso: sj.exam.exam_date } : null).filter(Boolean).sort((a, b) => a.date - b.date);
@@ -1192,13 +1201,13 @@
     if (sjOpen && mode === "paper" && m.papers[open] && m.papers[open][year]) {
       const qs = m.papers[open][year], tried = qs.filter(q => q.v !== undefined), withMarks = tried.filter(q => q.best);
       const got = withMarks.reduce((t, q) => t + q.best.a, 0), of = withMarks.reduce((t, q) => t + q.best.b, 0);
-      const parts = []; qs.forEach(q => { const last = parts[parts.length - 1]; if (!last || last.name.toLowerCase() !== q.part.toLowerCase()) parts.push({ name: q.part, qs: [q] }); else last.qs.push(q); });
+      const parts = []; qs.forEach(q => { const last = parts[parts.length - 1]; if (!last || last.key !== q.part.toLowerCase()) parts.push({ key: q.part.toLowerCase(), name: q.part, sub: q.sub, qs: [q] }); else { last.qs.push(q); if (!last.sub && q.sub) last.sub = q.sub; } });
       return `<div class="pl fx">
         <div class="fx-top"><button type="button" class="hs-link" data-fx-back="papers">&larr; ${esc(sjOpen.title)} papers</button><button type="button" class="hs-link" data-fx-off>Switch off exam focus</button></div>
         <div class="ss-lead">${esc(sjOpen.title)} · ${esc(year)} paper</div>
         <span class="hs-sub" style="font-size:15px">The questions as they were set in the ${esc(year)} exam. In the real exam you choose which questions to answer, so start with chapters you've covered. Tap a question to answer it. It's marked like the real exam.</span>
         <div class="fx-pstat"><b>${tried.length} of ${qs.length} tried</b>${of ? ` · ${got} of ${of} marks on those` : ""}</div>
-        ${parts.map(pt => `<div class="fx-part"><h4>${esc(pt.name)}</h4>${pt.qs.map(q => { const c = m.topics[q.topic_id]; const notYet = c && c.stage === "none";
+        ${parts.map(pt => `<div class="fx-part"><h4>${esc(pt.name)}${pt.sub && !pt.name.toLowerCase().includes(pt.sub.toLowerCase()) ? ` · ${esc(pt.sub)}` : ""}</h4>${pt.qs.map(q => { const c = m.topics[q.topic_id]; const notYet = c && c.stage === "none";
           return `<button type="button" class="fx-q${notYet ? " later" : ""}" data-fx-q="${q.id}"><span class="fx-ql">${esc(q.label || "Question")}</span><span class="fx-ch-b"><span class="s">${c ? `${c.book ? esc(c.book) + " · " : ""}Ch ${esc(String(c.order_num ?? ""))}: ${esc(shortTitle(c.title))}` : ""} · ${q.marks} marks${notYet ? " · not started yet" : ""}</span></span>${chip(q)}</button>`; }).join("")}</div>`).join("")}
       </div>`;
     }
