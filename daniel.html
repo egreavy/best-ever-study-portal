@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Daniel's Study Portal</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<script src="theme.js?v=20261022g" data-profile="8d1d2f44-c93b-4fa4-9e15-dac1e4586623"></script>
-<script src="stickers.js?v=20261022g"></script>
-<script src="rewards.js?v=20261022g" data-profile="8d1d2f44-c93b-4fa4-9e15-dac1e4586623"></script>
+<script src="theme.js?v=20261022h" data-profile="8d1d2f44-c93b-4fa4-9e15-dac1e4586623"></script>
+<script src="stickers.js?v=20261022h"></script>
+<script src="rewards.js?v=20261022h" data-profile="8d1d2f44-c93b-4fa4-9e15-dac1e4586623"></script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap">
 <style>
   :root{
@@ -451,9 +451,9 @@
   <div id="view"><div class="loading">Loading…</div></div>
 </div>
 
-<script src="stages.js?v=20261022g"></script>
-<script src="practice.js?v=20261022g"></script>
-<script src="tutor.js?v=20261022g"></script>
+<script src="stages.js?v=20261022h"></script>
+<script src="practice.js?v=20261022h"></script>
+<script src="tutor.js?v=20261022h"></script>
 <script>
 const SUPABASE_URL = "https://dhxwajidrtyukyxmiyml.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRoeHdhamlkcnR5dWt5eG1peW1sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYzMzYyNzQsImV4cCI6MjA1MTkxMjI3NH0.fnH1eI1vLtQASjII_6K0d6NZevD62tnthXe0uyMgh0s";
@@ -1009,7 +1009,13 @@ async function renderChapter(){
       return { id: c.id, subject_id: c.subject_id, why: n.why, left: c.stats.quickLeft, when: c.stats.lastAt ? Stages.ago(c.stats.lastAt) : "",
         title: `${n.why === "unfinished" ? "Finish " : ""}${subj}${c.book ? " " + c.book : ""} · Ch ${c.order_num ?? ""}: ${String(c.title).replace(/^Ch\s*\d+\s*:\s*/i, "")}` };
     },
-    openToday: (n) => { state.todayRun = n.id; openChapter(n.id, n.subject_id, "test"); }
+    // After a round, when today's session has another item: go to it
+    sessionNext: async (currentId) => {
+      const { model } = await loadModel(); state.model = model;
+      const n = Stages.sessionNext(model, PROFILE, currentId); if (!n) return null;
+      return { id: n.c.id, subject_id: n.c.subject_id, tab: n.tab, why: "session", left: (n.c.stats || {}).quickLeft || 0, title: n.title, note: n.note, keep: "Next" };
+    },
+    openToday: (n) => { if (n.tab && n.tab !== "test") { openChapter(n.id, n.subject_id, n.tab); return; } state.todayRun = n.id; openChapter(n.id, n.subject_id, "test"); }
   }).then(api => {
     practiceApi = api;
     if (api && state.todayRun === state.topicId) { state.todayRun = null; autoTab = false; api.runToday(); }

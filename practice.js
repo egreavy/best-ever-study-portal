@@ -458,7 +458,7 @@
 
   // ---- mount ----
   async function mountPractice(slot, opts){
-    const { topic, profile, sb, moreSlot, paperSlot, refreshSlot, prepSlot, rightSlot, goTo = () => {}, onStats = () => {}, onStartFresh = async () => {}, hideDuring = [], prepHide = [], nextUp = null, openToday = null, goHome = null, dailyGoal = 30 } = opts;
+    const { topic, profile, sb, moreSlot, paperSlot, refreshSlot, prepSlot, rightSlot, goTo = () => {}, onStats = () => {}, onStartFresh = async () => {}, hideDuring = [], prepHide = [], nextUp = null, sessionNext = null, openToday = null, goHome = null, dailyGoal = 30 } = opts;
     const freshSince = typeof opts.freshSince === "function" ? opts.freshSince : () => opts.freshSince || null;
     if (!slot || !topic) return null;
     addCss();
@@ -1026,10 +1026,11 @@
         (card.querySelector(".pr-missed") || card.querySelector(".pr-score-msg") || card.querySelector("h3")).after(h(`<div class="pr-todaybox">${ringHtml(64, mins, 7)}<span>${done ? `<b>Today's ${dailyGoal} minutes: done &#10003;</b> Anything more is a bonus.` : `<b>${mins} of ${dailyGoal} minutes</b> today. ${dailyGoal - mins} to go.`}</span></div>`));
         const leftHere = questions.filter(q => q.qtype !== "exam" && (prog.latest[q.id] === undefined || prog.latest[q.id] < 1)).length;
         const chTitle = String(topic.title).replace(/^Ch\s*\d+\s*:\s*/i, ""), nextN = Math.min(ROUND, leftHere);
-        const pick = leftHere ? Promise.resolve({ here: true, left: leftHere, title: stoppedEarly ? `Carry on with ${chTitle}` : `Another ${nextN} on ${chTitle}`, keep: stoppedEarly ? "Keep going" : `Another ${nextN}` }) : (nextUp ? nextUp(topic.id) : Promise.resolve(null));
+        // Today's session comes first: once this chapter's part is done, go to the next item in it
+        const pick = (sessionNext ? sessionNext(topic.id).catch(() => null) : Promise.resolve(null)).then(sn => sn || (leftHere ? { here: true, left: leftHere, title: stoppedEarly ? `Carry on with ${chTitle}` : `Another ${nextN} on ${chTitle}`, keep: stoppedEarly ? "Keep going" : `Another ${nextN}` } : (nextUp ? nextUp(topic.id) : null)));
         pick.then(n => {
           if (!n || !card.isConnected) return;
-          const box = h(`<div class="pr-nextup"><span class="lab">Next up</span><b>${esc(n.title)}</b><span>${esc(n.here ? `About ${estMin(roundList())} min. ${plural(n.left, "question", "questions")} left in this chapter.` : n.why === "unfinished" ? `You started this one ${n.when || "before"}. ${plural(n.left, "question", "questions")} left.` : `${plural(n.left, "question", "questions")} to try.`)}</span>
+          const box = h(`<div class="pr-nextup"><span class="lab">Next up</span><b>${esc(n.title)}</b><span>${esc(n.note ? n.note : n.here ? `About ${estMin(roundList())} min. ${plural(n.left, "question", "questions")} left in this chapter.` : n.why === "unfinished" ? `You started this one ${n.when || "before"}. ${plural(n.left, "question", "questions")} left.` : `${plural(n.left, "question", "questions")} to try.`)}</span>
             <button type="button" class="pr-btn big" data-keep>${esc(n.keep || "Keep going")}</button>
             <div class="pr-row"><button type="button" class="pp-link" data-choose style="margin:0">Choose a different chapter</button></div></div>`);
           box.querySelector("[data-keep]").onclick = () => n.here ? runToday() : (openToday && openToday(n));
