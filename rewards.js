@@ -255,7 +255,7 @@
       ${left ? `<div class="mp-pick" style="margin-top:12px"><b>You have ${left === 1 ? "a reward" : left + " rewards"} to choose</b><span class="mp-sub" style="color:inherit">For ${esc(earned(goal).slice(-left).join(", "))}.</span>${pickButtons()}</div>` : ""}
       <div class="mp-sec" style="border-top:none"><div class="mp-hrow"><span class="mp-h">Rewards</span><span class="mp-sub">Each one lets you choose +1 writing, sticker or photo</span></div>
         <div class="mp-goals">${goals}</div>
-        <span class="mp-sub">Right now your page can have ${al.writing} writing, ${al.sticker} sticker${al.sticker === 1 ? "" : "s"} and ${al.photo} photo${al.photo === 1 ? "" : "s"}. A streak day is ${goal ? goal.minutes : 30} minutes or more of testing.</span>
+        <span class="mp-sub">Right now your page can have ${al.writing} writing, ${al.sticker} sticker${al.sticker === 1 ? "" : "s"} and ${al.photo} photo${al.photo === 1 ? "" : "s"}. ${goal && goal.streakRule ? goal.streakRule : "A streak day is one finished round of 10 questions, one exam question, or 30 minutes of testing"}.</span>
         <div class="mp-toggle"><span>Show my page decorations</span><button type="button" class="settings-toggle ${data.decor_on ? "on" : ""}" data-decor aria-label="Show decorations"><span class="knob"></span></button></div>
       </div>
       <div class="mp-sec"><div class="mp-hrow"><span class="mp-h">Write something</span><span class="mp-count">${ws.length} of ${al.writing}</span></div>

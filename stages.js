@@ -329,6 +329,8 @@
   }
   const BOOKMARK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"/></svg>';
   const DAILY_GOAL = 30;
+  const STREAK_ROUND = 10;
+  const STREAK_RULE = "A streak day is one finished round of 10 questions, one exam question, or 30 minutes of testing";
   // Where to pick up: the chapter tested most recently that still has quick-test questions left
   function leftOff(m){
     const chs = Object.values(m.topics).filter(c => c.stats && c.stats.total);
@@ -519,7 +521,12 @@
     const addMin = (d, mins) => { const k = dayKey(d); dayMin[k] = (dayMin[k] || 0) + mins; };
     (raw.timeRows || []).forEach(r => { if (r.kind === "test") addMin(r.created_at, r.seconds / 60); });
     const GOAL_MIN = DAILY_GOAL, GOAL_DAYS = 5;
-    const goodDaysIn = (start) => { let n = 0; for (let i = 0; i < 7; i++) if ((dayMin[dayKey(new Date(start.getTime() + i * DAY))] || 0) >= GOAL_MIN) n++; return n; };
+    // A streak day is one finished round (10 quick-test answers), one exam question, or 30 minutes of testing.
+    // 30 minutes stays the daily goal, but a small finished session still counts.
+    const quickDay = {}, examDay = {};
+    (raw.attempts || []).forEach(a => { const k = dayKey(a.created_at); if (qQuick[a.question_id]) quickDay[k] = (quickDay[k] || 0) + 1; else if (qTopic[a.question_id]) examDay[k] = (examDay[k] || 0) + 1; });
+    const goodDay = k => (dayMin[k] || 0) >= GOAL_MIN || (quickDay[k] || 0) >= STREAK_ROUND || (examDay[k] || 0) >= 1;
+    const goodDaysIn = (start) => { let n = 0; for (let i = 0; i < 7; i++) if (goodDay(dayKey(new Date(start.getTime() + i * DAY)))) n++; return n; };
     let weeksDone = 0;
     for (let k = 1; k <= 57; k++) { if (goodDaysIn(new Date(ws.getTime() - k * 7 * DAY)) >= GOAL_DAYS) weeksDone++; }
     const thisWeekGood = goodDaysIn(ws);
@@ -527,12 +534,12 @@
     // streaks of days with 30+ minutes of testing, and all-time testing minutes
     const runs = []; let run = 0, streakNow = 0;
     for (let d = new Date(startOfDay(new Date()) - 400 * DAY); d <= new Date(); d = new Date(d.getTime() + DAY)) {
-      if ((dayMin[dayKey(d)] || 0) >= GOAL_MIN) run++; else { if (run) runs.push(run); run = 0; }
+      if (goodDay(dayKey(d))) run++; else { if (run) runs.push(run); run = 0; }
     }
     if (run) runs.push(run);
-    streakNow = run || ((dayMin[dayKey(new Date())] || 0) < GOAL_MIN && runs.length && (dayMin[dayKey(new Date(Date.now() - DAY))] || 0) >= GOAL_MIN ? runs[runs.length - 1] : 0);
+    streakNow = run || (!goodDay(dayKey(new Date())) && runs.length && goodDay(dayKey(new Date(Date.now() - DAY))) ? runs[runs.length - 1] : 0);
     let testMin = 0; (raw.timeRows || []).forEach(r => { if (r.kind === "test") testMin += r.seconds / 60; });
-    m.goal = { minutes: GOAL_MIN, days: GOAL_DAYS, dayMin, weeksDone, thisWeekGood, today: Math.round(dayMin[dayKey(new Date())] || 0), weekDone: thisWeekGood >= GOAL_DAYS, runs, streakNow, testMin: Math.round(testMin) };
+    m.goal = { minutes: GOAL_MIN, days: GOAL_DAYS, dayMin, weeksDone, thisWeekGood, today: Math.round(dayMin[dayKey(new Date())] || 0), todayCounts: goodDay(dayKey(new Date())), streakRule: STREAK_RULE, weekDone: thisWeekGood >= GOAL_DAYS, runs, streakNow, testMin: Math.round(testMin) };
     m.week = { testSec, learnMin, answered, fixed, days, ws, streak };
     return m;
   }
@@ -835,7 +842,7 @@
     const goalMin = m.goal ? m.goal.minutes : DAILY_GOAL, todayMin = m.goal ? m.goal.today : 0;
     const need = todayMin >= goalMin ? 10 : goalMin - todayMin;
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const head = (sub) => `<div class="pl-head">${ringSvg(56, todayMin / goalMin, todayMin >= goalMin ? "&#10003;" : "", 7)}<span><b>Today's session</b><span class="s">${sub || (todayMin >= goalMin ? `Today's ${goalMin} minutes: done &#10003; Anything more is a bonus.` : todayMin ? `${todayMin} of ${goalMin} minutes tested today. ${goalMin - todayMin} to go.` : `${goalMin} minutes of testing today.`)}</span></span></div>`;
+    const head = (sub) => `<div class="pl-head">${ringSvg(56, todayMin / goalMin, todayMin >= goalMin ? "&#10003;" : "", 7)}<span><b>Today's session</b><span class="s">${sub || (todayMin >= goalMin ? `Today's ${goalMin} minutes: done &#10003; Anything more is a bonus.` : todayMin ? `${todayMin} of ${goalMin} minutes tested today. ${goalMin - todayMin} to go.` : `${goalMin} minutes of testing today.`)}${todayMin < goalMin ? (m.goal && m.goal.todayCounts ? " Today counts for your streak &#10003;" : " One round counts for your streak.") : ""}</span></span></div>`;
     const sum = items => items.reduce((n, it) => n + (it.mins || 0), 0);
     const open = (it) => {
       const c = m.topics[it.topic_id]; if (!c) return;
@@ -1037,7 +1044,7 @@
           <div><b>${w.answered}</b><span>questions answered</span></div>
           <div><b>${w.fixed}</b><span>answers fixed</span></div>
         </div>
-        ${m.goal ? `<span class="hc-goal">A streak day is ${m.goal.minutes} minutes or more. Today: ${m.goal.today} of ${m.goal.minutes} minutes.${window.Decor ? (() => { const n = Decor.nextUp(m.goal)[0]; return n ? ` Next reward: ${n.name} (${n.have} of ${n.need} ${n.unit}).` : ""; })() : ""}</span>` : ""}</div>` : ""}
+        ${m.goal ? `<span class="hc-goal">${esc(m.goal.streakRule)}. Today: ${m.goal.today} of ${m.goal.minutes} minutes.${window.Decor ? (() => { const n = Decor.nextUp(m.goal)[0]; return n ? ` Next reward: ${n.name} (${n.have} of ${n.need} ${n.unit}).` : ""; })() : ""}</span>` : ""}</div>` : ""}
       ${cele ? `<div class="hc-cele"><span class="hc-cele-b"><b>Reward earned for ${esc(cele.why[cele.why.length - 1])}!</b><span>Choose one for your page${cele.left > 1 ? ` (${cele.left} to choose)` : ""}.</span></span><span class="hc-cele-btns"><button type="button" class="hs-btn" data-spend="sticker">+1 sticker</button><button type="button" class="hs-btn" data-spend="writing">+1 writing</button><button type="button" class="hs-btn" data-spend="photo">+1 photo</button></span></div>` : ""}
       <div class="hc-card">
         <h3 style="margin:0;font-size:19px">Or choose yourself</h3>

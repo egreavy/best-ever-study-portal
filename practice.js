@@ -453,7 +453,13 @@
   document.addEventListener("click", e => { const b = e.target.closest && e.target.closest(".qd-zoom"); if (b) openZoom(b.dataset.zoom, b.dataset.alt || ""); });
 
   // One line that says what the question asks (for lists)
-  const qMain = q => { const P = qParse(q); return P ? P.asks.join(" ") : q.prompt; };
+  // The task itself, for previews: skips option lists like "JOSEPHUS / PLINY / TACITUS" and "(40 marks)" lines
+  const promptAsk = p => {
+    const ls = String(p || "").split("\n").map(l => l.trim()).filter(l => l && !/^\(\s*\d+\s*marks?\s*\)$/i.test(l));
+    const isList = l => { const letters = l.replace(/[^A-Za-z]/g, ""), caps = l.replace(/[^A-Z]/g, ""); return /\s\/\s/.test(l) && letters.length && caps.length / letters.length > 0.6; };
+    return ls.find(l => !isList(l)) || ls[0] || "";
+  };
+  const qMain = q => { const P = qParse(q); return P ? P.asks.join(" ") : promptAsk(q.prompt); };
   const shortTitle = q => q.qtype === "exam" ? `${isPast(q) ? "Past paper" : "Exam question"}: ${qMain(q)}` : q.prompt;
 
   // ---- mount ----
@@ -572,7 +578,7 @@
       hero.querySelector("button").onclick = () => start("Exam Prep", prepQueue(), "prep");
       const nodes = [hero];
       const row = q => {
-        const b = h(`<button type="button" class="pp-row"><span class="pp-yr">${esc(isPast(q) ? yearOf(q) : "")}</span><span class="pp-b"><span class="pp-s">${esc(isPast(q) ? partOf(q) : "Practice question")} · ${q.marks || 5} marks</span><span class="pp-q">${esc(q.display ? qMain(q) : q.prompt.split("\n")[0])}</span></span>${chip(q)}</button>`);
+        const b = h(`<button type="button" class="pp-row"><span class="pp-yr">${esc(isPast(q) ? yearOf(q) : "")}</span><span class="pp-b"><span class="pp-s">${esc(isPast(q) ? partOf(q) : "Practice question")} · ${q.marks || 5} marks</span><span class="pp-q">${esc(qMain(q))}</span></span>${chip(q)}</button>`);
         b.onclick = () => start("Exam Prep", [q], "prep");
         return b;
       };
