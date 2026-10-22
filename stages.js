@@ -1221,7 +1221,6 @@
       const chs = sj.chapters.filter(c => c.exam && c.exam.n).sort((a, b) => (a.bookIdx || 0) - (b.bookIdx || 0) || (a.order_num || 0) - (b.order_num || 0));
       if (!chs.length) return "";
       const n = chs.reduce((t, c) => t + c.exam.n, 0), tried = chs.reduce((t, c) => t + c.exam.tried, 0);
-      const best = chs.slice().sort((a, b) => b.exam.openMarks - a.exam.openMarks)[0];
       const years = Object.keys(m.papers[sj.id] || {}).sort().reverse();
       const isOpen = open === sj.id;
       let body = "";
@@ -1234,7 +1233,6 @@
           return `<button type="button" class="fx-ch" data-fx-year="${y}"><span class="fx-ch-b"><span class="t">${y} paper</span><span class="s">${plural(qs.length, "question", "questions")}${t ? ` · you've tried ${t}` : ""}</span></span><span class="hs-chev" aria-hidden="true">›</span></button>`; }).join("")}</div>`;
       } else if (isOpen && mode === "topics") {
         body = `<div class="fx-chs"><button type="button" class="hs-link fx-sub-back" data-fx-back="">&larr; Back</button>
-          ${best && best.exam.openMarks ? `<button type="button" class="hs-btn fx-best" data-fx-ch="${best.id}">Start with ${esc(shortTitle(best.title))} <span>· most marks to win</span></button>` : ""}
           ${chs.map(c => `<button type="button" class="fx-ch" data-fx-ch="${c.id}"><span class="fx-ch-b"><span class="t">${c.book ? esc(c.book) + " · " : ""}Ch ${esc(String(c.order_num ?? ""))}: ${esc(shortTitle(c.title))}</span><span class="s">${plural(c.exam.n, "question", "questions")}${c.exam.open ? ` · ${c.exam.openMarks} marks to win` : " · all done"}</span></span><span class="hs-chev" aria-hidden="true">›</span></button>`).join("")}</div>`;
       }
       return `<div class="fx-subj${isOpen ? " open" : ""}">
