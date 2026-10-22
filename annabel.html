@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Annabel's Study Portal</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<script src="theme.js?v=20261022b" data-profile="0525676f-a10f-424d-b707-8f75e5b3a053"></script>
-<script src="stickers.js?v=20261022b"></script>
-<script src="rewards.js?v=20261022b" data-profile="0525676f-a10f-424d-b707-8f75e5b3a053"></script>
+<script src="theme.js?v=20261022c" data-profile="0525676f-a10f-424d-b707-8f75e5b3a053"></script>
+<script src="stickers.js?v=20261022c"></script>
+<script src="rewards.js?v=20261022c" data-profile="0525676f-a10f-424d-b707-8f75e5b3a053"></script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap">
 <style>
   :root{
@@ -392,6 +392,9 @@
   .cv-list{padding-top:2px;padding-bottom:2px;}
   .cv-row{border-bottom:1px solid var(--t-line);padding:11px 0;}
   .cv-row:last-child{border-bottom:none;}
+  .cv-seen{display:inline-block;margin-left:8px;font-size:13px;font-weight:700;color:var(--t-accent);background:var(--t-accent-tint);border-radius:99px;padding:1px 9px;vertical-align:2px}
+  .cv-first{display:flex;width:100%;align-items:center;justify-content:space-between;gap:8px 14px;flex-wrap:wrap;text-align:left;font:inherit;font-size:15px;color:var(--t-ink);border:0;cursor:pointer;margin:0 0 10px;padding:12px 18px}
+  .cv-first-go{font-weight:700;color:var(--t-accent);white-space:nowrap}
   .cv-item{display:flex;align-items:center;gap:14px;}
   .cv .check.cv-check{flex:none;width:30px;height:30px;border-radius:8px;border:2px solid var(--t-muted);background:var(--t-card);color:transparent;font-size:16px;}
   .cv .cv-row.done .check.cv-check{background:var(--t-ink);border-color:var(--t-ink);color:var(--t-on-accent);}
@@ -414,7 +417,7 @@
   .cv-conf .confidence-slider::-webkit-slider-thumb{border-color:var(--t-ink);}
   .cv-conf .confidence-slider::-moz-range-thumb{border-color:var(--t-ink);}
   .cv-conf .confidence-saved{color:var(--t-ink);}
-  @media (max-width:600px){.cv-item{flex-wrap:wrap}.cv-item .cv-btn,.cv-item .cv-wait{margin-left:44px}.cv-card{padding:14px 16px}.cv-foot{flex-direction:column;align-items:flex-start}}
+  @media (max-width:600px){.cv-item{flex-wrap:wrap}.cv-item .cv-check~.cv-btn,.cv-item .cv-check~.cv-wait{margin-left:44px}.cv-card{padding:14px 16px}.cv-foot{flex-direction:column;align-items:flex-start}}
   .look-card{background:var(--t-card);border-radius:18px;padding:8px 24px;margin:0 0 22px;font-family:"Atkinson Hyperlegible",Verdana,sans-serif}
   .look-row{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:16px 0;flex-wrap:wrap}
   .look-row+.look-row{border-top:1px solid var(--t-line)}
@@ -448,9 +451,9 @@
   <div id="view"><div class="loading">Loading…</div></div>
 </div>
 
-<script src="stages.js?v=20261022b"></script>
-<script src="practice.js?v=20261022b"></script>
-<script src="tutor.js?v=20261022b"></script>
+<script src="stages.js?v=20261022c"></script>
+<script src="practice.js?v=20261022c"></script>
+<script src="tutor.js?v=20261022c"></script>
 <script>
 const SUPABASE_URL = "https://dhxwajidrtyukyxmiyml.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRoeHdhamlkcnR5dWt5eG1peW1sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYzMzYyNzQsImV4cCI6MjA1MTkxMjI3NH0.fnH1eI1vLtQASjII_6K0d6NZevD62tnthXe0uyMgh0s";
@@ -625,7 +628,7 @@ async function renderChapter(){
   // The exam practice sheet is a resource on Learn (shown last, not counted in Learn progress)
   const learnExtras = templateRows.filter(t => t.title === "Exam Practice");
   let knowStats = null;
-  const progressRows = await sb(`nlm_progress?select=step_order,done,resource_url&topic_id=eq.${state.topicId}&profile_id=eq.${PROFILE.id}`);
+  const progressRows = await sb(`nlm_progress?select=step_order,done,resource_url,duration_min&topic_id=eq.${state.topicId}&profile_id=eq.${PROFILE.id}`);
   const confidenceRows = await sb(`nlm_confidence?select=rating&topic_id=eq.${state.topicId}&profile_id=eq.${PROFILE.id}`);
   const flagRows = await sb(`topic_flags?select=flag_type,note&topic_id=eq.${state.topicId}&profile_id=eq.${PROFILE.id}`);
   const currentFlag = flagRows[0] ? { flagType: flagRows[0].flag_type, note: flagRows[0].note || "" } : { flagType: null, note: "" };
@@ -645,12 +648,14 @@ async function renderChapter(){
   let videoRequest = videoRequestRows[0] || null;
 
   const doneMap = {};
-  progressRows.forEach(r => { doneMap[r.step_order] = { done: !!r.done, resourceUrl: r.resource_url || "" }; });
+  progressRows.forEach(r => { doneMap[r.step_order] = { done: !!r.done, resourceUrl: r.resource_url || "", duration: r.duration_min || null }; });
   const confidenceRating = confidenceRows[0] ? parseInt(confidenceRows[0].rating, 10) : null;
 
   const NAMES = { "Revision Guide": "Revision guide", "Video Overview": "Video", "In-Depth Slide Deck": "Slides", "Audio Recap": "Audio recap", "Mind Map": "Mind map", "Flashcards Review": "Flashcards", "Quiz Yourself": "NotebookLM quiz", "Exam Practice": "Past Papers - Analysis & Answers" };
   const NOTES = { "Revision Guide": "5 minute read", "Video Overview": "Watch the key ideas", "In-Depth Slide Deck": "Like a full class lesson", "Audio Recap": "Listen anywhere", "Mind Map": "See how it all connects", "Flashcards Review": "Quick recall, little and often", "Quiz Yourself": "A NotebookLM quiz on this chapter", "Exam Practice": "Past paper questions with model answers" };
   const VERB = { "Video Overview": "Watch", "Audio Recap": "Listen" };
+  // Shown once he has opened it (opening counts; no checklist to tick)
+  const DONEW = { "Video Overview": "Watched", "Revision Guide": "Read", "In-Depth Slide Deck": "Looked through", "Audio Recap": "Listened" };
 
   // Students only see materials that are ready (a link is saved, or already ticked)
   // Shown to the student if it has a link, or was ticked when the page opened (so unticking to redo it never hides it)
@@ -661,6 +666,11 @@ async function renderChapter(){
   function doneCount(){ return shownRows(learnRows).filter(t => (doneMap[t.step_order] || {}).done).length; }
 
   // Parent set-up for a material: prompts, pasting a link, making the video
+  // Length in minutes, shown to the student (videos and slides)
+  function durationHTML(t, entry){
+    if (!["Video Overview", "In-Depth Slide Deck", "Audio Recap"].includes(t.title)) return "";
+    return `<div class="link-form" style="margin-top:10px"><label style="font-size:14px;align-self:center">Length (minutes)</label><input type="number" min="1" max="180" inputmode="numeric" style="max-width:90px" value="${entry.duration || ""}" data-role="dur-input" /><button data-action="save-dur" data-step="${t.step_order}">Save</button></div>`;
+  }
   function setupHTML(t, actions, entry, isAutoVideo){
     const vr = videoRequest;
     const isQueued = vr && (vr.status === "pending" || vr.status === "processing");
@@ -674,9 +684,9 @@ async function renderChapter(){
         ${isQueued
           ? `<button class="make-video-btn queued" disabled>Queued</button><button class="cancel-video-btn" data-topic="${state.topicId}">Cancel request</button>`
           : `<button class="make-video-btn${entry.resourceUrl ? " secondary" : ""}" data-topic="${state.topicId}" data-prompt="${customize}">${entry.resourceUrl ? "Make another video" : "Make video"}</button>`}
-        ${entry.resourceUrl ? `<button class="change-btn" data-step="${t.step_order}" data-action="change-link" style="margin-left:10px">Remove link</button>` : ""}</div>`;
+        ${entry.resourceUrl ? `<button class="change-btn" data-step="${t.step_order}" data-action="change-link" style="margin-left:10px">Remove link</button>` : ""}</div>${entry.resourceUrl ? durationHTML(t, entry) : ""}`;
     }
-    if (entry.resourceUrl) return `<button class="change-btn" data-step="${t.step_order}" data-action="change-link">Remove this link</button>`;
+    if (entry.resourceUrl) return `<button class="change-btn" data-step="${t.step_order}" data-action="change-link">Remove this link</button>${durationHTML(t, entry)}`;
     const leadAction = actions.find(a => a.type !== "prompt" && a.type !== "customize");
     const leadLine = leadAction ? `Not made yet. Open the NotebookLM notebook and ${lowerFirst(leadAction.text)}` : `Not made yet. Open the NotebookLM notebook and use the prompt below.`;
     return `<div class="actions" style="margin-top:0">
@@ -697,16 +707,16 @@ async function renderChapter(){
     const vr = videoRequest;
     const isQueued = vr && (vr.status === "pending" || vr.status === "processing");
     const name = NAMES[t.title] || t.title;
-    const note = (NOTES[t.title] || t.blurb || "") + (isDone ? " · done" : "");
+    const note = (NOTES[t.title] || t.blurb || "") + (entry.duration ? ` · ${entry.duration} min` : "");
     let btn;
-    if (entry.resourceUrl) btn = `<a class="cv-btn" href="${esc(entry.resourceUrl)}" target="_blank" rel="noopener">${VERB[t.title] || "Open"}${isDone ? " again" : ""}</a>`;
+    if (entry.resourceUrl) btn = `<a class="cv-btn" href="${esc(entry.resourceUrl)}" target="_blank" rel="noopener" data-open-step="${t.step_order}">${VERB[t.title] || "Open"}${isDone ? " again" : ""}</a>`;
     else if (isAutoVideo && isQueued) btn = `<span class="cv-wait">Being made</span>`;
     else btn = isParentMode() ? `<span class="cv-wait">Not ready yet</span>` : "";
     return `
       <div class="cv-row${isDone ? " done" : ""}">
         <div class="cv-item">
-          <button type="button" class="check cv-check" data-step="${t.step_order}" data-done="${isDone}" aria-pressed="${isDone}" aria-label="${isDone ? "Mark " + esc(name) + " as not done" : "Mark " + esc(name) + " as done"}">&#10003;</button>
-          <div class="cv-item-body"><span class="cv-item-title">${esc(name)}</span><span class="cv-item-sub">${esc(note)}</span></div>
+          ${isParentMode() ? `<button type="button" class="check cv-check" data-step="${t.step_order}" data-done="${isDone}" aria-pressed="${isDone}" aria-label="${isDone ? "Mark " + esc(name) + " as not done" : "Mark " + esc(name) + " as done"}">&#10003;</button>` : ""}
+          <div class="cv-item-body"><span class="cv-item-title">${esc(name)}${isDone ? `<span class="cv-seen">&#10003; ${esc(DONEW[t.title] || "Done")}</span>` : ""}</span><span class="cv-item-sub">${esc(note)}</span></div>
           ${btn}
         </div>
         ${isParentMode() ? `<details class="cv-setup"><summary>${entry.resourceUrl && !isAutoVideo ? "Change" : "Set up"}</summary><div class="cv-setup-body">${setupHTML(t, actions, entry, isAutoVideo)}</div></details>` : ""}
@@ -742,8 +752,9 @@ async function renderChapter(){
   }
   function paintClassFoot(){
     const el = document.getElementById("classFoot"); if (!el) return;
-    el.innerHTML = `<span>Finished these? See what you know with a quick test.</span><button type="button" class="cv-btn" data-goto2="test">Go to Quick Tests</button>`;
+    el.innerHTML = `<span>Ready? See what you know.</span><button type="button" class="cv-btn" data-goto2="test">Check what you know</button>`;
     el.querySelector("[data-goto2]").onclick = () => goTab("test");
+    const first = document.querySelector(".cv-first"); if (first) first.onclick = () => goTab("test");
   }
 
 
@@ -802,6 +813,32 @@ async function renderChapter(){
         });
         doneMap[step] = doneMap[step] || { done: false, resourceUrl: "" };
         doneMap[step].resourceUrl = url;
+        refreshSteps();
+      });
+    });
+
+    stepsEl.querySelectorAll("[data-open-step]").forEach(a => {
+      a.addEventListener("click", () => {
+        const step = parseInt(a.dataset.openStep, 10);
+        if ((doneMap[step] || {}).done) return;
+        doneMap[step] = doneMap[step] || { done: false, resourceUrl: "" };
+        doneMap[step].done = true;
+        sb("nlm_progress?on_conflict=topic_id,profile_id,step_order", { method: "POST", prefer: "resolution=merge-duplicates,return=minimal",
+          body: [{ topic_id: state.topicId, profile_id: PROFILE.id, step_order: step, done: true, updated_at: new Date().toISOString() }] });
+        setTimeout(refreshSteps, 400);
+      });
+    });
+
+    stepsEl.querySelectorAll('[data-action="save-dur"]').forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const step = parseInt(btn.dataset.step, 10);
+        const v = parseInt(btn.closest(".link-form").querySelector('[data-role="dur-input"]').value, 10);
+        const mins = v > 0 && v <= 180 ? v : null;
+        btn.disabled = true; btn.textContent = "Saving...";
+        await sb("nlm_progress?on_conflict=topic_id,profile_id,step_order", { method: "POST", prefer: "resolution=merge-duplicates,return=minimal",
+          body: [{ topic_id: state.topicId, profile_id: PROFILE.id, step_order: step, duration_min: mins, updated_at: new Date().toISOString() }] });
+        doneMap[step] = doneMap[step] || { done: false, resourceUrl: "" };
+        doneMap[step].duration = mins;
         refreshSteps();
       });
     });
@@ -902,6 +939,7 @@ async function renderChapter(){
 
     <section id="tab-learn" role="tabpanel" aria-labelledby="tabbtn-learn" hidden>
       <div class="cv-tip"><b>Tip:</b> Watching the video or reading the revision guide before a topic is taught in class gives you a head start, so the lesson makes more sense. Going over them again afterwards helps it stick.</div>
+      <button type="button" class="cv-card cv-first" data-goto2="test"><span><b>Already know some of this?</b> You can test yourself first.</span><span class="cv-first-go">Check what you know &rsaquo;</span></button>
       <div class="cv-card cv-list" id="stepsContainer"></div>
       <div class="cv-card cv-foot" id="classFoot"></div>
     </section>
