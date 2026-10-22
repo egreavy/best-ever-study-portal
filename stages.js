@@ -226,6 +226,25 @@
   .ss-add{border:2px dashed var(--t-accent);background:var(--t-card);color:var(--t-accent);border-radius:999px;min-height:44px;font:inherit;font-weight:700;font-size:15px;cursor:pointer}
   .ss-k{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--t-accent)}
   .ss-count{font-size:19px;font-weight:700}
+  .fx-ask{background:var(--t-card);border:2px solid var(--t-accent-soft);border-radius:18px;padding:18px 22px;display:flex;align-items:center;gap:14px 18px;flex-wrap:wrap}
+  .fx-ask-b{flex:1 1 280px;display:flex;flex-direction:column;gap:4px;font-size:15px;line-height:1.45}.fx-ask-b b{font-size:17px}
+  .fx-ask-btns{display:flex;gap:10px;flex-wrap:wrap}
+  .fx-top{display:flex;justify-content:space-between;align-items:center}
+  .fx-list{display:flex;flex-direction:column;gap:10px}
+  .fx-subj{border:1px solid var(--t-line);border-radius:14px;overflow:hidden}
+  .fx-subj.open{border:2px solid var(--t-accent)}
+  .fx-sh{display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;border:none;background:var(--t-card);font:inherit;color:var(--t-ink);text-align:left;cursor:pointer}
+  .fx-sh>span:first-child{flex:1;display:flex;flex-direction:column;gap:2px}.fx-sh b{font-size:17px}.fx-sh .s,.fx-ch .s{font-size:14px;color:var(--t-muted)}
+  .fx-best{margin:0 16px 10px;min-height:48px;font-size:16px;white-space:normal;text-align:left}.fx-best span{font-weight:400;opacity:.9}
+  .fx-chs{display:flex;flex-direction:column;padding:0 16px 8px}
+  .fx-ch,.fx-mem{display:flex;align-items:center;gap:12px;width:100%;padding:12px 0;border:none;border-top:1px solid var(--t-line);background:none;font:inherit;color:var(--t-ink);text-align:left;cursor:pointer}
+  .fx-mem{border:2px solid var(--t-accent);background:var(--t-accent-tint);border-radius:14px;padding:12px 16px}
+  .fx-ch-b{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.fx-ch .t,.fx-mem .t{font-size:16px;font-weight:700;line-height:1.35}.fx-mem .s{font-size:14px;color:var(--t-muted)}
+  .fx-sh:focus-visible,.fx-ch:focus-visible,.fx-mem:focus-visible{outline:3px solid var(--t-accent);outline-offset:2px}
+  .hc-fx{align-self:flex-start;font-size:14px}
+  /* the chapter page in exam focus: only the exam questions */
+  .cv-focus .cv-tabs,.cv-focus .cv-meta,.cv-focus .flag-note-row,.cv-focus #examSlot,.cv-focus #refreshSlot,.cv-focus #prepBackLearn{display:none!important}
+  body.exam-focus #decor{display:none!important}
   .ss-mem{font-size:13px;font-weight:700;color:var(--t-accent);background:var(--t-accent-tint);border-radius:999px;padding:2px 8px;white-space:nowrap}
   .ss-listen{margin:0;display:flex;align-items:center;gap:10px;font-size:15px;font-weight:700;color:var(--t-accent)}
   .ss-listen i{flex:none;width:12px;height:12px;border-radius:50%;background:var(--t-accent);animation:ss-pulse 1.4s ease-in-out infinite}
@@ -391,7 +410,7 @@
     const subjectIds = subjects.map(s => s.id);
     if (!subjectIds.length) return { subjects, topics: [] };
     const since = new Date(Date.now() - 400 * DAY).toISOString();
-    const [topics, templatesAll, disabled, progress, status, exams, flags, timeRows, reviews] = await Promise.all([
+    const [topics, templatesAll, disabled, progress, status, exams, flags, timeRows, reviews, settings] = await Promise.all([
       sb(`topics?select=id,title,order_num,subject_id&subject_id=in.${inList(subjectIds)}&order=order_num.asc`),
       sb(`nlm_checklist_templates?select=id,subject_id,step_order,title&subject_id=in.${inList(subjectIds)}`),
       sb(`nlm_disabled_steps?select=template_id&profile_id=eq.${profile.id}`),
@@ -400,7 +419,8 @@
       sb(`exam_dates?select=subject_id,label,exam_date&profile_id=eq.${profile.id}`),
       sb(`topic_flags?select=topic_id,flag_type,note,updated_at&profile_id=eq.${profile.id}`),
       sb(`study_time?select=kind,seconds,created_at&profile_id=eq.${profile.id}&created_at=gte.${encodeURIComponent(since)}`),
-      sb(`answer_reviews?select=question_id,marks_awarded,marks_available,created_at&profile_id=eq.${profile.id}&order=created_at.asc&limit=2000`)
+      sb(`answer_reviews?select=question_id,marks_awarded,marks_available,created_at&profile_id=eq.${profile.id}&order=created_at.asc&limit=2000`),
+      sb(`student_settings?select=exam_focus&profile_id=eq.${profile.id}`).catch(() => [])
     ]);
     const topicIds = topics.map(t => t.id);
     const questions = [];
@@ -418,7 +438,7 @@
       part.forEach(a => attempts.push(a));
       if (part.length < 1000 || off > 50000) break;
     }
-    return { subjects, topics, templatesAll, disabled, progress, status, exams, flags, timeRows, questions, attempts, reviews: reviews || [] };
+    return { subjects, topics, templatesAll, disabled, progress, status, exams, flags, timeRows, questions, attempts, reviews: reviews || [], focus: ((settings || [])[0] || {}).exam_focus || {} };
   }
 
   function buildModel(raw){
@@ -549,6 +569,19 @@
     m.goal = { minutes: GOAL_MIN, days: GOAL_DAYS, dayMin, weeksDone, thisWeekGood, today: Math.round(dayMin[dayKey(new Date())] || 0), todayCounts: goodDay(dayKey(new Date())), streakRule: STREAK_RULE, weekDone: thisWeekGood >= GOAL_DAYS, runs, streakNow, testMin: Math.round(testMin) };
     m.week = { testSec, learnMin, answered, fixed, days, ws, streak };
     m.memory = memorySchedule(raw, m);
+    // exam questions per chapter, for exam focus: how many, how many still to try or improve, and the marks in those
+    const examBy = {};
+    (raw.questions || []).forEach(q => { if (q.qtype !== "exam" || !m.topics[q.topic_id]) return;
+      const e = examBy[q.topic_id] = examBy[q.topic_id] || { n: 0, tried: 0, open: 0, openMarks: 0, marks: 0 };
+      const v = latestEver[q.id]; e.n++; e.marks += q.marks || 0;
+      if (v !== undefined) e.tried++;
+      if (v === undefined || v < 1) { e.open++; e.openMarks += q.marks || 0; } });
+    Object.values(m.topics).forEach(c => { c.exam = examBy[c.id] || { n: 0, tried: 0, open: 0, openMarks: 0, marks: 0 }; });
+    m.focus = raw.focus || {};
+    // the next exams coming up, across subjects
+    const today0 = startOfDay(new Date());
+    const ups = m.subjects.map(sj => sj.exam && parseDate(sj.exam.exam_date) >= today0 ? { label: sj.exam.label, date: parseDate(sj.exam.exam_date), iso: sj.exam.exam_date } : null).filter(Boolean).sort((a, b) => a.date - b.date);
+    m.nextExam = ups[0] ? { ...ups[0], days: Math.round((ups[0].date - today0) / DAY) } : null;
     return m;
   }
 
@@ -1106,6 +1139,47 @@
     if (loadSession(profile)) paintSession(); else paintAsk();
   }
 
+  // ---- Exam focus ----
+  // Two weeks before exams the homepage offers exam focus (never switches it on by itself). When on, the
+  // homepage is just subjects → chapters → exam questions, highest marks first, with nothing else on screen.
+  const FOCUS_DAYS = 14;
+  async function saveFocus(sb, profile, f){
+    try { await sb("student_settings", { method: "POST", prefer: "resolution=merge-duplicates,return=minimal", body: [{ profile_id: profile.id, exam_focus: f, updated_at: new Date().toISOString() }] }); } catch (e) {}
+  }
+  function focusPrompt(m){
+    const f = m.focus || {}, x = m.nextExam;
+    if (f.on || !x || x.days > FOCUS_DAYS) return "";
+    if (f.dismissed === x.iso || (f.snooze && f.snooze >= isoDay(new Date()))) return "";
+    const when = x.days === 0 ? "start today" : x.days === 1 ? "start tomorrow" : `are ${x.days} days away`;
+    return `<div class="fx-ask"><span class="fx-ask-b"><b>${esc(x.label || "Your exams")} ${when}.</b><span>Want to switch on exam focus? It keeps things simple: just exam questions, one subject at a time. You can switch it off any time.</span></span>
+      <span class="fx-ask-btns"><button type="button" class="hs-btn" data-fx-on>Switch on exam focus</button><button type="button" class="hs-btn ghost" data-fx-later>Not now</button></span></div>`;
+  }
+  function focusHtml(m, state){
+    const x = m.nextExam, open = state.fxOpen || null;
+    const line = x ? `${esc(x.label || "Exams")} ${x.days === 0 ? "start today" : x.days === 1 ? "start tomorrow" : `in ${x.days} days`}` : "Just exam questions, one subject at a time";
+    const subs = m.subjects.map(sj => {
+      const chs = sj.chapters.filter(c => c.exam && c.exam.n).sort((a, b) => (a.bookIdx || 0) - (b.bookIdx || 0) || (a.order_num || 0) - (b.order_num || 0));
+      if (!chs.length) return "";
+      const n = chs.reduce((t, c) => t + c.exam.n, 0), tried = chs.reduce((t, c) => t + c.exam.tried, 0);
+      const best = chs.slice().sort((a, b) => b.exam.openMarks - a.exam.openMarks)[0];
+      const isOpen = open === sj.id;
+      return `<div class="fx-subj${isOpen ? " open" : ""}">
+        <button type="button" class="fx-sh" data-fx-subj="${sj.id}" aria-expanded="${isOpen}"><span><b>${esc(sj.title)}</b><span class="s">${plural(n, "exam question", "exam questions")} · ${tried} tried</span></span><span class="hs-chev" aria-hidden="true">${isOpen ? "&#709;" : "›"}</span></button>
+        ${isOpen ? `${best && best.exam.openMarks ? `<button type="button" class="hs-btn fx-best" data-fx-ch="${best.id}">Start with ${esc(shortTitle(best.title))} <span>· most marks to win</span></button>` : ""}
+          <div class="fx-chs">${chs.map(c => `<button type="button" class="fx-ch" data-fx-ch="${c.id}"><span class="fx-ch-b"><span class="t">${c.book ? esc(c.book) + " · " : ""}Ch ${esc(String(c.order_num ?? ""))}: ${esc(shortTitle(c.title))}</span><span class="s">${plural(c.exam.n, "question", "questions")}${c.exam.open ? ` · ${c.exam.openMarks} marks to win` : " · all done"}</span></span><span class="hs-chev" aria-hidden="true">›</span></button>`).join("")}</div>` : ""}
+      </div>`;
+    }).join("");
+    const mem = memoryItem(m);
+    const memHtml = mem ? (() => { const c = m.topics[mem.topic_id]; return `<button type="button" class="fx-mem" data-fx-mem><span class="fx-ch-b"><span class="ss-k">Memory check due</span><span class="t">${esc(subjOf(m, c))} · ${esc(shortTitle(c.title))}</span><span class="s">A ${mem.marks}-mark question from memory · about ${mem.mins} min</span></span><span class="hs-chev" aria-hidden="true">›</span></button>`; })() : "";
+    return `<div class="pl fx">
+      <div class="fx-top"><span class="ss-k">Exam focus</span><button type="button" class="hs-link" data-fx-off>Switch off</button></div>
+      <div class="ss-lead">${line}</div>
+      <span class="hs-sub" style="font-size:15px">Pick a subject, then a chapter. You go straight into exam questions, biggest marks first.</span>
+      ${memHtml}
+      <div class="fx-list">${subs || `<span class="hs-sub">No exam questions yet.</span>`}</div>
+    </div>`;
+  }
+
   // ---- homepage ----
   function renderHome(view, m, { profile, openChapter, openSubject, state, sb, reload, openSettings }){
     addCss();
@@ -1133,6 +1207,9 @@
         <span class="hc-row-b"><span class="hc-row-t">${esc(shortTitle(c.title))}</span><span class="hc-row-s">${esc(subjTitle(c.subject_id))}${c.book ? " " + esc(c.book) : ""} · ${esc(c.flag && c.flag.note ? c.flag.note : stepLevel(c)[1].toLowerCase())}</span></span>
         ${stepsArrows(c)}<span class="hs-chev" aria-hidden="true">›</span></button>`;
     const goalMin = m.goal ? m.goal.minutes : DAILY_GOAL, todayMin = m.goal ? m.goal.today : 0;
+    const focusOn = !!(m.focus && m.focus.on);
+    if (state) state.examFocus = focusOn;
+    document.body.classList.toggle("exam-focus", focusOn);
     view.innerHTML = `<div class="hs hc">
       <div class="hc-top">
         <div class="hc-hello"><h2>${hello}, ${esc(profile.name)}</h2><span>${m.goal && m.goal.streakNow ? `${plural(m.goal.streakNow, "day", "days")} in a row · ` : ""}${goalMin} minutes of testing a day</span></div>
@@ -1140,7 +1217,7 @@
           <button type="button" class="hs-link hc-weeklink" data-week aria-expanded="${!!weekOpen}">This week: ${hm(w.testSec)} testing</button>
         </div>
       </div>
-      ${Object.keys(m.topics).length ? `<div id="todaySession"></div>` : ""}
+      ${focusOn ? focusHtml(m, state || {}) : `${focusPrompt(m)}${Object.keys(m.topics).length ? `<div id="todaySession"></div>` : ""}`}
       ${weekOpen ? `<div class="hc-week">
         <div class="hc-days" aria-label="Days studied this week">${dots}</div>
         <div class="hc-stats">
@@ -1150,15 +1227,16 @@
           <div><b>${w.fixed}</b><span>answers fixed</span></div>
         </div>
         ${m.goal ? `<span class="hc-goal">${esc(m.goal.streakRule)}. Today: ${m.goal.today} of ${m.goal.minutes} minutes.${window.Decor ? (() => { const n = Decor.nextUp(m.goal)[0]; return n ? ` Next reward: ${n.name} (${n.have} of ${n.need} ${n.unit}).` : ""; })() : ""}</span>` : ""}</div>` : ""}
-      ${cele ? `<div class="hc-cele"><span class="hc-cele-b"><b>Reward earned for ${esc(cele.why[cele.why.length - 1])}!</b><span>Choose one for your page${cele.left > 1 ? ` (${cele.left} to choose)` : ""}.</span></span><span class="hc-cele-btns"><button type="button" class="hs-btn" data-spend="sticker">+1 sticker</button><button type="button" class="hs-btn" data-spend="writing">+1 writing</button><button type="button" class="hs-btn" data-spend="photo">+1 photo</button></span></div>` : ""}
-      <div class="hc-card">
+      ${!focusOn && cele ? `<div class="hc-cele"><span class="hc-cele-b"><b>Reward earned for ${esc(cele.why[cele.why.length - 1])}!</b><span>Choose one for your page${cele.left > 1 ? ` (${cele.left} to choose)` : ""}.</span></span><span class="hc-cele-btns"><button type="button" class="hs-btn" data-spend="sticker">+1 sticker</button><button type="button" class="hs-btn" data-spend="writing">+1 writing</button><button type="button" class="hs-btn" data-spend="photo">+1 photo</button></span></div>` : ""}
+      ${focusOn ? "" : `<div class="hc-card">
         <h3 style="margin:0;font-size:19px">Or choose yourself</h3>
         ${m.subjects.length ? `<div class="hc-sec"><span class="hc-label">Pick a subject</span><div class="hc-chips">${chips}</div></div>` : `<div class="hs-empty">No subjects yet.</div>`}
         ${rest.length ? `<div class="hc-sec"><span class="hc-label">My revision list</span>
           <div class="hc-list">${rest.slice(0, showAll ? rest.length : 3).map(row).join("")}</div>
           ${rest.length > 3 ? `<button type="button" class="hs-link" style="align-self:flex-start" data-all>${showAll ? "Show fewer" : `See all ${rest.length}`}</button>` : ""}</div>` : ""}
+        <button type="button" class="hs-link hc-fx" data-fx-on>Exam focus mode: just exam questions ›</button>
       </div>
-      <div class="qa" id="quickAdd"></div>
+      <div class="qa" id="quickAdd"></div>`}
     </div>`;
     view.querySelectorAll("[data-subject]").forEach(b => b.onclick = () => openSubject(b.dataset.subject));
     view.querySelectorAll("[data-open]").forEach(b => b.onclick = () => { const c = m.topics[b.dataset.open]; openChapter(c.id, c.subject_id, b.dataset.tab); });
@@ -1168,6 +1246,14 @@
     view.querySelectorAll("[data-spend]").forEach(b => b.onclick = async () => { b.disabled = true; await Decor.spend(sb, b.dataset.spend); if (openSettings) openSettings(); });
     const qaBtn = view.querySelector("[data-qa]"); if (qaBtn) qaBtn.onclick = () => { state.qaOpen = true; again(); const i = view.querySelector("#quickAdd input"); if (i) i.focus(); };
     view.querySelectorAll("[data-today]").forEach(td => td.onclick = () => { const c = m.topics[td.dataset.today]; state.todayRun = c.id; openChapter(c.id, c.subject_id, "test"); });
+    // exam focus controls
+    const setFocus = (f) => { m.focus = f; saveFocus(sb, profile, f); again(); window.scrollTo({ top: 0 }); };
+    view.querySelectorAll("[data-fx-on]").forEach(b => b.onclick = () => setFocus({ ...(m.focus || {}), on: true, since: isoDay(new Date()) }));
+    const later = view.querySelector("[data-fx-later]"); if (later) later.onclick = () => setFocus({ ...(m.focus || {}), on: false, snooze: isoDay(new Date(Date.now() + 3 * DAY)) });
+    const off = view.querySelector("[data-fx-off]"); if (off) off.onclick = () => setFocus({ ...(m.focus || {}), on: false, dismissed: m.nextExam ? m.nextExam.iso : null });
+    view.querySelectorAll("[data-fx-subj]").forEach(b => b.onclick = () => { state.fxOpen = state.fxOpen === b.dataset.fxSubj ? null : b.dataset.fxSubj; again(); });
+    view.querySelectorAll("[data-fx-ch]").forEach(b => b.onclick = () => { const c = m.topics[b.dataset.fxCh]; state.examRun = c.id; openChapter(c.id, c.subject_id, "refresh"); });
+    const fm = view.querySelector("[data-fx-mem]"); if (fm) fm.onclick = () => { const it = memoryItem(m); const c = m.topics[it.topic_id]; state.memoryRun = { topic: c.id, qid: it.qid, origin: it.origin, days: it.days }; openChapter(c.id, c.subject_id, "refresh"); };
     if (view.querySelector("#todaySession")) mountSession(view.querySelector("#todaySession"), m, { profile, openChapter, state, again });
     if (sb && view.querySelector("#quickAdd")) mountQuickAdd(view.querySelector("#quickAdd"), m, { sb, profile, reload, state });
   }

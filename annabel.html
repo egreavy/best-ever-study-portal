@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Annabel's Study Portal</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<script src="theme.js?v=20261022k" data-profile="0525676f-a10f-424d-b707-8f75e5b3a053"></script>
-<script src="stickers.js?v=20261022k"></script>
-<script src="rewards.js?v=20261022k" data-profile="0525676f-a10f-424d-b707-8f75e5b3a053"></script>
+<script src="theme.js?v=20261022l" data-profile="0525676f-a10f-424d-b707-8f75e5b3a053"></script>
+<script src="stickers.js?v=20261022l"></script>
+<script src="rewards.js?v=20261022l" data-profile="0525676f-a10f-424d-b707-8f75e5b3a053"></script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap">
 <style>
   :root{
@@ -451,9 +451,9 @@
   <div id="view"><div class="loading">Loading…</div></div>
 </div>
 
-<script src="stages.js?v=20261022k"></script>
-<script src="practice.js?v=20261022k"></script>
-<script src="tutor.js?v=20261022k"></script>
+<script src="stages.js?v=20261022l"></script>
+<script src="practice.js?v=20261022l"></script>
+<script src="tutor.js?v=20261022l"></script>
 <script>
 const SUPABASE_URL = "https://dhxwajidrtyukyxmiyml.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRoeHdhamlkcnR5dWt5eG1peW1sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYzMzYyNzQsImV4cCI6MjA1MTkxMjI3NH0.fnH1eI1vLtQASjII_6K0d6NZevD62tnthXe0uyMgh0s";
@@ -977,6 +977,9 @@ async function renderChapter(){
   });
   const goTab = (t) => { showTab(t); const tabs = document.querySelector(".cv-tabs"); if (tabs) tabs.scrollIntoView({ block: "start", behavior: "smooth" }); };
   document.querySelectorAll("[data-goto]").forEach(b => b.addEventListener("click", () => goTab(b.dataset.goto)));
+  // Exam focus: only the exam questions on this page, and back goes to the exam focus homepage
+  const focusOn = !!state.examFocus;
+  if (focusOn) { Stages.addCss(); document.querySelector(".cv").classList.add("cv-focus"); state.chapterTab = "refresh"; autoTab = false; }
   showTab(state.chapterTab);
   document.querySelectorAll(".cv-tab").forEach(b => b.addEventListener("click", () => { autoTab = false; }));
 
@@ -1019,13 +1022,15 @@ async function renderChapter(){
   }).then(api => {
     practiceApi = api;
     if (api && state.todayRun === state.topicId) { state.todayRun = null; autoTab = false; api.runToday(); }
+    if (api && state.examRun === state.topicId) { state.examRun = null; autoTab = false; api.runExam(); }
     if (api && state.memoryRun && state.memoryRun.topic === state.topicId) { const r = state.memoryRun; state.memoryRun = null; autoTab = false; api.runMemory(r.qid, r.origin, r.days); }
     if (!api && autoTab) { autoTab = false; paintTabs(); }
   });
   if (topic && window.mountTutor) window.mountTutor(document.getElementById("tutorSlot"), { topic, profile: PROFILE, sb });
 
   const backBtn = document.getElementById("backBtn");
-  const goBack = () => { state.view = "subject"; render(); window.scrollTo({ top: 0 }); };
+  if (focusOn) backBtn.innerHTML = "&larr; Exam focus";
+  const goBack = () => { if (focusOn) { goHome(); return; } state.view = "subject"; render(); window.scrollTo({ top: 0 }); };
   backBtn.addEventListener("click", goBack);
   backBtn.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); goBack(); } });
 

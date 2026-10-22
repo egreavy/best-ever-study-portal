@@ -567,7 +567,9 @@
       const past = pastSorted(), style = styleQs();
       const untriedP = past.filter(q => prog.latest[q.id] === undefined), weakP = past.filter(q => prog.latest[q.id] !== undefined && prog.latest[q.id] < 1);
       const untriedS = style.filter(q => prog.latest[q.id] === undefined), weakS = style.filter(q => prog.latest[q.id] !== undefined && prog.latest[q.id] < 1);
-      const q = [...untriedP, ...weakP, ...untriedS, ...weakS];
+      // biggest marks first within each group
+      const byMarks = l => l.slice().sort((a, b) => (b.marks || 0) - (a.marks || 0));
+      const q = [...byMarks(untriedP), ...byMarks(weakP), ...byMarks(untriedS), ...byMarks(weakS)];
       return (q.length ? q : [...past, ...style]).slice(0, 5);
     }
     function paintPrep(){
@@ -1074,7 +1076,14 @@
       start("Memory check", [q], "prep", false, { memory: { origin, days: days || 7 } });
       return true;
     }
-    return { refresh: paintStats, startToday: () => start("Your Daily Practice", todaysPick()), runToday, runMemory };
+    // Exam focus: straight into this chapter's exam questions
+    function runExam(){
+      if (!ex.length) return false;
+      goTo("refresh");
+      start("Exam focus", prepQueue(), "prep");
+      return true;
+    }
+    return { refresh: paintStats, startToday: () => start("Your Daily Practice", todaysPick()), runToday, runMemory, runExam };
   }
   window.mountPractice = mountPractice;
 })();
