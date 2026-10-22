@@ -727,7 +727,7 @@
     function start(name, list, where, today, extra){
       if (!list || !list.length) return;
       if (session) { logTime(session); home(); }
-      session = { name, queue: list.map(q => ({ q, retry:false })), i:0, results:[], total:list.length, t0: Date.now(), where: where === "prep" && prepSlot ? prepSlot : slot, today: !!today, base: 0, memory: (extra && extra.memory) || null };
+      session = { name, queue: list.map(q => ({ q, retry:false })), i:0, results:[], total:list.length, t0: Date.now(), where: where === "prep" && prepSlot ? prepSlot : slot, today: !!today, base: 0, memory: (extra && extra.memory) || null, paper: !!(extra && extra.paper) };
       if (today) todayBase().then(m => { if (session) { session.base = m; paintRing(); } });
       setChrome(false);
       next();
@@ -753,9 +753,11 @@
     function nextBtn(card){
       // Say where it goes: next question, finish, or straight back to Exam Prep after a single question
       const lastOne = session.i >= session.queue.length - 1, single = lastOne && session.total === 1 && session.where === prepSlot;
-      const label = !lastOne ? "Next question ›" : single ? "Back to Exam Prep" : "Finish practice";
+      const toPaper = lastOne && session.paper && goHome;
+      const label = toPaper ? "Back to the paper" : !lastOne ? "Next question ›" : single ? "Back to Exam Prep" : "Finish practice";
       const b = h(`<div class="pr-row pr-nextrow"><button type="button" class="pr-btn">${label}</button></div>`);
       b.querySelector("button").onclick = () => {
+        if (toPaper) { logTime(session); session = null; goHome(); return; }
         if (single) { logTime(session); home(); return; }
         session.i++; next();
       };
@@ -1083,7 +1085,14 @@
       start("Exam focus", prepQueue(), "prep");
       return true;
     }
-    return { refresh: paintStats, startToday: () => start("Your Daily Practice", todaysPick()), runToday, runMemory, runExam };
+    // One question from a past paper (exam focus → Try an exam paper)
+    function runQuestion(qid){
+      const q = questions.find(x => x.id === qid); if (!q) return false;
+      goTo("refresh");
+      start("Exam paper", [q], "prep", false, { paper: true });
+      return true;
+    }
+    return { refresh: paintStats, startToday: () => start("Your Daily Practice", todaysPick()), runToday, runMemory, runExam, runQuestion };
   }
   window.mountPractice = mountPractice;
 })();

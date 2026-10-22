@@ -242,6 +242,18 @@
   .fx-ch-b{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.fx-ch .t,.fx-mem .t{font-size:16px;font-weight:700;line-height:1.35}.fx-mem .s{font-size:14px;color:var(--t-muted)}
   .fx-sh:focus-visible,.fx-ch:focus-visible,.fx-mem:focus-visible{outline:3px solid var(--t-accent);outline-offset:2px}
   .hc-fx{align-self:flex-start;font-size:14px}
+  .fx-modes{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;padding:0 16px 16px}
+  .fx-mode{display:flex;flex-direction:column;gap:4px;padding:16px;border:2px solid var(--t-accent);border-radius:14px;background:var(--t-accent-tint);font:inherit;color:var(--t-ink);text-align:left;cursor:pointer}
+  .fx-mode b{font-size:17px}.fx-mode span{font-size:14px;color:var(--t-muted)}
+  .fx-mode:focus-visible,.fx-q:focus-visible{outline:3px solid var(--t-accent);outline-offset:2px}
+  .fx-sub-back{align-self:flex-start;margin:0 0 6px}
+  .fx-pstat{font-size:15px}
+  .fx-part{display:flex;flex-direction:column}
+  .fx-part h4{margin:10px 0 4px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--t-muted)}
+  .fx-q{display:flex;align-items:center;gap:12px;width:100%;padding:12px 0;border:none;border-top:1px solid var(--t-line);background:none;font:inherit;color:var(--t-ink);text-align:left;cursor:pointer}
+  .fx-q .s{font-size:14px;color:var(--t-muted)}
+  .fx-ql{flex:none;min-width:84px;font-size:16px;font-weight:700}
+  .fx-q.later .fx-ql{color:var(--t-muted)}
   /* the chapter page in exam focus: only the exam questions */
   .cv-focus .cv-tabs,.cv-focus .cv-meta,.cv-focus .flag-note-row,.cv-focus #examSlot,.cv-focus #refreshSlot,.cv-focus #prepBackLearn{display:none!important}
   body.exam-focus #decor{display:none!important}
@@ -578,6 +590,22 @@
       if (v === undefined || v < 1) { e.open++; e.openMarks += q.marks || 0; } });
     Object.values(m.topics).forEach(c => { c.exam = examBy[c.id] || { n: 0, tried: 0, open: 0, openMarks: 0, marks: 0 }; });
     m.focus = raw.focus || {};
+    // Real past papers, rebuilt from the chapter questions: subject -> year -> questions in paper order
+    const bestRev = {};
+    (raw.reviews || []).forEach(r => { if (!r.marks_available) return; const b = bestRev[r.question_id]; if (!b || r.marks_awarded > b.a) bestRev[r.question_id] = { a: Number(r.marks_awarded), b: Number(r.marks_available) }; });
+    const wordNum = t => t.replace(/\bOne\b/gi, "1").replace(/\bTwo\b/gi, "2").replace(/\bThree\b/gi, "3").replace(/\bFour\b/gi, "4");
+    m.papers = {};
+    (raw.questions || []).forEach(q => {
+      if (q.qtype !== "exam" || /^exam-style/i.test(q.source || "")) return;
+      const c = m.topics[q.topic_id]; if (!c) return;
+      const mm = /^((?:19|20)\d{2})\s*State Exam\s*[-–·]?\s*(.*)$/i.exec(q.source || ""); if (!mm) return;
+      const year = mm[1], rest = (mm[2] || "").trim(), cut = rest.indexOf(",");
+      const part = (cut > 0 ? rest.slice(0, cut) : rest).trim() || "Questions", label = (cut > 0 ? rest.slice(cut + 1) : "").trim();
+      const key = (m.groupOf && m.groupOf[c.subject_id]) || c.subject_id;
+      const P = m.papers[key] = m.papers[key] || {};
+      (P[year] = P[year] || []).push({ id: q.id, topic_id: q.topic_id, marks: q.marks || 0, part, label, sort: wordNum(rest), v: latestEver[q.id], best: bestRev[q.id] || null });
+    });
+    Object.values(m.papers).forEach(P => Object.values(P).forEach(list => list.sort((a, b) => a.sort.localeCompare(b.sort, undefined, { numeric: true }))));
     // the next exams coming up, across subjects
     const today0 = startOfDay(new Date());
     const ups = m.subjects.map(sj => sj.exam && parseDate(sj.exam.exam_date) >= today0 ? { label: sj.exam.label, date: parseDate(sj.exam.exam_date), iso: sj.exam.exam_date } : null).filter(Boolean).sort((a, b) => a.date - b.date);
@@ -1157,16 +1185,46 @@
   function focusHtml(m, state){
     const x = m.nextExam, open = state.fxOpen || null;
     const line = x ? `${esc(x.label || "Exams")} ${x.days === 0 ? "start today" : x.days === 1 ? "start tomorrow" : `in ${x.days} days`}` : "Just exam questions, one subject at a time";
+    const mode = state.fxMode || "", year = state.fxYear || "";
+    const chip = qq => qq.best ? `<span class="pp-chip${qq.best.a / Math.max(1, qq.best.b) >= 0.6 ? " good" : " mid"}">${qq.best.a}/${qq.best.b}</span>` : qq.v !== undefined ? `<span class="pp-chip${qq.v >= 1 ? " good" : " mid"}">${qq.v >= 1 ? "Got it" : "Tried"}</span>` : `<span class="pp-chip">Not tried</span>`;
+    // One year's paper, as set: sections in order, each question opens straight into that question
+    const sjOpen = open ? m.bySubject[open] : null;
+    if (sjOpen && mode === "paper" && m.papers[open] && m.papers[open][year]) {
+      const qs = m.papers[open][year], tried = qs.filter(q => q.v !== undefined), withMarks = tried.filter(q => q.best);
+      const got = withMarks.reduce((t, q) => t + q.best.a, 0), of = withMarks.reduce((t, q) => t + q.best.b, 0);
+      const parts = []; qs.forEach(q => { const last = parts[parts.length - 1]; if (!last || last.name.toLowerCase() !== q.part.toLowerCase()) parts.push({ name: q.part, qs: [q] }); else last.qs.push(q); });
+      return `<div class="pl fx">
+        <div class="fx-top"><button type="button" class="hs-link" data-fx-back="papers">&larr; ${esc(sjOpen.title)} papers</button><button type="button" class="hs-link" data-fx-off>Switch off exam focus</button></div>
+        <div class="ss-lead">${esc(sjOpen.title)} · ${esc(year)} paper</div>
+        <span class="hs-sub" style="font-size:15px">The questions as they were set in the ${esc(year)} exam. In the real exam you choose which questions to answer, so start with chapters you've covered. Tap a question to answer it. It's marked like the real exam.</span>
+        <div class="fx-pstat"><b>${tried.length} of ${qs.length} tried</b>${of ? ` · ${got} of ${of} marks on those` : ""}</div>
+        ${parts.map(pt => `<div class="fx-part"><h4>${esc(pt.name)}</h4>${pt.qs.map(q => { const c = m.topics[q.topic_id]; const notYet = c && c.stage === "none";
+          return `<button type="button" class="fx-q${notYet ? " later" : ""}" data-fx-q="${q.id}"><span class="fx-ql">${esc(q.label || "Question")}</span><span class="fx-ch-b"><span class="s">${c ? `${c.book ? esc(c.book) + " · " : ""}Ch ${esc(String(c.order_num ?? ""))}: ${esc(shortTitle(c.title))}` : ""} · ${q.marks} marks${notYet ? " · not started yet" : ""}</span></span>${chip(q)}</button>`; }).join("")}</div>`).join("")}
+      </div>`;
+    }
     const subs = m.subjects.map(sj => {
       const chs = sj.chapters.filter(c => c.exam && c.exam.n).sort((a, b) => (a.bookIdx || 0) - (b.bookIdx || 0) || (a.order_num || 0) - (b.order_num || 0));
       if (!chs.length) return "";
       const n = chs.reduce((t, c) => t + c.exam.n, 0), tried = chs.reduce((t, c) => t + c.exam.tried, 0);
       const best = chs.slice().sort((a, b) => b.exam.openMarks - a.exam.openMarks)[0];
+      const years = Object.keys(m.papers[sj.id] || {}).sort().reverse();
       const isOpen = open === sj.id;
+      let body = "";
+      if (isOpen && !mode) {
+        body = `<div class="fx-modes">
+          ${years.length ? `<button type="button" class="fx-mode" data-fx-mode="papers"><b>Try an exam paper</b><span>A real past paper, as set · ${years.length > 1 ? `${years[years.length - 1]}–${years[0]}` : years[0]}</span></button>` : ""}
+          <button type="button" class="fx-mode" data-fx-mode="topics"><b>Choose a topic</b><span>A more focused session on one chapter</span></button></div>`;
+      } else if (isOpen && mode === "papers") {
+        body = `<div class="fx-chs"><button type="button" class="hs-link fx-sub-back" data-fx-back="">&larr; Back</button>${years.map(y => { const qs = m.papers[sj.id][y], t = qs.filter(q => q.v !== undefined).length;
+          return `<button type="button" class="fx-ch" data-fx-year="${y}"><span class="fx-ch-b"><span class="t">${y} paper</span><span class="s">${plural(qs.length, "question", "questions")}${t ? ` · you've tried ${t}` : ""}</span></span><span class="hs-chev" aria-hidden="true">›</span></button>`; }).join("")}</div>`;
+      } else if (isOpen && mode === "topics") {
+        body = `<div class="fx-chs"><button type="button" class="hs-link fx-sub-back" data-fx-back="">&larr; Back</button>
+          ${best && best.exam.openMarks ? `<button type="button" class="hs-btn fx-best" data-fx-ch="${best.id}">Start with ${esc(shortTitle(best.title))} <span>· most marks to win</span></button>` : ""}
+          ${chs.map(c => `<button type="button" class="fx-ch" data-fx-ch="${c.id}"><span class="fx-ch-b"><span class="t">${c.book ? esc(c.book) + " · " : ""}Ch ${esc(String(c.order_num ?? ""))}: ${esc(shortTitle(c.title))}</span><span class="s">${plural(c.exam.n, "question", "questions")}${c.exam.open ? ` · ${c.exam.openMarks} marks to win` : " · all done"}</span></span><span class="hs-chev" aria-hidden="true">›</span></button>`).join("")}</div>`;
+      }
       return `<div class="fx-subj${isOpen ? " open" : ""}">
         <button type="button" class="fx-sh" data-fx-subj="${sj.id}" aria-expanded="${isOpen}"><span><b>${esc(sj.title)}</b><span class="s">${plural(n, "exam question", "exam questions")} · ${tried} tried</span></span><span class="hs-chev" aria-hidden="true">${isOpen ? "&#709;" : "›"}</span></button>
-        ${isOpen ? `${best && best.exam.openMarks ? `<button type="button" class="hs-btn fx-best" data-fx-ch="${best.id}">Start with ${esc(shortTitle(best.title))} <span>· most marks to win</span></button>` : ""}
-          <div class="fx-chs">${chs.map(c => `<button type="button" class="fx-ch" data-fx-ch="${c.id}"><span class="fx-ch-b"><span class="t">${c.book ? esc(c.book) + " · " : ""}Ch ${esc(String(c.order_num ?? ""))}: ${esc(shortTitle(c.title))}</span><span class="s">${plural(c.exam.n, "question", "questions")}${c.exam.open ? ` · ${c.exam.openMarks} marks to win` : " · all done"}</span></span><span class="hs-chev" aria-hidden="true">›</span></button>`).join("")}</div>` : ""}
+        ${body}
       </div>`;
     }).join("");
     const mem = memoryItem(m);
@@ -1174,7 +1232,7 @@
     return `<div class="pl fx">
       <div class="fx-top"><span class="ss-k">Exam focus</span><button type="button" class="hs-link" data-fx-off>Switch off</button></div>
       <div class="ss-lead">${line}</div>
-      <span class="hs-sub" style="font-size:15px">Pick a subject, then a chapter. You go straight into exam questions, biggest marks first.</span>
+      <span class="hs-sub" style="font-size:15px">Pick a subject, then try a real exam paper or choose a topic for a more focused session.</span>
       ${memHtml}
       <div class="fx-list">${subs || `<span class="hs-sub">No exam questions yet.</span>`}</div>
     </div>`;
@@ -1251,7 +1309,11 @@
     view.querySelectorAll("[data-fx-on]").forEach(b => b.onclick = () => setFocus({ ...(m.focus || {}), on: true, since: isoDay(new Date()) }));
     const later = view.querySelector("[data-fx-later]"); if (later) later.onclick = () => setFocus({ ...(m.focus || {}), on: false, snooze: isoDay(new Date(Date.now() + 3 * DAY)) });
     const off = view.querySelector("[data-fx-off]"); if (off) off.onclick = () => setFocus({ ...(m.focus || {}), on: false, dismissed: m.nextExam ? m.nextExam.iso : null });
-    view.querySelectorAll("[data-fx-subj]").forEach(b => b.onclick = () => { state.fxOpen = state.fxOpen === b.dataset.fxSubj ? null : b.dataset.fxSubj; again(); });
+    view.querySelectorAll("[data-fx-subj]").forEach(b => b.onclick = () => { state.fxOpen = state.fxOpen === b.dataset.fxSubj ? null : b.dataset.fxSubj; state.fxMode = ""; state.fxYear = ""; again(); });
+    view.querySelectorAll("[data-fx-mode]").forEach(b => b.onclick = () => { state.fxMode = b.dataset.fxMode; again(); });
+    view.querySelectorAll("[data-fx-year]").forEach(b => b.onclick = () => { state.fxMode = "paper"; state.fxYear = b.dataset.fxYear; again(); window.scrollTo({ top: 0 }); });
+    view.querySelectorAll("[data-fx-back]").forEach(b => b.onclick = () => { state.fxMode = b.dataset.fxBack; state.fxYear = ""; again(); });
+    view.querySelectorAll("[data-fx-q]").forEach(b => b.onclick = () => { const qs = (m.papers[state.fxOpen] || {})[state.fxYear] || []; const q = qs.find(x => x.id === b.dataset.fxQ); const c = q && m.topics[q.topic_id]; if (!c) return; state.paperRun = { topic: c.id, qid: q.id }; openChapter(c.id, c.subject_id, "refresh"); });
     view.querySelectorAll("[data-fx-ch]").forEach(b => b.onclick = () => { const c = m.topics[b.dataset.fxCh]; state.examRun = c.id; openChapter(c.id, c.subject_id, "refresh"); });
     const fm = view.querySelector("[data-fx-mem]"); if (fm) fm.onclick = () => { const it = memoryItem(m); const c = m.topics[it.topic_id]; state.memoryRun = { topic: c.id, qid: it.qid, origin: it.origin, days: it.days }; openChapter(c.id, c.subject_id, "refresh"); };
     if (view.querySelector("#todaySession")) mountSession(view.querySelector("#todaySession"), m, { profile, openChapter, state, again });
