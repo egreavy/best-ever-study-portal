@@ -134,6 +134,10 @@
   .pr-hear{margin-left:auto;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--t-line);background:var(--t-card);color:var(--t-ink);font:inherit;font-size:14px;font-weight:700;border-radius:99px;padding:6px 12px;min-height:36px;cursor:pointer}
   .pr-hear.on{border-color:var(--t-accent);color:var(--t-accent)}
   .pr-more>summary,.pr-modelbl>summary{cursor:pointer;font-weight:700;min-height:36px;display:flex;align-items:center}
+  .pr-modelbl:focus,.pr-modelbl>summary:focus,.pr-more>summary:focus{outline:none}
+  .pr-modelbl>summary:focus-visible,.pr-more>summary:focus-visible{outline:3px solid var(--t-accent);outline-offset:2px;border-radius:6px}
+  .pr-key h4{margin:6px 0 0;font-size:16px}
+  .pr-key ul{margin:0;padding-left:20px;font-size:16px;line-height:1.55}
   .pr-focus .pr-more,.pr-focus .pr-modelbl,.pr-focus .pr-nextrow,.pr-focus .pr-key .pr-k{display:none}
   .pr-nx-i{flex:none;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--t-soft2);color:var(--t-accent)}
   .pr-nx.main .pr-nx-i{background:var(--t-accent);color:var(--t-on-accent)}
@@ -786,7 +790,7 @@
         <span class="pr-nx-l">What next?</span>
         ${isExam ? opt("steps", STEPS_SVG, "Improve it step by step", `${Math.min(3, f.to_improve.length)} short step${Math.min(3, f.to_improve.length) === 1 ? "" : "s"}, one sentence each`, true) : ""}
         ${isExam && window.coachAnswer ? opt("talk", MIC_SVG, "Talk it through with my tutor", "A short voice call about this answer") : ""}
-        ${opt("again", PEN_SVG, "Just try again", isExam ? "You already know what to fix" : "Have another go with the tips below", !isExam)}
+        ${opt("again", PEN_SVG, "Just try again", isExam ? "You already know what to fix" : "Have another go using these tips", !isExam)}
         <div data-coachslot></div></div>`);
       const cslot = wrap.querySelector("[data-coachslot]");
       const opts = () => wrap.querySelectorAll(".pr-nx, .pr-nx-l");
@@ -907,7 +911,7 @@
           : "Add the points you talked through, then check it again.";
         if (entry.added && entry.added.length) { box.querySelector(".pr-tip").classList.add("pr-alldone"); ta.rows = 8; }
         selfBtn.style.display = "none";
-        if (entry.tips && entry.tips.length) box.querySelector(".pr-tip").after(h(`<div class="pr-fb"><h4>${isExam ? "To get more marks" : "To make it better"}</h4><ul>${entry.tips.map(t => `<li>${esc(t)}</li>`).join("")}</ul></div>`));
+        if (entry.tips && entry.tips.length) box.querySelector(".pr-tip").after(h(`<div class="pr-fb"><h4>${isExam ? "To get more marks" : "Where you can add more marks"}</h4><ul>${entry.tips.map(t => `<li>${esc(t)}</li>`).join("")}</ul></div>`));
       }
       const inputsRow = box.querySelector("[data-inputs]");
       attachMic(inputsRow, ta, err);
@@ -948,20 +952,23 @@
           const fbEl = h(`<div class="pr-fb ${v===1?"good":""}">
             <div class="pr-key">
               <div class="pr-row" style="gap:12px 16px">${isExam ? `<span class="pr-score">${f.marks_awarded}/${f.marks_available}</span>` : `<span class="pr-verd">${v === 1 ? `<span class="pr-tick" aria-hidden="true">&#10003;</span><strong>Got it.</strong>` : `<strong>${v ? "Nearly." : "Not yet."}</strong>`}</span>`}${upTxt ? `<span class="pr-up">${upTxt}</span>` : ""}${"speechSynthesis" in window ? `<button type="button" class="pr-hear" data-hear aria-label="Hear the feedback">${SPEAK_SVG}<span>Hear it</span></button>` : ""}</div>
-              ${good1 ? `<p class="pr-k"><b>Good:</b> ${esc(good1)}</p>` : ""}
-              ${fix1 ? `<p class="pr-k"><b>${isExam ? "For more marks:" : "Next:"}</b> ${esc(fix1)}</p>` : ""}
+              ${isExam ? `${good1 ? `<p class="pr-k"><b>Good:</b> ${esc(good1)}</p>` : ""}
+              ${fix1 ? `<p class="pr-k"><b>For more marks:</b> ${esc(fix1)}</p>` : ""}` : `${f.went_well.length ? `<h4>What you got right</h4>${list(f.went_well)}` : ""}
+              ${f.to_improve.length ? `<h4>Where you can add more marks</h4>${list(f.to_improve)}` : ""}`}
             </div>
-            <details class="pr-more"><summary>See the full marking</summary>
+            ${isExam ? `<details class="pr-more"><summary>See the full marking</summary>
               ${f.summary ? `<p style="margin:8px 0 0">${esc(f.summary)}</p>` : ""}
               ${f.went_well.length ? `<h4>What you got right</h4>${list(f.went_well)}` : ""}
               ${f.to_improve.length ? `<h4>${isExam ? "How to get more marks" : "To make it better"}</h4>${list(f.to_improve)}` : ""}
               ${f.example ? `<h4>For example</h4><span>${esc(f.example)}</span>` : ""}
               ${shown ? `<details class="pr-mine"><summary>Your answer, as it was marked</summary><span>${esc(shown)}</span></details>` : ""}
-            </details>
+            </details>` : ""}
           </div>`);
           card.append(fbEl);
           const hb = fbEl.querySelector("[data-hear]");
-          if (hb) hb.onclick = () => speakOut(hb, [isExam ? `${f.marks_awarded} out of ${f.marks_available}.` : (v === 1 ? "Got it." : v ? "Nearly." : "Not yet."), upTxt, good1 ? "Good: " + good1 : "", fix1 ? (isExam ? "For more marks: " : "Next: ") + fix1 : ""].filter(Boolean).join(" "));
+          if (hb) hb.onclick = () => speakOut(hb, (isExam
+            ? [`${f.marks_awarded} out of ${f.marks_available}.`, upTxt, good1 ? "Good: " + good1 : "", fix1 ? "For more marks: " + fix1 : ""]
+            : [v === 1 ? "Got it." : v ? "Nearly." : "Not yet.", upTxt, f.went_well.length ? "What you got right. " + f.went_well.join(" ") : "", f.to_improve.length ? "Where you can add more marks. " + f.to_improve.join(" ") : ""]).filter(Boolean).join(" "));
           if (f.to_improve.length && (isExam || v < 1) && (!f.marks_available || f.marks_awarded < f.marks_available)) improveRow(fbEl, q, text || f.transcription || "", f, entry);
           card.append(h(modelBlock()));
           nextBtn(card);
