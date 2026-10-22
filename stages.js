@@ -226,6 +226,11 @@
   .ss-add{border:2px dashed var(--t-accent);background:var(--t-card);color:var(--t-accent);border-radius:999px;min-height:44px;font:inherit;font-weight:700;font-size:15px;cursor:pointer}
   .ss-k{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--t-accent)}
   .ss-count{font-size:19px;font-weight:700}
+  .ss-listen{margin:0;display:flex;align-items:center;gap:10px;font-size:15px;font-weight:700;color:var(--t-accent)}
+  .ss-listen i{flex:none;width:12px;height:12px;border-radius:50%;background:var(--t-accent);animation:ss-pulse 1.4s ease-in-out infinite}
+  @keyframes ss-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.8)}}
+  @media (prefers-reduced-motion:reduce){.ss-listen i{animation:none}}
+  .qa-mic.on{box-shadow:0 0 0 4px var(--t-accent-tint)}
   .ss-foot{display:flex;justify-content:center;gap:18px;flex-wrap:wrap}
   @media (max-width:520px){.ss-tag,.ss-check,.ss-start{margin-left:0}.ss-change .hs-btn{width:100%;justify-content:center}}
   `;
@@ -877,22 +882,51 @@
         <div class="ss-lead">What do you want to do today?</div>
         <span class="hs-sub" style="font-size:15px">Say or type chapters, like "revise evidence for Jesus, test the consumer".</span>
         <form class="qa-row"><div class="qa-box"><input type="text" name="t" autocomplete="off" aria-label="What you want to study today" placeholder='e.g. "test the consumer, revise ch 5 religion"'>${SR ? `<button type="button" class="qa-mic" aria-label="Speak" title="Speak">${QA_MIC}</button>` : ""}</div><button class="hs-btn" type="submit" style="min-height:48px;padding:10px 22px;font-size:16px">Set it up</button></form>
+        <p class="ss-listen" hidden><i aria-hidden="true"></i><span>Listening… say what you'd like to study. Tap the microphone when you've finished.</span></p>
         <p class="qa-err" hidden></p>
         <div class="ss-foot"><button type="button" class="hs-link" data-cancel>Back to my suggestion</button></div>`;
+      const listening = el.querySelector(".ss-listen");
       const form = el.querySelector("form"), input = form.querySelector("input[name=t]"), err = el.querySelector(".qa-err"), mic = el.querySelector(".qa-mic");
       if (value) input.value = value;
       el.querySelector("[data-cancel]").onclick = () => { stop(); paintAsk(); };
-      let rec = null;
+      // Speech: words appear in the box as they're spoken, and the mic button clearly shows when it's listening.
+      // "Say it" starts listening straight away; the mic button then shows it's on and stops it.
+      let rec = null, heard = false;
+      function setOn(on){
+        if (!mic) return;
+        mic.classList.toggle("on", on);
+        mic.setAttribute("aria-label", on ? "Stop listening" : "Speak");
+        mic.title = on ? "Stop listening" : "Speak";
+        listening.hidden = !on;
+        input.placeholder = on ? "Listening…" : 'e.g. "test the consumer, revise ch 5 religion"';
+      }
       function stop(){ if (rec) { try { rec.stop(); } catch (e) {} } }
       function listen(){
         if (rec) { stop(); return; }
-        rec = new SR(); rec.lang = "en-IE"; rec.interimResults = false; rec.continuous = true;
-        rec.onresult = (e) => { for (let i = e.resultIndex; i < e.results.length; i++) { const r = e.results[i]; if (r.isFinal && r[0].transcript.trim()) input.value = (input.value.replace(/\s*$/, " ") + r[0].transcript.trim()).replace(/^\s+/, ""); } };
-        rec.onerror = (e) => { err.textContent = e.error === "not-allowed" ? "The browser blocked the microphone. Allow it for this site, or type instead." : "Didn't catch that. Try again or type it."; err.hidden = false; };
-        rec.onend = () => { rec = null; mic.classList.remove("on"); };
-        try { rec.start(); mic.classList.add("on"); err.hidden = true; } catch (e) { rec = null; }
+        const base = input.value ? input.value.replace(/\s*$/, " ") : "";
+        let finals = "";
+        heard = false;
+        rec = new SR(); rec.lang = "en-IE"; rec.interimResults = true; rec.continuous = true;
+        rec.onresult = (e) => {
+          let interim = "";
+          for (let i = e.resultIndex; i < e.results.length; i++) {
+            const r = e.results[i], t = r[0].transcript;
+            if (r.isFinal) finals += t.trim() + " "; else interim += t;
+          }
+          heard = true;
+          input.value = (base + finals + interim).replace(/\s+/g, " ").replace(/^\s+/, "");
+        };
+        rec.onerror = (e) => {
+          err.textContent = e.error === "not-allowed" || e.error === "service-not-allowed" ? "The browser blocked the microphone. Allow it for this site (the icon in the address bar), or type instead."
+            : e.error === "no-speech" ? "Didn't hear anything. Tap the microphone and try again, or type it."
+            : e.error === "audio-capture" ? "No microphone found. Check one is plugged in and switched on, or type instead."
+            : "Didn't catch that. Tap the microphone and try again, or type it.";
+          err.hidden = false;
+        };
+        rec.onend = () => { rec = null; setOn(false); input.value = input.value.trim(); if (heard) input.focus(); };
+        try { rec.start(); setOn(true); err.hidden = true; } catch (e) { rec = null; setOn(false); }
       }
-      if (mic) { mic.onclick = listen; if (!value) listen(); } else input.focus();
+      if (mic) { mic.onclick = listen; if (!value) listen(); else input.focus(); } else input.focus();
       form.onsubmit = async (e) => {
         e.preventDefault(); stop();
         const text = input.value.trim(); if (!text) { input.focus(); return; }
