@@ -67,8 +67,8 @@ Reply with ONLY a JSON object, no other text:
  "marks_awarded": number,
  "marks_available": ${marks},
  "summary": "one honest, calm sentence on the overall answer",
- "went_well": ["up to 3 specific things that earned marks"],
- "to_improve": ["up to 3 specific, actionable changes that would earn more marks"],
+ "went_well": ["up to 3 specific things that earned marks; put the most important FIRST, as one short sentence"],
+ "to_improve": ["up to 3 specific, actionable changes that would earn more marks, ordered by how many marks each would gain, biggest FIRST; each one short sentence"],
  "example": "one example sentence showing how to improve a point, or empty string",
  "next_step": "one short thing to practise next"}`;
 }

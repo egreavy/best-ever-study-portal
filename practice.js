@@ -126,6 +126,15 @@
   .pr-nx:hover{border-color:var(--t-accent)}
   .pr-nx:focus-visible{outline:3px solid var(--t-accent);outline-offset:2px}
   .pr-nx.main{background:var(--t-accent-tint);border-color:var(--t-accent)}
+  .pr-nx.minor{padding:6px 12px;border-width:1px;border-radius:10px;gap:10px}
+  .pr-nx.minor .pr-li-note{display:none}
+  .pr-nx.minor .pr-nx-i{width:30px;height:30px}
+  .pr-key{display:flex;flex-direction:column;gap:8px}
+  .pr-k{margin:0;font-size:17px;line-height:1.5}
+  .pr-hear{margin-left:auto;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--t-line);background:var(--t-card);color:var(--t-ink);font:inherit;font-size:14px;font-weight:700;border-radius:99px;padding:6px 12px;min-height:36px;cursor:pointer}
+  .pr-hear.on{border-color:var(--t-accent);color:var(--t-accent)}
+  .pr-more>summary,.pr-modelbl>summary{cursor:pointer;font-weight:700;min-height:36px;display:flex;align-items:center}
+  .pr-focus .pr-more,.pr-focus .pr-modelbl,.pr-focus .pr-nextrow,.pr-focus .pr-key .pr-k{display:none}
   .pr-nx-i{flex:none;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--t-soft2);color:var(--t-accent)}
   .pr-nx.main .pr-nx-i{background:var(--t-accent);color:var(--t-on-accent)}
   .pr-nx-i svg{width:20px;height:20px;margin:0}
@@ -341,6 +350,19 @@
     return prog.latest[q.id] === 0 ? `You didn't know this one yet${where ? " (" + where + ")" : ""}` : `Half right${where ? " " + where : ""}. Nearly there.`;
   }
   const isPast = q => q.qtype === "exam" && !/^exam-style/i.test(q.source || "");
+  // Read short feedback aloud with the device's own voice (tap again to stop)
+  const SPEAK_SVG = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>`;
+  function speakOut(btn, text){
+    const ss = window.speechSynthesis; if (!ss) return;
+    if (ss.speaking) { ss.cancel(); btn.classList.remove("on"); return; }
+    const u = new SpeechSynthesisUtterance(text);
+    const vs = ss.getVoices(), pick = vs.find(v => /en-IE/i.test(v.lang)) || vs.find(v => /en-GB/i.test(v.lang)) || vs.find(v => /^en/i.test(v.lang));
+    if (pick) u.voice = pick;
+    u.rate = 0.95;
+    u.onend = u.onerror = () => btn.classList.remove("on");
+    btn.classList.add("on"); ss.speak(u);
+  }
+
   // ---- laying out long questions ----
   // q.display (when set) is the exam wording rearranged with simple line markers:
   //  "?? " the actual question   "!! " guidance in brackets   "\"\" " a statement/quote the question refers to
@@ -714,8 +736,14 @@
     }
 
     function nextBtn(card){
-      const b = h(`<div class="pr-row"><button type="button" class="pr-btn">Next</button></div>`);
-      b.querySelector("button").onclick = () => { session.i++; next(); };
+      // Say where it goes: next question, finish, or straight back to Exam Prep after a single question
+      const lastOne = session.i >= session.queue.length - 1, single = lastOne && session.total === 1 && session.where === prepSlot;
+      const label = !lastOne ? "Next question ›" : single ? "Back to Exam Prep" : "Finish practice";
+      const b = h(`<div class="pr-row pr-nextrow"><button type="button" class="pr-btn">${label}</button></div>`);
+      b.querySelector("button").onclick = () => {
+        if (single) { logTime(session); home(); return; }
+        session.i++; next();
+      };
       card.append(b); b.querySelector("button").focus({ preventScroll:true });
     }
     const save = async (qid, v, source) => { await record(sb, profile, qid, v, source); prog = await loadProgress(sb, profile, questions, freshSince()); paintStats(); };
@@ -753,7 +781,7 @@
           before: { marks_awarded: f.marks_awarded, marks_available: f.marks_available } });
         session.total++; session.i++; next();
       };
-      const opt = (key, icon, title, note, main) => `<button type="button" class="pr-nx${main ? " main" : ""}" data-${key}><span class="pr-nx-i">${icon}</span><span class="pr-li-body"><span class="pr-li-title">${title}</span><span class="pr-li-note">${note}</span></span><span class="pr-chev" aria-hidden="true">›</span></button>`;
+      const opt = (key, icon, title, note, main) => `<button type="button" class="pr-nx${main ? " main" : " minor"}" data-${key}><span class="pr-nx-i">${icon}</span><span class="pr-li-body"><span class="pr-li-title">${title}</span><span class="pr-li-note">${note}</span></span><span class="pr-chev" aria-hidden="true">›</span></button>`;
       const wrap = h(`<div class="pr-improve">
         <span class="pr-nx-l">What next?</span>
         ${isExam ? opt("steps", STEPS_SVG, "Improve it step by step", `${Math.min(3, f.to_improve.length)} short step${Math.min(3, f.to_improve.length) === 1 ? "" : "s"}, one sentence each`, true) : ""}
@@ -765,21 +793,22 @@
       const showOpts = on => opts().forEach(el => el.style.display = on ? "" : "none");
       wrap.querySelector("[data-again]").onclick = () => { cslot.replaceChildren(); again(); };
       const st = wrap.querySelector("[data-steps]");
-      if (st) st.onclick = () => { showOpts(false); stepper(cslot, q, text, f, (added) => again(added), () => { cslot.replaceChildren(); showOpts(true); }); };
+      const focus = on => { const c = card.closest(".pr-card"); if (c) c.classList.toggle("pr-focus", on); };
+      if (st) st.onclick = () => { showOpts(false); focus(true); stepper(cslot, q, text, f, (added) => { focus(false); again(added); }, () => { cslot.replaceChildren(); showOpts(true); focus(false); }); };
       const tk = wrap.querySelector("[data-talk]");
-      if (tk) tk.onclick = () => { showOpts(false);
+      if (tk) tk.onclick = () => { showOpts(false); focus(true);
         window.coachAnswer(cslot, { topic, profile, sb, question:q, answer:text, feedback:f,
           onEnd: ({ failed }) => {
-            showOpts(true);
+            showOpts(true); focus(false);
             if (failed) return;
             // After a call: one clear next step (write it again); talking again stays possible
-            const st2 = wrap.querySelector("[data-steps]"); if (st2) st2.classList.remove("main");
+            const st2 = wrap.querySelector("[data-steps]"); if (st2) { st2.classList.remove("main"); st2.classList.add("minor"); }
             const t2 = wrap.querySelector("[data-talk]"); if (t2) { t2.querySelector(".pr-li-title").textContent = "Talk it through again"; t2.querySelector(".pr-li-note").textContent = "Another short voice call"; }
-            const a = wrap.querySelector("[data-again]"); a.classList.add("main"); a.querySelector(".pr-li-title").textContent = "Write it again now"; a.querySelector(".pr-li-note").textContent = "Add the points you just talked through"; a.focus({ preventScroll:true });
+            const a = wrap.querySelector("[data-again]"); a.classList.add("main"); a.classList.remove("minor"); a.querySelector(".pr-li-title").textContent = "Write it again now"; a.querySelector(".pr-li-note").textContent = "Add the points you just talked through"; a.focus({ preventScroll:true });
             wrap.querySelector(".pr-nx-l").after(cslot);
           } }); };
       // Straight under the mark and summary, so the next step is the first thing he sees
-      const head = card.querySelector(":scope > .pr-row");
+      const head = card.querySelector(":scope > .pr-key") || card.querySelector(":scope > .pr-row");
       if (head) head.after(wrap); else card.append(wrap);
     }
 
@@ -895,7 +924,7 @@
         if (entry.again) { const r = session.results.find(x => x.q === q); if (r) r.v = Math.max(r.v, v); save(q.id, v, source); }
         else if (!retry) { session.results.push({ q, v }); save(q.id, v, source); }
       };
-      const modelBlock = () => `<details><summary>${isExam ? "See the model answer and marking scheme" : "See a good answer"}</summary><div class="pr-fb" style="margin-top:8px"><span>${esc(q.model_answer||"")}</span>${q.marking_scheme?`<span class="pr-scheme"><strong>Marking scheme:</strong> ${esc(q.marking_scheme)}</span>`:""}</div></details>`;
+      const modelBlock = () => `<details class="pr-modelbl"><summary>${isExam ? "See the model answer and marking scheme" : "See a good answer"}</summary><div class="pr-fb" style="margin-top:8px"><span>${esc(q.model_answer||"")}</span>${q.marking_scheme?`<span class="pr-scheme"><strong>Marking scheme:</strong> ${esc(q.marking_scheme)}</span>`:""}</div></details>`;
 
       fbBtn.onclick = async () => {
         stopMic();
@@ -912,15 +941,27 @@
           done(v, "written");
           box.remove();
           const list = a => a.length ? `<ul>${a.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "";
+          // Short first: the mark, one thing that worked, the one change worth most. The rest is folded.
+          const good1 = f.went_well[0] || f.summary || "", fix1 = f.to_improve[0] || "";
+          const shown = text || f.transcription || "";
+          const upTxt = entry.before && f.marks_awarded > entry.before.marks_awarded ? (isExam ? `Up from ${entry.before.marks_awarded} to ${f.marks_awarded} marks.` : "Better than last time.") : "";
           const fbEl = h(`<div class="pr-fb ${v===1?"good":""}">
-            <div class="pr-row" style="gap:16px">${isExam ? `<span class="pr-score">${f.marks_awarded}/${f.marks_available}</span>` : `<span class="pr-verd">${v === 1 ? `<span class="pr-tick" aria-hidden="true">&#10003;</span><strong>Got it.</strong>` : `<strong>${v ? "Nearly." : "Not yet."}</strong>`}</span>`}<span>${entry.before && f.marks_awarded > entry.before.marks_awarded ? `<span class="pr-up">${isExam ? `Up from ${entry.before.marks_awarded} to ${f.marks_awarded} marks.` : "Better than last time."} </span>` : ""}${esc(f.summary||"")}</span></div>
-            ${f.went_well.length ? `<h4>What you got right</h4>${list(f.went_well)}` : ""}
-            ${f.to_improve.length ? `<h4>${isExam ? "How to get more marks" : "To make it better"}</h4>${list(f.to_improve)}` : ""}
-            ${f.example ? `<h4>For example</h4><span>${esc(f.example)}</span>` : ""}
+            <div class="pr-key">
+              <div class="pr-row" style="gap:12px 16px">${isExam ? `<span class="pr-score">${f.marks_awarded}/${f.marks_available}</span>` : `<span class="pr-verd">${v === 1 ? `<span class="pr-tick" aria-hidden="true">&#10003;</span><strong>Got it.</strong>` : `<strong>${v ? "Nearly." : "Not yet."}</strong>`}</span>`}${upTxt ? `<span class="pr-up">${upTxt}</span>` : ""}${"speechSynthesis" in window ? `<button type="button" class="pr-hear" data-hear aria-label="Hear the feedback">${SPEAK_SVG}<span>Hear it</span></button>` : ""}</div>
+              ${good1 ? `<p class="pr-k"><b>Good:</b> ${esc(good1)}</p>` : ""}
+              ${fix1 ? `<p class="pr-k"><b>${isExam ? "For more marks:" : "Next:"}</b> ${esc(fix1)}</p>` : ""}
+            </div>
+            <details class="pr-more"><summary>See the full marking</summary>
+              ${f.summary ? `<p style="margin:8px 0 0">${esc(f.summary)}</p>` : ""}
+              ${f.went_well.length ? `<h4>What you got right</h4>${list(f.went_well)}` : ""}
+              ${f.to_improve.length ? `<h4>${isExam ? "How to get more marks" : "To make it better"}</h4>${list(f.to_improve)}` : ""}
+              ${f.example ? `<h4>For example</h4><span>${esc(f.example)}</span>` : ""}
+              ${shown ? `<details class="pr-mine"><summary>Your answer, as it was marked</summary><span>${esc(shown)}</span></details>` : ""}
+            </details>
           </div>`);
           card.append(fbEl);
-          const shown = text || f.transcription || "";
-          if (shown) fbEl.append(h(`<details class="pr-mine"><summary>Your answer, as it was marked</summary><span>${esc(shown)}</span></details>`));
+          const hb = fbEl.querySelector("[data-hear]");
+          if (hb) hb.onclick = () => speakOut(hb, [isExam ? `${f.marks_awarded} out of ${f.marks_available}.` : (v === 1 ? "Got it." : v ? "Nearly." : "Not yet."), upTxt, good1 ? "Good: " + good1 : "", fix1 ? (isExam ? "For more marks: " : "Next: ") + fix1 : ""].filter(Boolean).join(" "));
           if (f.to_improve.length && (isExam || v < 1) && (!f.marks_available || f.marks_awarded < f.marks_available)) improveRow(fbEl, q, text || f.transcription || "", f, entry);
           card.append(h(modelBlock()));
           nextBtn(card);
