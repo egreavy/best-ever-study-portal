@@ -250,6 +250,17 @@
     return { stage, done, tested, refreshOpen, examDate, opensOn, learnDone, learnTotal, classDone, freshSince, stats };
   }
 
+  // The next Quick Tests round (10 questions) and a rough time for it: ~25s multiple choice, ~90s short answer
+  function nextRound(st){
+    st = st || {};
+    const left = st.quickLeft || 0, pool = left || st.quickTotal || 0;
+    const n = Math.min(10, pool);
+    if (!n) return null;
+    const mcqShare = left ? (st.mcqLeft || 0) / left : (st.mcqAll || 0) / Math.max(1, st.quickTotal || 0);
+    const mins = Math.max(2, Math.round(n * (mcqShare * 25 + (1 - mcqShare) * 90) / 60));
+    return { n, mins, text: `Next round: ${n} question${n === 1 ? "" : "s"} · about ${mins} min` };
+  }
+
   function statusLine(s){
     const st = s.stats || {};
     if (s.stage === "refresh") {
@@ -260,11 +271,9 @@
     if (s.stage === "test") {
       if (!st.total) return "Questions coming soon";
       if (s.done) return st.lastAt ? `Tested · last time ${ago(st.lastAt)}` : "Tested";
-      const parts = [];
-      if (st.fixes) parts.push(`${st.fixes} to try again`);
-      else if (!st.tried) parts.push("not tested yet");
-      else parts.push(`${plural(st.total - st.tried, "question", "questions")} still to try`);
-      return parts.join(" · ");
+      const r = nextRound(st);
+      if (!st.tried) return r ? `Not tested yet · ${r.n} questions, about ${r.mins} min` : "not tested yet";
+      return r ? r.text : "Tested";
     }
     if (s.stage === "learn") {
       if (s.done) return "Learnt · ready for a quick test";
@@ -396,7 +405,7 @@
     const exams = {}; (raw.exams || []).forEach(r => { exams[r.subject_id] = r; });
     const flags = {}; (raw.flags || []).forEach(r => { flags[r.topic_id] = r; });
     const qTopic = {}, qCount = {}, qQuick = {};
-    (raw.questions || []).forEach(q => { qTopic[q.id] = q.topic_id; qCount[q.topic_id] = (qCount[q.topic_id] || 0) + 1; if (q.qtype !== "exam") qQuick[q.id] = true; });
+    (raw.questions || []).forEach(q => { qTopic[q.id] = q.topic_id; qCount[q.topic_id] = (qCount[q.topic_id] || 0) + 1; if (q.qtype !== "exam") qQuick[q.id] = q.qtype; });
 
     // results per topic, honouring "start fresh"
     const latest = {}, latestEver = {}, lastAt = {};
@@ -414,7 +423,8 @@
     // quick-test questions still to try or fix in each chapter (what "today's 30 minutes" works through)
     Object.keys(qQuick).forEach(qid => { const s = stats[qTopic[qid]]; if (!s) return; s.quickTotal = (s.quickTotal || 0) + 1;
       if (latest[qid] === undefined) s.quickNew = (s.quickNew || 0) + 1; else if (latest[qid] < 1) s.quickFix = (s.quickFix || 0) + 1; else s.quickRight = (s.quickRight || 0) + 1;
-      if (latest[qid] === undefined || latest[qid] < 1) s.quickLeft++; });
+      if (qQuick[qid] === "mcq") s.mcqAll = (s.mcqAll || 0) + 1;
+      if (latest[qid] === undefined || latest[qid] < 1) { s.quickLeft++; if (qQuick[qid] === "mcq") s.mcqLeft = (s.mcqLeft || 0) + 1; } });
     // last day each chapter was tested: first answer to each quick question that day
     const lastDay = {}, firstOnDay = {};
     for (let i = (raw.attempts || []).length - 1; i >= 0; i--) { const a = raw.attempts[i], tid = qTopic[a.question_id]; if (!tid || !qQuick[a.question_id]) continue; const k = dayKey(a.created_at); if (!lastDay[tid]) lastDay[tid] = { k, at: new Date(a.created_at) }; if (lastDay[tid].k !== k) continue; (firstOnDay[tid] = firstOnDay[tid] || {})[a.question_id] = Number(a.result); }
@@ -745,14 +755,15 @@
       const c = p.c, st = c.stats || {}, now = i === 0;
       const k = `${now ? "Now · " : ""}${subjTitle(c.subject_id)}${c.book ? " " + c.book : ""}`;
       const tried = (st.quickRight || 0) + (st.quickFix || 0);
+      const r = nextRound(st), rt = r ? `${r.n} questions, about ${r.mins} min` : "";
       const note = now
-        ? (tried ? `${st.quickFix ? `${st.quickFix} to try again` : st.quickNew ? `${st.quickNew} new` : "All right last time"}${st.lastTestedAt ? ` · last tested ${ago(st.lastTestedAt)}` : ""}` : `${plural(st.quickNew || 0, "question", "questions")} · not tested yet`)
-        : p.why === "unfinished" ? `Started ${ago(st.lastAt)} · ${st.quickLeft} left` : p.why === "list" ? `From your revision list · ${tried ? st.quickLeft + " left" : "not tested yet"}` : `${plural(st.quickLeft, "question", "questions")} · not tested yet`;
-      const go = now ? (todayMin >= goalMin ? "Keep going" : tried ? "Continue" : "Start") : "";
+        ? (tried ? `${r ? r.text : "Next round"}${st.lastTestedAt ? ` · last tested ${ago(st.lastTestedAt)}` : ""}` : `Not tested yet · ${rt}`)
+        : p.why === "unfinished" ? `Started ${ago(st.lastAt)} · next round about ${r ? r.mins : 5} min` : p.why === "list" ? `From your revision list · ${tried ? `next round about ${r ? r.mins : 5} min` : "not tested yet"}` : `Not tested yet · ${rt}`;
+      const go = now ? (todayMin >= goalMin ? "Bonus round" : tried ? "Continue" : "Start") : "";
       return `<button type="button" class="pl-row${now ? " now" : ""}" data-today="${c.id}"><span class="pl-b"><span class="pl-k">${esc(k)}</span><span class="pl-t">Ch ${esc(String(c.order_num ?? ""))}: ${esc(shortTitle(c.title))}</span>${progBar(st, now ? 10 : 7)}<span class="pl-n">${esc(note)}</span></span>${now ? `<span class="pl-go">${go}</span>` : `<span class="hs-chev" aria-hidden="true">›</span>`}</button>`;
     };
     const heroHtml = plan.length ? `<div class="pl">
-      <div class="pl-head">${ringSvg(56, todayMin / goalMin, todayMin >= goalMin ? "&#10003;" : "", 7)}<span><b>Today's plan</b><span class="s">${todayMin >= goalMin ? `${todayMin} minutes tested today. Your ${goalMin} are done, and every extra minute counts.` : todayMin ? `${todayMin} of ${goalMin} minutes tested today. ${goalMin - todayMin} to go.` : `${goalMin} minutes of testing today.`}</span></span></div>
+      <div class="pl-head">${ringSvg(56, todayMin / goalMin, todayMin >= goalMin ? "&#10003;" : "", 7)}<span><b>Today's plan</b><span class="s">${todayMin >= goalMin ? `Today's ${goalMin} minutes: done &#10003; Anything more is a bonus.` : todayMin ? `${todayMin} of ${goalMin} minutes tested today. ${goalMin - todayMin} to go.` : `${goalMin} minutes of testing today.`}</span></span></div>
       ${planRow(plan[0], 0)}
       ${plan.length > 1 ? `<span class="pl-then">Then</span>${plan.slice(1).map((p, i) => planRow(p, i + 1)).join("")}` : ""}
     </div>` : "";
@@ -842,12 +853,12 @@
     listHtml += fold("tested", `${rangeText(tested)} · ${tested.length === 1 ? "tested" : "all tested"}`, testedSub, tested, "✓");
     if (onTheGo.length) listHtml += `<span class="hs-group">On the go</span>` + onTheGo.map(row).join("");
     if (comingUp.length) listHtml += `<span class="hs-group">Coming up</span>` + comingUp.map(row).join("");
-    listHtml += fold("later", `${rangeText(later)} · not started`, later.length && comingUp.length ? "Later in the year" : "Start any time", later, "…");
+    listHtml += fold("later", `${rangeText(later)}`, later.length && comingUp.length ? "Later in the year" : "Start any time", later, "…");
 
     view.innerHTML = `<div class="hs">
       <button type="button" class="hs-back" data-home>← Home</button>
       <h1>${esc(s.title)}</h1>
-      <div style="display:flex;flex-direction:column;gap:8px">${b.bar}<span class="hs-sub" style="font-size:16px">${esc([...b.parts, `${chs.filter(c => c.stage === "none").length} not started`].join(" · "))}</span></div>
+      <div style="display:flex;flex-direction:column;gap:8px">${b.bar}<span class="hs-sub" style="font-size:16px">${esc(b.parts.length ? b.parts.join(" · ") : "Pick a chapter to start")}</span></div>
       <div id="hsExam"></div>
       <div class="hs-head"><h3>Chapters</h3></div>
       ${chs.length ? `<div class="hs-list"><span class="hs-markkey"><span class="hs-mark on">${BOOKMARK}</span>Tap the bookmark to add a chapter to your revision list</span>${listHtml}</div>` : `<div class="hs-empty">No chapters yet.</div>`}

@@ -524,10 +524,10 @@
       const parts = [];
       if (hard) parts.push(`the ${plural(hard, "question", "questions")} you found hard before`);
       if (never) parts.push(`${plural(never, "question", "questions")} you never tried`);
-      const weakDesc = parts.length ? parts.join(", plus ").replace(/^t/, "T") + "." + (ws.length > 15 ? " Up to 15 at a time, hardest first." : "") : "You've never got one wrong here. Try Start from scratch instead.";
+      const weakDesc = parts.length ? parts.join(", plus ").replace(/^t/, "T") + "." + (ws.length > 15 ? " Up to 15 at a time, hardest first." : "") : "You've never got one wrong here. Try Retest the whole chapter instead.";
       const wrap = h(`<div><p class="pp-before">Before your exam</p><div class="pr-refresh">
         <div class="pr-card"><span class="pr-pill">Best when exams are close</span><h3 style="font-size:20px">Focus on weak spots</h3><p class="pr-sub">${esc(weakDesc)}</p><div class="pr-side-btn"><button type="button" class="pr-btn big" data-weak${ws.length ? "" : " disabled"}>Start</button></div></div>
-        <div class="pr-card"><span class="pr-pill" style="visibility:hidden">.</span><h3 style="font-size:20px">Start from scratch</h3><p class="pr-sub">Every question comes back as new. Your first results are kept, so you'll see how much stuck.</p>${fresh ? `<p class="pr-small">You started fresh on ${esc(new Date(fresh).toLocaleDateString("en-IE", { day:"numeric", month:"short" }))}: ${plural(known().length, "right", "right")} so far, ${fixes().length} to try again, ${untried().length} to go.</p>` : ""}<div class="pr-side-btn"><button type="button" class="pr-btn big ghost" data-fresh>${fresh ? "Start fresh again" : "Start fresh"}</button></div></div>
+        <div class="pr-card"><span class="pr-pill" style="visibility:hidden">.</span><h3 style="font-size:20px">Retest the whole chapter</h3><p class="pr-sub">Every question comes back as new. Your earlier results are kept, so you can see what stuck.</p>${fresh ? `<p class="pr-small">You started a retest on ${esc(new Date(fresh).toLocaleDateString("en-IE", { day:"numeric", month:"short" }))}: ${plural(known().length, "right", "right")} so far, ${fixes().length} to try again, ${untried().length} to go.</p>` : ""}<div class="pr-side-btn"><button type="button" class="pr-btn big ghost" data-fresh>${fresh ? "Retest again" : "Retest the chapter"}</button></div></div>
       </div></div>`);
       wrap.querySelector("[data-weak]").onclick = () => {
         const hardOnes = shuffle(ws.filter(q => prog.everWeak.has(q.id))), newOnes = shuffle(ws.filter(q => !prog.everWeak.has(q.id)));
@@ -537,7 +537,7 @@
         e.target.disabled = true; e.target.textContent = "Starting…";
         await onStartFresh();
         prog = await loadProgress(sb, profile, questions, freshSince());
-        paintStats(); home(); start("Start from scratch", shuffle(questions.slice()).slice(0, 15), "prep");
+        paintStats(); home(); start("Retest", shuffle(questions.slice()).slice(0, 15), "prep");
       };
       refreshSlot.replaceChildren(wrap);
     }
@@ -702,7 +702,7 @@
       if (m >= dailyGoal && !session.hit) {
         session.hit = true;
         const card = session.where.querySelector(".pr-card");
-        if (card && session.base < dailyGoal) card.querySelector(".pr-progress").after(h(`<div class="pr-goalhit"><b>${dailyGoal} minutes done today.</b> Every extra minute counts, so keep going if you can.</div>`));
+        if (card && session.base < dailyGoal) card.querySelector(".pr-progress").after(h(`<div class="pr-goalhit"><b>Today's ${dailyGoal} minutes: done &#10003;</b> Anything more is a bonus.</div>`));
       }
     }
     // Work through this chapter's quick-test questions that are left (new ones and ones to fix)
@@ -1000,12 +1000,20 @@
       if (session.where !== prepSlot && R.length >= 3) {
         const pct = Math.round(R.reduce((n, r) => n + r.v, 0) / R.length * 100);
         const acts = card.querySelector("[data-acts]");
-        let msg, btn;
-        if (pct < 70) { msg = `Go back over the material first, then test yourself again.`; btn = h(`<button type="button" class="pr-btn">Review the material ›</button>`); btn.onclick = () => { home(); goTo("learn"); }; }
+        let msg, btn, missEl = null;
+        if (pct < 70) {
+          // Point at the ideas he missed, not the whole chapter
+          const tl = [...new Set(gaps.map(r => r.q.topic_label).filter(Boolean))].slice(0, 3);
+          msg = tl.length ? `Go over these, then test yourself again: ${tl.join(", ")}.` : `Go over the ones you missed, then test yourself again.`;
+          btn = h(`<button type="button" class="pr-btn ghost">Open the revision guide</button>`); btn.onclick = () => { home(); goTo("learn"); };
+          const miss = gaps.slice(0, 8).map(r => `<li><b>${esc(r.q.prompt)}</b><br>${esc(r.q.qtype === "mcq" ? (r.q.explanation || (r.q.options || [])[r.q.answer_index] || "") : (r.q.model_answer || r.q.explanation || ""))}</li>`).join("");
+          if (miss) missEl = (h(`<details class="pr-fb pr-missed"><summary style="cursor:pointer;font-weight:700">What you missed (${gaps.length})</summary><ul style="margin-top:8px;display:flex;flex-direction:column;gap:8px">${miss}</ul></details>`));
+        }
         else if (pct >= 80) { msg = ex.length ? `You know this well. Time to try exam questions.` : `You know this well.`; if (ex.length) { btn = h(`<button type="button" class="pr-btn">Go to Exam Prep ›</button>`); btn.onclick = () => { home(); goTo("refresh"); }; } }
         else { msg = `Nearly there. Try the ones you missed again, then you're ready for exam questions.`; const fx = quickFixes(); if (fx.length) { btn = h(`<button type="button" class="pr-btn">Try Again (${fx.length})</button>`); btn.onclick = () => start("Try Again", fx); } }
         const half = R.filter(r => r.v > 0 && r.v < 1).length;
         card.querySelector("h3").after(h(`<div class="pr-score-msg ${pct >= 80 ? "good" : pct < 70 ? "low" : ""}"><span class="pr-score">${good.length}/${R.length}</span><span><b>right</b>${half ? `, ${half} half right` : ""}<br>${esc(msg)}</span></div>`));
+        if (missEl) { card.querySelector(".pr-score-msg").after(missEl); const tl2 = card.querySelector(":scope > .pr-fb:not(.pr-missed)"); if (tl2) tl2.remove(); }
         if (btn) acts.prepend(btn); else card.querySelector("[data-home]").classList.remove("ghost");
       }
       const wasToday = session.today, mins = todayMins(), stoppedEarly = session.i < session.queue.length - 1;
@@ -1015,7 +1023,7 @@
       where.replaceChildren(card);
       if (wasToday) {
         const done = mins >= dailyGoal;
-        (card.querySelector(".pr-score-msg") || card.querySelector("h3")).after(h(`<div class="pr-todaybox">${ringHtml(64, mins, 7)}<span>${done ? `<b>${mins} minutes</b> of testing today. Your ${dailyGoal} are done, and every extra minute counts.` : `<b>${mins} of ${dailyGoal} minutes</b> today. ${dailyGoal - mins} to go.`}</span></div>`));
+        (card.querySelector(".pr-missed") || card.querySelector(".pr-score-msg") || card.querySelector("h3")).after(h(`<div class="pr-todaybox">${ringHtml(64, mins, 7)}<span>${done ? `<b>Today's ${dailyGoal} minutes: done &#10003;</b> Anything more is a bonus.` : `<b>${mins} of ${dailyGoal} minutes</b> today. ${dailyGoal - mins} to go.`}</span></div>`));
         const leftHere = questions.filter(q => q.qtype !== "exam" && (prog.latest[q.id] === undefined || prog.latest[q.id] < 1)).length;
         const chTitle = String(topic.title).replace(/^Ch\s*\d+\s*:\s*/i, ""), nextN = Math.min(ROUND, leftHere);
         const pick = leftHere ? Promise.resolve({ here: true, left: leftHere, title: stoppedEarly ? `Carry on with ${chTitle}` : `Another ${nextN} on ${chTitle}`, keep: stoppedEarly ? "Keep going" : `Another ${nextN}` }) : (nextUp ? nextUp(topic.id) : Promise.resolve(null));
