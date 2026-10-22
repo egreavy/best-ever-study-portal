@@ -226,6 +226,7 @@
   .ss-add{border:2px dashed var(--t-accent);background:var(--t-card);color:var(--t-accent);border-radius:999px;min-height:44px;font:inherit;font-weight:700;font-size:15px;cursor:pointer}
   .ss-k{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--t-accent)}
   .ss-count{font-size:19px;font-weight:700}
+  .ss-mem{font-size:13px;font-weight:700;color:var(--t-accent);background:var(--t-accent-tint);border-radius:999px;padding:2px 8px;white-space:nowrap}
   .ss-listen{margin:0;display:flex;align-items:center;gap:10px;font-size:15px;font-weight:700;color:var(--t-accent)}
   .ss-listen i{flex:none;width:12px;height:12px;border-radius:50%;background:var(--t-accent);animation:ss-pulse 1.4s ease-in-out infinite}
   @keyframes ss-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.8)}}
@@ -390,7 +391,7 @@
     const subjectIds = subjects.map(s => s.id);
     if (!subjectIds.length) return { subjects, topics: [] };
     const since = new Date(Date.now() - 400 * DAY).toISOString();
-    const [topics, templatesAll, disabled, progress, status, exams, flags, timeRows] = await Promise.all([
+    const [topics, templatesAll, disabled, progress, status, exams, flags, timeRows, reviews] = await Promise.all([
       sb(`topics?select=id,title,order_num,subject_id&subject_id=in.${inList(subjectIds)}&order=order_num.asc`),
       sb(`nlm_checklist_templates?select=id,subject_id,step_order,title&subject_id=in.${inList(subjectIds)}`),
       sb(`nlm_disabled_steps?select=template_id&profile_id=eq.${profile.id}`),
@@ -398,25 +399,26 @@
       sb(`chapter_status?select=topic_id,class_done_at,fresh_since,test_on&profile_id=eq.${profile.id}`),
       sb(`exam_dates?select=subject_id,label,exam_date&profile_id=eq.${profile.id}`),
       sb(`topic_flags?select=topic_id,flag_type,note,updated_at&profile_id=eq.${profile.id}`),
-      sb(`study_time?select=kind,seconds,created_at&profile_id=eq.${profile.id}&created_at=gte.${encodeURIComponent(since)}`)
+      sb(`study_time?select=kind,seconds,created_at&profile_id=eq.${profile.id}&created_at=gte.${encodeURIComponent(since)}`),
+      sb(`answer_reviews?select=question_id,marks_awarded,marks_available,created_at&profile_id=eq.${profile.id}&order=created_at.asc&limit=2000`)
     ]);
     const topicIds = topics.map(t => t.id);
     const questions = [];
     // The database returns at most 1,000 rows per request, so page through every batch
     for (let i = 0; i < topicIds.length; i += 40) {
       for (let off = 0; ; off += 1000) {
-        const part = await sb(`quiz_questions?select=id,topic_id,qtype&topic_id=in.${inList(topicIds.slice(i, i + 40))}&order=id.asc&limit=1000&offset=${off}`) || [];
+        const part = await sb(`quiz_questions?select=id,topic_id,qtype,marks,source&topic_id=in.${inList(topicIds.slice(i, i + 40))}&order=id.asc&limit=1000&offset=${off}`) || [];
         part.forEach(q => questions.push(q));
         if (part.length < 1000) break;
       }
     }
     const attempts = [];
     for (let off = 0; ; off += 1000) {
-      const part = await sb(`quiz_attempts?select=question_id,result,created_at&profile_id=eq.${profile.id}&order=created_at.asc&limit=1000&offset=${off}`) || [];
+      const part = await sb(`quiz_attempts?select=question_id,result,source,created_at&profile_id=eq.${profile.id}&order=created_at.asc&limit=1000&offset=${off}`) || [];
       part.forEach(a => attempts.push(a));
       if (part.length < 1000 || off > 50000) break;
     }
-    return { subjects, topics, templatesAll, disabled, progress, status, exams, flags, timeRows, questions, attempts };
+    return { subjects, topics, templatesAll, disabled, progress, status, exams, flags, timeRows, questions, attempts, reviews: reviews || [] };
   }
 
   function buildModel(raw){
@@ -546,7 +548,65 @@
     let testMin = 0; (raw.timeRows || []).forEach(r => { if (r.kind === "test") testMin += r.seconds / 60; });
     m.goal = { minutes: GOAL_MIN, days: GOAL_DAYS, dayMin, weeksDone, thisWeekGood, today: Math.round(dayMin[dayKey(new Date())] || 0), todayCounts: goodDay(dayKey(new Date())), streakRule: STREAK_RULE, weekDone: thisWeekGood >= GOAL_DAYS, runs, streakNow, testMin: Math.round(testMin) };
     m.week = { testSec, learnMin, answered, fixed, days, ws, streak };
+    m.memory = memorySchedule(raw, m);
     return m;
+  }
+
+  // ---- Memory checks ----
+  // An exam question he scored 60%+ on (with or without help) comes back from fresh on a random day
+  // 7–14 days later, as a different unseen question on the same chapter where there is one. Pass:
+  // next check in 30 days (then 60). Miss: back in 3 days. A couple a week at most, never on
+  // consecutive days, and the questions worth the most marks come first.
+  // Each check is saved in quiz_attempts with source "memory:<original question id>:pass|miss".
+  const MEM_MIN = 0.6, MEM_PER_WEEK = 2;
+  function jitterDays(id){ let x = 0; for (const ch of String(id)) x = (x * 31 + ch.charCodeAt(0)) >>> 0; return 7 + (x % 8); }
+  function memorySchedule(raw, m){
+    const now = Date.now(), qs = {};
+    (raw.questions || []).forEach(q => { qs[q.id] = q; });
+    const isPastQ = q => q.qtype === "exam" && !/^exam-style/i.test(q.source || "");
+    const anchor = {};
+    (raw.reviews || []).forEach(r => {
+      const q = qs[r.question_id]; if (!q || q.qtype !== "exam" || !r.marks_available) return;
+      if (r.marks_awarded / r.marks_available < MEM_MIN) return;
+      const t = new Date(r.created_at).getTime(); if (!anchor[q.id] || t < anchor[q.id]) anchor[q.id] = t;
+    });
+    const checks = [], tried = new Set(), lastTry = {};
+    (raw.attempts || []).forEach(a => {
+      const t = new Date(a.created_at).getTime();
+      tried.add(a.question_id); lastTry[a.question_id] = Math.max(lastTry[a.question_id] || 0, t);
+      const mm = /^memory:(.+):(pass|miss)$/.exec(a.source || "");
+      if (mm) checks.push({ origin: mm[1], qid: a.question_id, t, pass: mm[2] === "pass" });
+    });
+    checks.sort((a, b) => a.t - b.t);
+    const byOrigin = {}; checks.forEach(c => (byOrigin[c.origin] = byOrigin[c.origin] || []).push(c));
+    const due = [];
+    Object.keys(anchor).forEach(id => {
+      const list = byOrigin[id] || [], last = list[list.length - 1];
+      let at;
+      if (!last) at = anchor[id] + jitterDays(id) * DAY;
+      else if (!last.pass) at = last.t + 3 * DAY;
+      else { let n = 0; for (let i = list.length - 1; i >= 0 && list[i].pass; i--) n++; at = last.t + (n >= 2 ? 60 : 30) * DAY; }
+      if (at <= now) due.push({ id, at, from: last ? last.t : anchor[id] });
+    });
+    const todayStart = startOfDay(new Date()).getTime();
+    const weekCount = checks.filter(c => c.t >= now - 7 * DAY).length;
+    const lastCheck = checks.length ? checks[checks.length - 1].t : 0;
+    const allowed = weekCount < MEM_PER_WEEK && lastCheck < todayStart - DAY;
+    // biggest marks first, then the longest overdue
+    due.sort((a, b) => ((qs[b.id] || {}).marks || 0) - ((qs[a.id] || {}).marks || 0) || a.at - b.at);
+    let next = null;
+    for (const d of due) {
+      const o = qs[d.id]; if (!o || !m.topics[o.topic_id]) continue;
+      const alt = Object.values(qs).filter(q => q.topic_id === o.topic_id && q.qtype === "exam" && q.id !== o.id && !tried.has(q.id))
+        .sort((a, b) => (isPastQ(b) - isPastQ(a)) || Math.abs((a.marks || 0) - (o.marks || 0)) - Math.abs((b.marks || 0) - (o.marks || 0)) || (b.marks || 0) - (a.marks || 0))[0];
+      const check = alt || (now - (lastTry[o.id] || 0) >= 14 * DAY ? o : null);
+      if (!check) continue;
+      next = { origin: o.id, qid: check.id, topic_id: o.topic_id, marks: check.marks || o.marks || 0, days: Math.max(1, Math.round((now - d.from) / DAY)), same: check.id === o.id };
+      break;
+    }
+    const lastBy = {}; checks.forEach(c => { lastBy[c.origin] = c; });
+    const remembered = new Set(Object.values(lastBy).filter(c => c.pass).map(c => c.origin));
+    return { next: allowed ? next : null, waiting: next, checks, weekCount, remembered, eligible: Object.keys(anchor).length };
   }
 
   // Most urgent first: refresh before an exam, things he pinned, questions to fix, then learning
@@ -795,11 +855,17 @@
     const q = Math.max(1, Math.min(pool, rounds * 10));
     return { topic_id: c.id, kind: kind || "test", rounds, q, mins: Math.max(2, Math.round(r.mins * q / r.n)) };
   }
+  function memoryItem(m){
+    const n = m.memory && m.memory.next; if (!n || !m.topics[n.topic_id]) return null;
+    return { topic_id: n.topic_id, kind: "memory", qid: n.qid, origin: n.origin, marks: n.marks, days: n.days, mins: Math.max(5, Math.min(25, Math.round((n.marks || 10) * 0.5))) };
+  }
   // Fill today's remaining minutes from today's plan: finish one chapter's questions before moving on
   function suggestSession(m, need){
     const items = []; let total = 0;
+    const mem = memoryItem(m); if (mem) { items.push(mem); total += mem.mins; }
     for (const p of todayPlan(m)) {
       if (total >= need) break;
+      if (mem && p.c.id === mem.topic_id) continue;
       const st = p.c.stats || {}, left = st.quickLeft || st.quickTotal || 0;
       const maxRounds = Math.max(1, Math.min(3, Math.ceil(left / 10)));
       let rounds = 1, it = testItem(p.c, rounds); if (!it) continue;
@@ -808,8 +874,9 @@
     }
     return items;
   }
-  function itemStatus(c, it, since){
+  function itemStatus(c, it, since, m){
     if (!c) return { done: false, n: 0 };
+    if (it.kind === "memory") { const ck = ((m && m.memory && m.memory.checks) || []).find(x => x.origin === it.origin && x.t >= since); return { done: !!ck, n: 0, pass: ck ? ck.pass : null }; }
     if (it.kind === "learn") return { done: (c.learnLastAt || 0) >= since, n: 0 };
     if (it.kind === "exam") { const n = (c.examAt || []).filter(t => t >= since).length; return { done: n >= 1, n }; }
     const n = (c.quickAt || []).filter(t => t >= since).length;
@@ -819,7 +886,8 @@
     const c = m.topics[it.topic_id]; if (!c) return null;
     const st = c.stats || {}, short = shortTitle(c.title);
     let what = it.what, detail;
-    if (it.kind === "learn") { what = what || "Learn"; detail = `video or revision guide · about ${it.mins} min`; }
+    if (it.kind === "memory") { what = what || "Memory check"; detail = `a ${it.marks ? it.marks + "-mark " : ""}exam question, from memory · you did this chapter ${it.days} days ago · about ${it.mins} min`; }
+    else if (it.kind === "learn") { what = what || "Learn"; detail = `video or revision guide · about ${it.mins} min`; }
     else if (it.kind === "exam") { what = what || "Exam question"; detail = `write one and get it marked · about ${it.mins} min`; }
     else if (it.kind === "revise") { what = what || "Revise"; detail = `revision guide, then a quick round · about ${it.mins} min`; }
     else {
@@ -835,8 +903,8 @@
     const s = loadSession(profile); if (!s) return null;
     const rows = s.items.map(it => ({ it, c: m.topics[it.topic_id] })).filter(r => r.c);
     const here = rows.find(r => r.c.id === currentId);
-    if (here && !itemStatus(here.c, here.it, s.startedAt).done) return null;
-    const next = rows.find(r => r.c.id !== currentId && !itemStatus(r.c, r.it, s.startedAt).done);
+    if (here && here.it.kind !== "memory" && !itemStatus(here.c, here.it, s.startedAt, m).done) return null;
+    const next = rows.find(r => r.c.id !== currentId && r.it.kind !== "memory" && !itemStatus(r.c, r.it, s.startedAt, m).done);
     if (!next) return null;
     const d = describe(m, next.it);
     return { c: next.c, item: next.it, tab: { learn: "learn", revise: "learn", exam: "refresh" }[next.it.kind] || "test",
@@ -852,6 +920,7 @@
     const open = (it) => {
       const c = m.topics[it.topic_id]; if (!c) return;
       if (it.kind === "test") { state.todayRun = c.id; openChapter(c.id, c.subject_id, "test"); }
+      else if (it.kind === "memory") { state.memoryRun = { topic: c.id, qid: it.qid, origin: it.origin, days: it.days }; openChapter(c.id, c.subject_id, "refresh"); }
       else openChapter(c.id, c.subject_id, it.kind === "exam" ? "refresh" : "learn");
     };
 
@@ -978,13 +1047,15 @@
           if (t) items.push({ ...t, q, mins: Math.max(2, Math.round(t.mins * q / Math.max(1, t.q))), added: true });
         }
       }
+      const mem = memoryItem(m);
+      if (items.length && mem && !items.some(it => it.topic_id === mem.topic_id && it.kind === "memory")) items.push({ ...mem, added: true });
       return { source: "mine", startedAt: Date.now(), items, unclear };
     }
 
     // 3. Today's session list
     function paintSession(){
       const s = loadSession(profile); if (!s) { paintAsk(); return; }
-      const rows = s.items.map((it, i) => ({ it, i, d: describe(m, it), st: itemStatus(m.topics[it.topic_id], it, s.startedAt) })).filter(r => r.d);
+      const rows = s.items.map((it, i) => ({ it, i, d: describe(m, it), st: itemStatus(m.topics[it.topic_id], it, s.startedAt, m) })).filter(r => r.d);
       const doneN = rows.filter(r => r.st.done).length, left = rows.filter(r => !r.st.done);
       const nextIdx = left.length ? left[0].i : -1;
       const minsLeft = sum(left.map(r => r.it));
@@ -998,7 +1069,7 @@
         const c = m.topics[it.topic_id], chs = (m.bySubject[c.subject_id] || { chapters: [] }).chapters.slice().sort((a, b) => (a.order_num || 0) - (b.order_num || 0));
         return `<div class="ss-check"><span>Is this the right chapter?</span><select data-pick="${i}" aria-label="Which chapter">${chs.map(x => `<option value="${x.id}"${x.id === c.id ? " selected" : ""}>Ch ${x.order_num ?? ""}: ${esc(shortTitle(x.title))}</option>`).join("")}</select><button type="button" class="hs-btn small" data-sure="${i}" style="align-self:flex-start">Yes, that's it</button></div>`;
       };
-      const progress = r => r.st.done ? "Done" : (r.it.kind === "test" || r.it.kind === "revise") && r.st.n ? `${Math.min(r.st.n, r.it.q)} of ${r.it.q} answered` : "";
+      const progress = r => r.it.kind === "memory" && r.st.done ? (r.st.pass ? "Remembered ✓" : "Done · it'll come back in a few days") : r.st.done ? "Done" : (r.it.kind === "test" || r.it.kind === "revise") && r.st.n ? `${Math.min(r.st.n, r.it.q)} of ${r.it.q} answered` : "";
       el.innerHTML = `${head()}
         <span class="ss-k">${s.source === "mine" ? "Your plan" : "Suggested plan"}</span>
         <div><div class="ss-count">${allDone ? "All done" : `${doneN} of ${rows.length} done`}</div><span class="hs-sub" style="font-size:15px">${line}</span></div>

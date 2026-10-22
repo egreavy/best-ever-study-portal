@@ -307,7 +307,7 @@
   // ---- data ----
   async function loadProgress(sb, profile, questions, freshSince){
     const ids = questions.map(q => q.id);
-    if (!ids.length) return { latest:{}, src:{}, reviews:{}, when:{}, everWeak:new Set(), lastAt:null };
+    if (!ids.length) return { latest:{}, src:{}, reviews:{}, when:{}, everWeak:new Set(), lastAt:null, remembered:new Set() };
     const inIds = ids.map(encodeURIComponent).join(",");
     const [att, rev] = await Promise.all([
       sb(`quiz_attempts?select=question_id,result,source,created_at&profile_id=eq.${profile.id}&question_id=in.(${inIds})&order=created_at.desc&limit=1000`),
@@ -323,7 +323,9 @@
     });
     (rev||[]).forEach(r => { if (!reviews[r.question_id]) reviews[r.question_id] = r; });
     const lastAt = att && att[0] ? new Date(att[0].created_at) : null;
-    return { latest, src, when, reviews, everWeak, ever, lastAt, att: att || [] };
+    // memory checks he passed, by the original question they were checking
+    const remembered = new Set(); (att || []).forEach(a => { const mm = /^memory:(.+):pass$/.exec(a.source || ""); if (mm) remembered.add(mm[1]); });
+    return { latest, src, when, reviews, everWeak, ever, lastAt, att: att || [], remembered };
   }
   async function record(sb, profile, qid, result, source){
     await sb("quiz_attempts", { method:"POST", prefer:"return=minimal", body:[{ profile_id: profile.id, question_id: qid, result, source }] });
@@ -350,7 +352,7 @@
       const tip = ((r.feedback || {}).to_improve || [])[0];
       return `${r.marks_awarded} out of ${r.marks_available} marks.${tip ? " " + tip : ""}`;
     }
-    const where = { quiz: "in a quiz", tutor: "with your tutor", written: "in a written answer" }[prog.src[q.id]] || "";
+    const where = { quiz: "in a quiz", tutor: "with your tutor", written: "in a written answer", helped: "after improving your answer", memory: "in a memory check" }[String(prog.src[q.id] || "").split(":")[0]] || "";
     return prog.latest[q.id] === 0 ? `You didn't know this one yet${where ? " (" + where + ")" : ""}` : `Half right${where ? " " + where : ""}. Nearly there.`;
   }
   const isPast = q => q.qtype === "exam" && !/^exam-style/i.test(q.source || "");
@@ -556,6 +558,7 @@
     const partOf = q => String(q.source || "").replace(/^\s*(19|20)\d{2}\s*State Exam\s*[-–·]\s*/i, "");
     function chip(q){
       const r = prog.reviews[q.id], v = prog.latest[q.id];
+      if (prog.remembered && prog.remembered.has(q.id)) return `<span class="pp-chip good">Remembered &#10003;</span>`;
       if (v === undefined) return `<span class="pp-chip">Not tried</span>`;
       const score = r && r.marks_available ? `${r.marks_awarded}/${r.marks_available}` : v >= 1 ? "Got it" : "Tried";
       return v >= 1 ? `<span class="pp-chip good">${esc(score)}</span>` : `<span class="pp-chip mid">${esc(score)} · improve</span>`;
@@ -719,10 +722,10 @@
       start("Practice round", list, undefined, true);
     }
 
-    function start(name, list, where, today){
+    function start(name, list, where, today, extra){
       if (!list || !list.length) return;
       if (session) { logTime(session); home(); }
-      session = { name, queue: list.map(q => ({ q, retry:false })), i:0, results:[], total:list.length, t0: Date.now(), where: where === "prep" && prepSlot ? prepSlot : slot, today: !!today, base: 0 };
+      session = { name, queue: list.map(q => ({ q, retry:false })), i:0, results:[], total:list.length, t0: Date.now(), where: where === "prep" && prepSlot ? prepSlot : slot, today: !!today, base: 0, memory: (extra && extra.memory) || null };
       if (today) todayBase().then(m => { if (session) { session.base = m; paintRing(); } });
       setChrome(false);
       next();
@@ -733,7 +736,7 @@
       const entry = session.queue[session.i], { q, retry } = entry;
       const label = q.qtype === "exam" ? (isPast(q) ? `Past paper · ${esc(q.source || "")} · ${q.marks || 5} marks` : `Exam-style question · ${q.marks || 5} marks`) : q.qtype === "recall" ? "Short answer" : "Quick quiz";
       const card = h(`<div class="pr-card">
-        <div class="pr-row" style="justify-content:space-between"><button type="button" class="pr-btn ghost" data-stop>← Go back</button><span class="pr-small" style="font-variant-numeric:tabular-nums">${entry.again ? "Improving your answer" : retry ? "Second try" : `Question ${session.i+1} of ${session.total}`}</span></div>
+        <div class="pr-row" style="justify-content:space-between"><button type="button" class="pr-btn ghost" data-stop>← Go back</button><span class="pr-small" style="font-variant-numeric:tabular-nums">${entry.again ? "Improving your answer" : retry ? "Second try" : session.memory ? "Memory check" : `Question ${session.i+1} of ${session.total}`}</span></div>
         <div class="pr-progress"><i style="width:${Math.min(session.i,session.total)/session.total*100}%"></i></div>
         <div class="pr-meta"><span>${label}</span>${session.today ? `<span class="pr-today" data-ring></span>` : ""}</div>
         ${questionHtml(q)}</div>`);
@@ -894,6 +897,7 @@
 
     function writtenView(card, q, retry, entry = {}){
       const images = [], isExam = q.qtype === "exam";
+      const mem = session && session.memory && !entry.again && !retry ? session.memory : null;
       const box = h(`<div style="display:flex;flex-direction:column;gap:10px">
         <p class="pr-tip">Type your answer, tap the microphone to speak it, or add a photo of a written answer.</p>
         ${SR ? "" : speakTip()}
@@ -906,6 +910,11 @@
         <p class="pr-err" hidden></p></div>`);
       const ta = box.querySelector("textarea"), thumbs = box.querySelector(".pr-thumbs"), file = box.querySelector("input[type=file]"), err = box.querySelector(".pr-err");
       const fbBtn = box.querySelector("[data-fb]"), selfBtn = box.querySelector("[data-self]");
+      if (mem) {
+        // From fresh: no notes, no peeking at the answer, marked like the real exam
+        box.querySelector(".pr-tip").innerHTML = `<b>Memory check.</b> Answer from memory, with no notes or book. It's marked like the real exam, and shows what has stuck since you did this chapter ${mem.days} days ago.`;
+        selfBtn.style.display = "none";
+      }
       if (entry.again) {
         ta.value = entry.prev || "";
         box.querySelector(".pr-tip").textContent = entry.added && entry.added.length
@@ -948,15 +957,16 @@
           const f = data.feedback, frac = f.marks_available ? f.marks_awarded / f.marks_available : 0;
           const v = frac >= 0.8 ? 1 : frac >= 0.4 ? 0.5 : 0;
           await sb("answer_reviews", { method:"POST", prefer:"return=minimal", body:[{ profile_id: profile.id, question_id: q.id, answer_text: text || f.transcription || null, marks_awarded: f.marks_awarded, marks_available: f.marks_available, feedback: f }] });
-          done(v, "written");
+          done(v, mem ? `memory:${mem.origin}:${frac >= 0.6 ? "pass" : "miss"}` : entry.again ? "helped" : "written");
           box.remove();
           const list = a => a.length ? `<ul>${a.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "";
           // Short first: the mark, one thing that worked, the one change worth most. The rest is folded.
           const good1 = f.went_well[0] || f.summary || "", fix1 = f.to_improve[0] || "";
           const shown = text || f.transcription || "";
           const upTxt = entry.before && f.marks_awarded > entry.before.marks_awarded ? (isExam ? `Up from ${entry.before.marks_awarded} to ${f.marks_awarded} marks.` : "Better than last time.") : "";
+          const memLine = mem ? `<p class="pr-k pr-memres"><b>${frac >= 0.6 ? `You remembered this from ${mem.days} days ago &#10003;` : "Worth another go. This one will come back in a few days."}</b></p>` : "";
           const fbEl = h(`<div class="pr-fb ${v===1?"good":""}">
-            <div class="pr-key">
+            <div class="pr-key">${memLine}
               <div class="pr-row" style="gap:12px 16px">${isExam ? `<span class="pr-score">${f.marks_awarded}/${f.marks_available}</span>` : `<span class="pr-verd">${v === 1 ? `<span class="pr-tick" aria-hidden="true">&#10003;</span><strong>Got it.</strong>` : `<strong>${v ? "Nearly." : "Not yet."}</strong>`}</span>`}${upTxt ? `<span class="pr-up">${upTxt}</span>` : ""}${"speechSynthesis" in window ? `<button type="button" class="pr-hear" data-hear aria-label="Hear the feedback">${SPEAK_SVG}<span>Hear it</span></button>` : ""}</div>
               ${isExam ? `${good1 ? `<p class="pr-k"><b>Good:</b> ${esc(good1)}</p>` : ""}
               ${fix1 ? `<p class="pr-k"><b>For more marks:</b> ${esc(fix1)}</p>` : ""}` : `${f.went_well.length ? `<h4>What you got right</h4>${list(f.went_well)}` : ""}
@@ -1057,7 +1067,14 @@
 
     paintStats();
     home();
-    return { refresh: paintStats, startToday: () => start("Your Daily Practice", todaysPick()), runToday };
+    // A memory check: one exam question from fresh, on the Exam Prep tab
+    function runMemory(qid, origin, days){
+      const q = questions.find(x => x.id === qid); if (!q) return false;
+      goTo("refresh");
+      start("Memory check", [q], "prep", false, { memory: { origin, days: days || 7 } });
+      return true;
+    }
+    return { refresh: paintStats, startToday: () => start("Your Daily Practice", todaysPick()), runToday, runMemory };
   }
   window.mountPractice = mountPractice;
 })();
