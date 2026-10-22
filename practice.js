@@ -744,11 +744,15 @@
       const entry = session.queue[session.i], { q, retry } = entry;
       const label = q.qtype === "exam" ? (isPast(q) ? `Past paper · ${esc(q.source || "")} · ${q.marks || 5} marks` : `Exam-style question · ${q.marks || 5} marks`) : q.qtype === "recall" ? "Short answer" : "Quick quiz";
       const card = h(`<div class="pr-card">
-        <div class="pr-row" style="justify-content:space-between"><button type="button" class="pr-btn ghost" data-stop>← Go back</button><span class="pr-small" style="font-variant-numeric:tabular-nums">${entry.again ? "Improving your answer" : retry ? "Second try" : session.memory ? "Memory check" : `Question ${session.i+1} of ${session.total}`}</span></div>
+        <div class="pr-row" style="justify-content:space-between"><button type="button" class="pr-btn ghost" data-stop>${session.paper && goHome ? "← Back to the paper" : "← Go back"}</button><span class="pr-small" style="font-variant-numeric:tabular-nums">${entry.again ? "Improving your answer" : retry ? "Second try" : session.memory ? "Memory check" : `Question ${session.i+1} of ${session.total}`}</span></div>
         <div class="pr-progress"><i style="width:${Math.min(session.i,session.total)/session.total*100}%"></i></div>
         <div class="pr-meta"><span>${label}</span>${session.today ? `<span class="pr-today" data-ring></span>` : ""}</div>
         ${questionHtml(q)}</div>`);
-      card.querySelector("[data-stop]").onclick = () => session.results.length ? finish() : home();
+      card.querySelector("[data-stop]").onclick = () => {
+        // From an exam paper, back always means the paper
+        if (session.paper && goHome) { logTime(session); session = null; goHome(); return; }
+        session.results.length ? finish() : home();
+      };
       session.t0 = session.t0 || Date.now();
       if (q.qtype === "mcq") mcqView(card, q, retry); else writtenView(card, q, retry, entry);
       session.where.replaceChildren(card);
@@ -1019,7 +1023,12 @@
         box.remove();
         card.append(h(`<div class="pr-fb"><strong>${isExam?"Model answer":"A good answer"}</strong><span>${esc(q.model_answer||"")}</span>${q.marking_scheme?`<span class="pr-scheme"><strong>Marking scheme:</strong> ${esc(q.marking_scheme)}</span>`:""}</div>`));
         const r = h(`<div style="display:flex;flex-direction:column;gap:10px"><strong style="font-size:17px">How did you do?</strong><div class="pr-rate"><button type="button">Got it</button><button type="button">Half right</button><button type="button">Not yet</button></div></div>`);
-        [1, 0.5, 0].forEach((v, i) => r.querySelectorAll("button")[i].onclick = () => { done(v, "quiz"); session.i++; next(); });
+        [1, 0.5, 0].forEach((v, i) => r.querySelectorAll("button")[i].onclick = () => {
+          done(v, "quiz");
+          // From an exam paper: stay here and offer Next question / Back to the paper
+          if (session.paper && session.i >= session.queue.length - 1) { r.querySelectorAll("button").forEach(b => b.disabled = true); r.querySelectorAll("button")[i].classList.add("on"); nextBtn(card); return; }
+          session.i++; next();
+        });
         card.append(r);
       };
       card.append(box);
