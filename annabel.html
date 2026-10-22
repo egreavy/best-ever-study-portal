@@ -653,7 +653,9 @@ async function renderChapter(){
   const VERB = { "Video Overview": "Watch", "Audio Recap": "Listen" };
 
   // Students only see materials that are ready (a link is saved, or already ticked)
-  const isReady = t => { const e = doneMap[t.step_order] || {}; return !!(e.resourceUrl || e.done); };
+  // Shown to the student if it has a link, or was ticked when the page opened (so unticking to redo it never hides it)
+  const shownAtLoad = new Set(progressRows.filter(r => r.done).map(r => r.step_order));
+  const isReady = t => { const e = doneMap[t.step_order] || {}; return !!(e.resourceUrl || e.done || shownAtLoad.has(t.step_order)); };
   const shownRows = rows => isParentMode() ? rows : rows.filter(t => isReady(t) || (t.title === "Video Overview" && videoRequest && (videoRequest.status === "pending" || videoRequest.status === "processing")));
   function totalSteps(){ return shownRows(learnRows).length; }
   function doneCount(){ return shownRows(learnRows).filter(t => (doneMap[t.step_order] || {}).done).length; }
@@ -776,7 +778,7 @@ async function renderChapter(){
         el.dataset.done = String(newDone);
         if (newDone) el.classList.add("just-checked");
         refreshSteps();
-        await sb("nlm_progress", {
+        await sb("nlm_progress?on_conflict=topic_id,profile_id,step_order", {
           method: "POST",
           prefer: "resolution=merge-duplicates,return=minimal",
           body: [{ topic_id: state.topicId, profile_id: PROFILE.id, step_order: step, done: newDone, updated_at: new Date().toISOString() }]
@@ -793,7 +795,7 @@ async function renderChapter(){
         if (!url) return;
         btn.disabled = true;
         btn.textContent = "Saving...";
-        await sb("nlm_progress", {
+        await sb("nlm_progress?on_conflict=topic_id,profile_id,step_order", {
           method: "POST",
           prefer: "resolution=merge-duplicates,return=minimal",
           body: [{ topic_id: state.topicId, profile_id: PROFILE.id, step_order: step, resource_url: url, updated_at: new Date().toISOString() }]
