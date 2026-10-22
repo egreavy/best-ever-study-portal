@@ -466,7 +466,7 @@
 
   // ---- mount ----
   async function mountPractice(slot, opts){
-    const { topic, profile, sb, moreSlot, paperSlot, refreshSlot, prepSlot, rightSlot, goTo = () => {}, onStats = () => {}, onStartFresh = async () => {}, hideDuring = [], prepHide = [], nextUp = null, sessionNext = null, openToday = null, goHome = null, dailyGoal = 30 } = opts;
+    const { topic, profile, sb, moreSlot, paperSlot, refreshSlot, prepSlot, rightSlot, goTo = () => {}, onStats = () => {}, onStartFresh = async () => {}, hideDuring = [], prepHide = [], nextUp = null, sessionNext = null, openToday = null, goHome = null, paperNext = null, dailyGoal = 30 } = opts;
     const freshSince = typeof opts.freshSince === "function" ? opts.freshSince : () => opts.freshSince || null;
     if (!slot || !topic) return null;
     addCss();
@@ -571,6 +571,12 @@
       const byMarks = l => l.slice().sort((a, b) => (b.marks || 0) - (a.marks || 0));
       const q = [...byMarks(untriedP), ...byMarks(weakP), ...byMarks(untriedS), ...byMarks(weakS)];
       return (q.length ? q : [...past, ...style]).slice(0, 5);
+    }
+    // The question after this one in the Exam Prep list, as shown (past papers newest first, else practice questions)
+    function prepNextAfter(q){
+      const past = pastSorted(), list = past.length ? past : styleQs();
+      const i = list.findIndex(x => x.id === q.id);
+      return i >= 0 && i < list.length - 1 ? list[i + 1] : null;
     }
     function paintPrep(){
       if (!prepSlot) return;
@@ -727,7 +733,7 @@
     function start(name, list, where, today, extra){
       if (!list || !list.length) return;
       if (session) { logTime(session); home(); }
-      session = { name, queue: list.map(q => ({ q, retry:false })), i:0, results:[], total:list.length, t0: Date.now(), where: where === "prep" && prepSlot ? prepSlot : slot, today: !!today, base: 0, memory: (extra && extra.memory) || null, paper: !!(extra && extra.paper) };
+      session = { name, queue: list.map(q => ({ q, retry:false })), i:0, results:[], total:list.length, startTotal:list.length, t0: Date.now(), where: where === "prep" && prepSlot ? prepSlot : slot, today: !!today, base: 0, memory: (extra && extra.memory) || null, paper: !!(extra && extra.paper) };
       if (today) todayBase().then(m => { if (session) { session.base = m; paintRing(); } });
       setChrome(false);
       next();
@@ -751,17 +757,27 @@
     }
 
     function nextBtn(card){
-      // Say where it goes: next question, finish, or straight back to Exam Prep after a single question
-      const lastOne = session.i >= session.queue.length - 1, single = lastOne && session.total === 1 && session.where === prepSlot;
-      const toPaper = lastOne && session.paper && goHome;
-      const label = toPaper ? "Back to the paper" : !lastOne ? "Next question ›" : single ? "Back to Exam Prep" : "Finish practice";
-      const b = h(`<div class="pr-row pr-nextrow"><button type="button" class="pr-btn">${label}</button></div>`);
-      b.querySelector("button").onclick = () => {
-        if (toPaper) { logTime(session); session = null; goHome(); return; }
+      // Say where it goes. Single exam questions (from a paper or the Exam Prep list) get a Next question
+      // button to the next one in that paper or list, with Back as the second choice.
+      const lastOne = session.i >= session.queue.length - 1, single = lastOne && session.startTotal === 1 && session.where === prepSlot;
+      const inPaper = lastOne && session.paper && goHome;
+      const cur = session.queue[session.i] && session.queue[session.i].q;
+      const listNext = single && !session.paper && !session.memory && cur ? prepNextAfter(cur) : null;
+      const hasNext = inPaper ? !!(paperNext && paperNext(false)) : !!listNext;
+      const label = (inPaper || single) && hasNext ? "Next question ›" : inPaper ? "Back to the paper" : !lastOne ? "Next question ›" : single ? "Back to Exam Prep" : "Finish practice";
+      const back = (inPaper || single) && hasNext ? (inPaper ? "Back to the paper" : "Back to Exam Prep") : "";
+      const b = h(`<div class="pr-row pr-nextrow"><button type="button" class="pr-btn" data-go>${label}</button>${back ? `<button type="button" class="pr-btn ghost" data-back>${back}</button>` : ""}</div>`);
+      const leave = () => { logTime(session); session = null; };
+      b.querySelector("[data-go]").onclick = () => {
+        if (inPaper && hasNext) { leave(); paperNext(true); return; }
+        if (inPaper) { leave(); goHome(); return; }
+        if (single && listNext) { logTime(session); start("Exam Prep", [listNext], "prep"); return; }
         if (single) { logTime(session); home(); return; }
         session.i++; next();
       };
-      card.append(b); b.querySelector("button").focus({ preventScroll:true });
+      const bk = b.querySelector("[data-back]");
+      if (bk) bk.onclick = () => { if (inPaper) { leave(); goHome(); } else { logTime(session); home(); } };
+      card.append(b); b.querySelector("[data-go]").focus({ preventScroll:true });
     }
     const save = async (qid, v, source) => { await record(sb, profile, qid, v, source); prog = await loadProgress(sb, profile, questions, freshSince()); paintStats(); };
     function logTime(s){

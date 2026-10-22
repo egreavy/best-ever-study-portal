@@ -1330,7 +1330,8 @@
     view.querySelectorAll("[data-fx-mode]").forEach(b => b.onclick = () => { state.fxMode = b.dataset.fxMode; again(); });
     view.querySelectorAll("[data-fx-year]").forEach(b => b.onclick = () => { state.fxMode = "paper"; state.fxYear = b.dataset.fxYear; again(); window.scrollTo({ top: 0 }); });
     view.querySelectorAll("[data-fx-back]").forEach(b => b.onclick = () => { state.fxMode = b.dataset.fxBack; state.fxYear = ""; again(); });
-    view.querySelectorAll("[data-fx-q]").forEach(b => b.onclick = () => { const qs = (m.papers[state.fxOpen] || {})[state.fxYear] || []; const q = qs.find(x => x.id === b.dataset.fxQ); const c = q && m.topics[q.topic_id]; if (!c) return; state.paperRun = { topic: c.id, qid: q.id }; openChapter(c.id, c.subject_id, "refresh"); });
+    view.querySelectorAll("[data-fx-q]").forEach(b => b.onclick = () => { const qs = (m.papers[state.fxOpen] || {})[state.fxYear] || []; const q = qs.find(x => x.id === b.dataset.fxQ); const c = q && m.topics[q.topic_id]; if (!c) return;
+      state.paperList = qs.map(x => ({ id: x.id, topic: x.topic_id, subject: (m.topics[x.topic_id] || {}).subject_id })); state.paperRun = { topic: c.id, qid: q.id }; openChapter(c.id, c.subject_id, "refresh"); });
     view.querySelectorAll("[data-fx-ch]").forEach(b => b.onclick = () => { const c = m.topics[b.dataset.fxCh]; state.examRun = c.id; openChapter(c.id, c.subject_id, "refresh"); });
     const fm = view.querySelector("[data-fx-mem]"); if (fm) fm.onclick = () => { const it = memoryItem(m); const c = m.topics[it.topic_id]; state.memoryRun = { topic: c.id, qid: it.qid, origin: it.origin, days: it.days }; openChapter(c.id, c.subject_id, "refresh"); };
     if (view.querySelector("#todaySession")) mountSession(view.querySelector("#todaySession"), m, { profile, openChapter, state, again });
