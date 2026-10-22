@@ -14,10 +14,19 @@ function sameSite(req) {
 }
 
 async function getQuestion(id) {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/quiz_questions?select=id,topic_id,qtype,topic_label,prompt,model_answer,marking_scheme,source,marks&id=eq.${encodeURIComponent(id)}`,
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/quiz_questions?select=id,topic_id,qtype,topic_label,prompt,display,model_answer,marking_scheme,source,marks&id=eq.${encodeURIComponent(id)}`,
     { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } });
   const rows = r.ok ? await r.json() : [];
   return rows[0] || null;
+}
+
+// [[img: qimg/file.png | description]] lines in the question's layout -> absolute URLs on this site
+function questionImages(q, req) {
+  const host = req.headers["x-forwarded-host"] || req.headers.host || "";
+  if (!q.display || !host) return [];
+  const out = [];
+  String(q.display).replace(/\[\[img:\s*([^|\]]+)/gi, (m, p) => { const path = p.trim().replace(/^\/+/, ""); if (/^qimg\/[\w.-]+$/.test(path)) out.push(`https://${host}/${path}`); return m; });
+  return out.slice(0, 4);
 }
 
 async function subjectFor(topicId) {
@@ -82,9 +91,17 @@ module.exports = async (req, res) => {
   const q = await getQuestion(String(body.question_id || ""));
   if (!q) { res.status(404).json({ error: "Question not found." }); return; }
 
-  const content = images.map(d => {
+  // Pictures that are part of the exam question itself (graphs, cartoons, maps) go first, labelled
+  const content = [];
+  const qImgs = questionImages(q, req);
+  if (qImgs.length) {
+    content.push({ type: "text", text: "The picture(s) below are part of the exam QUESTION (not the student's answer):" });
+    qImgs.forEach(url => content.push({ type: "image", source: { type: "url", url } }));
+  }
+  if (images.length && qImgs.length) content.push({ type: "text", text: "The photo(s) below are the STUDENT'S ANSWER:" });
+  images.forEach(d => {
     const [, mt, data] = d.match(/^data:(image\/\w+);base64,(.*)$/);
-    return { type: "image", source: { type: "base64", media_type: mt, data } };
+    content.push({ type: "image", source: { type: "base64", media_type: mt, data } });
   });
   const subject = await subjectFor(q.topic_id);
   content.push({ type: "text", text: instructions(q, images.length > 0, typed, subject) });

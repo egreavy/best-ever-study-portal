@@ -16,6 +16,14 @@ async function getJson(path) {
   try { const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, H); return r.ok ? await r.json() : []; } catch (e) { return []; }
 }
 const clip = (s, n) => String(s || "").slice(0, n);
+// [[img: qimg/file.png | ...]] in the question's layout -> absolute URLs on this site
+function questionImages(q, req) {
+  const host = req.headers["x-forwarded-host"] || req.headers.host || "";
+  if (!q.display || !host) return [];
+  const out = [];
+  String(q.display).replace(/\[\[img:\s*([^|\]]+)/gi, (m, p) => { const path = p.trim().replace(/^\/+/, ""); if (/^qimg\/[\w.-]+$/.test(path)) out.push(`https://${host}/${path}`); return m; });
+  return out.slice(0, 4);
+}
 
 function context({ q, subject, notes, answer, f }) {
   return `Leaving Certificate Higher Level ${subject || ""} question (${q.source || "practice question"}, ${q.marks || 5} marks):
@@ -72,7 +80,7 @@ module.exports = async (req, res) => {
   if (typeof body === "string") { try { body = JSON.parse(body); } catch (e) { body = {}; } }
   body = body || {};
   const action = body.action === "check" ? "check" : "plan";
-  const rows = await getJson(`quiz_questions?select=id,topic_id,prompt,model_answer,marking_scheme,source,marks&id=eq.${encodeURIComponent(String(body.question_id || ""))}`);
+  const rows = await getJson(`quiz_questions?select=id,topic_id,prompt,display,model_answer,marking_scheme,source,marks&id=eq.${encodeURIComponent(String(body.question_id || ""))}`);
   const q = rows[0];
   if (!q) { res.status(404).json({ error: "Question not found." }); return; }
   const fIn = body.feedback || {};
@@ -99,13 +107,14 @@ module.exports = async (req, res) => {
     prompt = checkPrompt(ctx, { title: clip(st.title, 120), why: clip(st.why, 300) }, sentence);
   }
 
+  const qImgs = questionImages(q, req);
   const call = () => fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: Object.assign(
       { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
       process.env.ANTHROPIC_WORKSPACE_ID ? { "anthropic-workspace-id": process.env.ANTHROPIC_WORKSPACE_ID.trim() } : {}
     ),
-    body: JSON.stringify({ model: MODEL, max_tokens: 700, messages: [{ role: "user", content: prompt }] }),
+    body: JSON.stringify({ model: MODEL, max_tokens: 700, messages: [{ role: "user", content: qImgs.length ? [{ type: "text", text: "The picture(s) below are part of the exam question:" }, ...qImgs.map(url => ({ type: "image", source: { type: "url", url } })), { type: "text", text: prompt }] : prompt }] }),
   });
   try {
     let parsed = null;

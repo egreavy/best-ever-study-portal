@@ -194,6 +194,19 @@
   .qd-table th,.qd-table td{border:1px solid var(--t-line);padding:6px 10px;text-align:left;vertical-align:top}
   .qd-table th{background:color-mix(in srgb,var(--t-line) 45%,transparent);font-weight:700}
   .qd-plain p{margin:0 0 8px;font-size:16px;line-height:1.6}
+  .qd-fig{margin:0 0 10px;display:flex;flex-direction:column;gap:4px}
+  .qd-zoom{display:block;padding:0;border:1px solid var(--t-line);border-radius:8px;background:#fff;cursor:zoom-in;overflow:hidden;max-width:100%}
+  .qd-zoom img{display:block;max-width:100%;height:auto;max-height:520px;margin:0 auto;object-fit:contain}
+  .qd-fig figcaption{font-size:13px;color:var(--t-muted)}
+  .qd-fig.big figcaption{font-weight:700}
+  .qd-lb{position:fixed;inset:0;z-index:1000;background:#111;display:flex;flex-direction:column}
+  .qd-lb-bar{display:flex;align-items:center;gap:10px;padding:10px 12px;color:#fff;font-size:14px}
+  .qd-lb-bar span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .qd-lb-x{background:#fff;color:#111;border:0;border-radius:99px;width:40px;height:40px;font-size:18px;cursor:pointer}
+  .qd-lb-scroll{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;touch-action:pinch-zoom pan-x pan-y}
+  .qd-lb-scroll img{max-width:100%;max-height:100%;background:#fff}
+  .qd-lb-tools{display:flex;justify-content:center;gap:10px;padding:10px}
+  .qd-lb-tools button{background:#fff;color:#111;border:0;border-radius:99px;min-width:48px;height:40px;font-size:18px;font-weight:700;cursor:pointer}
   @media (max-width:600px){.qd-table{font-size:13.5px}.qd-table th,.qd-table td{padding:5px 6px}.qd-body{padding:2px 10px 10px}}
   .pr-meta{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:14px;color:var(--t-muted)}
   .pr-progress{height:6px;background:var(--t-line);border-radius:99px;overflow:hidden}.pr-progress i{display:block;height:100%;background:var(--t-ink)}
@@ -363,6 +376,11 @@
       }
       if (l.startsWith("- ")) { let li = ""; while (i < lines.length && lines[i].startsWith("- ")) { li += `<li>${esc(lines[i].slice(2))}</li>`; i++; } out += `<ul>${li}</ul>`; continue; }
       if (l.startsWith("~~ ")) out += `<p class="qd-src">${esc(l.slice(3))}</p>`;
+      else if (/^\[\[img:/i.test(l)) {
+        const parts = l.replace(/^\[\[img:\s*/i, "").replace(/\]\]\s*$/, "").split("|").map(x => x.trim());
+        const src = parts[0] || "", alt = parts[1] || "Picture from the exam paper", big = /^big$/i.test(parts[2] || "");
+        if (/^qimg\/[\w.-]+$/.test(src)) out += `<figure class="qd-fig${big ? " big" : ""}"><button type="button" class="qd-zoom" data-zoom="${esc(src)}" data-alt="${esc(alt)}" aria-label="Enlarge: ${esc(alt)}"><img src="${esc(src)}" alt="${esc(alt)}" loading="lazy"></button><figcaption>${big ? "Best on a bigger screen. Tap to enlarge, then zoom in." : "Tap to enlarge"}</figcaption></figure>`;
+      }
       else if (/^\[\[image:/i.test(l)) out += `<p class="qd-img">Picture on the exam paper: ${esc(l.replace(/^\[\[image:\s*/i, "").replace(/\]\]$/, ""))}</p>`;
       else if (l.startsWith('"" ')) out += `<blockquote>${esc(l.slice(3))}</blockquote>`;
       else out += `<p>${esc(l)}</p>`;
@@ -392,6 +410,22 @@
       ${P.secs.length ? `${!open ? `<p class="qd-lead">Read ${P.secs.length > 1 ? `these ${P.secs.length}` : "this"} first</p>` : ""}${P.secs.map(s => `<details class="qd-sec"${open ? " open" : ""}><summary><span>${esc(s.title)}</span><span class="qd-tap">${open ? "" : "Tap to read"}</span></summary><div class="qd-body">${linesHtml(s.lines)}</div></details>`).join("")}` : ""}
     </div>`;
   }
+  // Tap a question picture to see it full screen (scroll/pinch to zoom; Esc or ✕ to close)
+  function openZoom(src, alt){
+    const box = h(`<div class="qd-lb" role="dialog" aria-modal="true" aria-label="${esc(alt)}"><div class="qd-lb-bar"><span>${esc(alt)}</span><button type="button" class="qd-lb-x" aria-label="Close">✕</button></div><div class="qd-lb-scroll"><img src="${esc(src)}" alt="${esc(alt)}"></div><div class="qd-lb-tools"><button type="button" data-z="-1" aria-label="Zoom out">−</button><button type="button" data-z="0">Fit</button><button type="button" data-z="1" aria-label="Zoom in">+</button></div></div>`);
+    const img = box.querySelector("img"), sc = box.querySelector(".qd-lb-scroll");
+    let z = 1;
+    const apply = () => { img.style.width = z === 1 ? "" : (z * 100) + "%"; img.style.maxWidth = z === 1 ? "100%" : "none"; img.style.maxHeight = z === 1 ? "100%" : "none"; };
+    box.querySelectorAll("[data-z]").forEach(b => b.onclick = () => { const d = +b.dataset.z; z = d === 0 ? 1 : Math.max(1, Math.min(4, z + d)); apply(); });
+    const close = () => { box.remove(); document.removeEventListener("keydown", key); };
+    const key = e => { if (e.key === "Escape") close(); };
+    box.querySelector(".qd-lb-x").onclick = close;
+    document.addEventListener("keydown", key);
+    document.body.append(box);
+    box.querySelector(".qd-lb-x").focus();
+  }
+  document.addEventListener("click", e => { const b = e.target.closest && e.target.closest(".qd-zoom"); if (b) openZoom(b.dataset.zoom, b.dataset.alt || ""); });
+
   // One line that says what the question asks (for lists)
   const qMain = q => { const P = qParse(q); return P ? P.asks.join(" ") : q.prompt; };
   const shortTitle = q => q.qtype === "exam" ? `${isPast(q) ? "Past paper" : "Exam question"}: ${qMain(q)}` : q.prompt;
