@@ -990,7 +990,7 @@
   function describe(m, it){
     const c = m.topics[it.topic_id]; if (!c) return null;
     const st = c.stats || {}, short = shortTitle(c.title);
-    let what = it.what, detail;
+    let what = /quick tests?/i.test(it.what || "") ? "Quick test" : it.what, detail;
     if (it.kind === "memory") { what = what || "Memory check"; detail = `a ${it.marks ? it.marks + "-mark " : ""}exam question, from memory · you did this chapter ${it.days} days ago · about ${it.mins} min`; }
     else if (it.kind === "learn") { what = what || "Learn"; detail = `video or revision guide · about ${it.mins} min`; }
     else if (it.kind === "exam") { what = what || "Exam question"; detail = `write one and get it marked · about ${it.mins} min`; }
@@ -1175,7 +1175,8 @@
         : it.kind === "exam" ? `Write one and get it marked · about ${it.mins} min`
         : it.kind === "learn" ? `Video or revision guide · about ${it.mins} min`
         : it.kind === "revise" ? `Revision guide, then a quick round · about ${it.mins} min`
-        : `${it.q || 10} questions · about ${it.mins} min${started ? ` · ${Math.min(now.st.n, it.q)} done` : ""}`;
+        : (() => { const per = Math.max(1, Math.round((it.q || 10) / (it.rounds || 1))), mins = Math.max(2, Math.round((it.mins || 7) / (it.rounds || 1)));
+            return `${per} questions · about ${mins} min${it.rounds > 1 ? ` · round ${Math.min(it.rounds, Math.floor((now.st.n || 0) / per) + 1)} of ${it.rounds}` : ""}`; })();
       const thenLine = then ? `Then: ${then.d.what.charAt(0).toLowerCase() + then.d.what.slice(1)} on ${esc(then.d.short)}` : rows.length > 1 ? `${rows.length - left.length} of ${rows.length} done today` : "";
       el.innerHTML = `${top}
         <div class="td-now"><span class="pl-k">Now · ${esc(d.subj)}</span><span class="td-t">${esc(d.what)}: ${esc(d.short)}</span><span class="hs-sub" style="font-size:15px">${detail}</span></div>
@@ -1205,8 +1206,8 @@
     const hello = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
     const streak = m.goal && m.goal.streakNow ? `${plural(m.goal.streakNow, "day", "days")} in a row` : "";
     const subs = m.subjects.map(sj => {
-      const chs = sj.chapters, tested = chs.filter(c => c.tested).length;
-      return `<button type="button" class="sv-row" data-subject="${sj.id}"><span class="sv-b"><span class="sv-t">${esc(sj.title)}</span><span class="sv-s">${chs.length ? `${tested} of ${plural(chs.length, "topic", "topics")} tested` : "No topics yet"}</span></span><span class="hs-chev" aria-hidden="true">›</span></button>`;
+      const chs = sj.chapters, started = chs.filter(c => c.stage !== "none").length, tested = chs.filter(c => c.tested).length;
+      return `<button type="button" class="sv-row" data-subject="${sj.id}"><span class="sv-b"><span class="sv-t">${esc(sj.title)}</span><span class="sv-s">${chs.length ? `${started} of ${plural(chs.length, "topic", "topics")} started${tested ? ` · ${tested} tested` : ""}` : "No topics yet"}</span></span><span class="hs-chev" aria-hidden="true">›</span></button>`;
     }).join("");
     view.innerHTML = `<div class="hs hc">
       <div class="hc-hello"><h2>${hello}, ${esc(profile.name)}</h2>${streak ? `<span>${streak}</span>` : ""}</div>
@@ -1262,12 +1263,12 @@
         <div class="sv-list">${years.map(y => { const t = papers[y].filter(q => q.v !== undefined).length;
           return `<button type="button" class="sv-row" data-year="${y}"><span class="sv-b"><span class="sv-t">${y} paper</span><span class="sv-s">${plural(papers[y].length, "question", "questions")}${t ? ` · you've tried ${t}` : ""}</span></span><span class="hs-chev" aria-hidden="true">›</span></button>`; }).join("")}</div>`;
     } else {
-      const tested = chs.filter(c => c.tested).length;
+      const tested = chs.filter(c => c.tested).length, started = chs.filter(c => c.stage !== "none").length;
       const ex = s.exam ? parseDate(s.exam.exam_date) : null, today = startOfDay(new Date());
       const examLine = ex && ex >= today ? `${esc(s.exam.label || "Exams")} ${untilText(ex)}` : "";
       body = `<button type="button" class="hs-back" data-home>← Home</button>
         <h1>${esc(s.title)}</h1>
-        <span class="hs-sub" style="font-size:15px">${examLine ? examLine + " · " : ""}${tested} of ${plural(chs.length, "topic", "topics")} tested · <button type="button" class="hs-link" data-exam style="font-size:15px">${examLine ? "Change exam date" : "Set exam date"}</button></span>
+        <span class="hs-sub" style="font-size:15px">${examLine ? examLine + " · " : ""}${started} of ${plural(chs.length, "topic", "topics")} started${tested ? `, ${tested} tested` : ""} · <button type="button" class="hs-link" data-exam style="font-size:15px">${examLine ? "Change exam date" : "Set exam date"}</button></span>
         <div id="hsExam"${state.examEdit === key ? "" : " hidden"}></div>
         ${chs.length ? `<div class="sv-list"><span class="sv-lab" style="padding:14px 18px 6px">Topics</span>${chs.map(c => { const [cls, txt] = topicStatus(c);
           return `<button type="button" class="sv-row" data-open="${c.id}"><span class="sv-n">${esc(String(c.order_num ?? ""))}</span><span class="sv-b"><span class="sv-t">${esc(shortTitle(c.title))}</span><span class="sv-s ${cls}">${c.book ? esc(c.book) + " · " : ""}${esc(txt)}</span></span><span class="hs-chev" aria-hidden="true">›</span></button>`; }).join("")}</div>` : `<div class="hs-empty">No topics yet.</div>`}
