@@ -228,6 +228,9 @@
   .ss-count{font-size:19px;font-weight:700}
   .hc .hc-hello{display:flex;flex-direction:column;gap:4px}
   .td{gap:12px}
+  .hc .hc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+  .td-offer{display:flex;justify-content:space-between;align-items:center;gap:6px 12px;flex-wrap:wrap;background:var(--t-accent-tint);border-radius:12px;padding:10px 14px;font-size:15px;font-weight:600}
+  .td-offer-b{display:flex;gap:14px}.td-offer .quiet{color:var(--t-muted);font-weight:400}
   .td-top{display:flex;justify-content:space-between;align-items:center}
   .td-min{font-size:14px;font-weight:700;color:var(--t-muted)}
   .td-bar{height:6px;border-radius:3px;background:var(--t-line);overflow:hidden}.td-bar i{display:block;height:100%;background:var(--t-accent)}
@@ -963,10 +966,21 @@
   function suggestSession(m, need){
     const items = []; let total = 0;
     const mem = memoryItem(m); if (mem) { items.push(mem); total += mem.mins; }
-    // In the three weeks before exams, start with an exam question from a chapter he has started (most marks to win)
-    if (m.nextExam && m.nextExam.days <= REFRESH_DAYS) {
-      const ec = Object.values(m.topics).filter(c => c.stage !== "none" && c.exam && c.exam.open && (!mem || c.id !== mem.topic_id)).sort((a, b) => b.exam.openMarks - a.exam.openMarks)[0];
-      if (ec) { items.push({ topic_id: ec.id, kind: "exam", mins: 12 }); total += 12; }
+    // Exam questions from topics he has tested, biggest marks still to win first (rotating by day so it isn't always the same one)
+    const day = Math.floor(Date.now() / DAY);
+    const examPool = Object.values(m.topics).filter(c => (c.stage === "test" || c.stage === "refresh" || c.tested) && c.exam && c.exam.open && (!mem || c.id !== mem.topic_id))
+      .sort((a, b) => b.exam.openMarks - a.exam.openMarks);
+    if (m.focus && m.focus.on) {
+      // Exam focus: today is exam questions only
+      const pool = examPool.length ? examPool : Object.values(m.topics).filter(c => c.stage !== "none" && c.exam && c.exam.open).sort((a, b) => b.exam.openMarks - a.exam.openMarks);
+      for (let i = 0; i < pool.length && total < need; i++) { const c = pool[(i + day) % pool.length]; if (items.some(x => x.topic_id === c.id)) continue; items.push({ topic_id: c.id, kind: "exam", mins: 12 }); total += 12; }
+      if (items.length) return items;
+    }
+    // Normal days: one exam question about every other day (every day in the three weeks before exams), on days with no memory check
+    const nearExams = m.nextExam && m.nextExam.days <= REFRESH_DAYS;
+    if (examPool.length && (nearExams || (!mem && day % 2 === 0))) {
+      const ec = examPool[Math.floor(day / 2) % Math.min(3, examPool.length)];
+      items.push({ topic_id: ec.id, kind: "exam", mins: 12 }); total += 12;
     }
     for (const p of todayPlan(m)) {
       if (total >= need) break;
@@ -1016,7 +1030,7 @@
       title: `Next in today's session: ${d.subj} · ${d.name}`, note: `${d.what} · ${d.detail}.` };
   }
 
-  function mountSession(el, m, { profile, openChapter, state, again, sb, reload }){
+  function mountSession(el, m, { profile, openChapter, state, again, sb, reload, setFocus }){
     const goalMin = m.goal ? m.goal.minutes : DAILY_GOAL, todayMin = m.goal ? m.goal.today : 0;
     const need = todayMin >= goalMin ? 10 : goalMin - todayMin;
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -1149,10 +1163,14 @@
       if (!s) { const sug = suggestSession(m, need); if (sug.length) { s = { source: "suggested", startedAt: Date.now(), items: sug }; saveSession(profile, s, m); } }
       el.className = "pl td";
       const pct = Math.min(100, Math.round(todayMin / goalMin * 100));
-      const top = `<div class="td-top"><span class="ss-k">Today</span><span class="td-min">${todayMin >= goalMin ? `${goalMin} min done &#10003;` : `${todayMin} of ${goalMin} min done`}</span></div><div class="td-bar" aria-hidden="true"><i style="width:${pct}%"></i></div>`;
+      const fx = m.focus || {}, x = m.nextExam;
+      const offer = !fx.on && x && x.days <= REFRESH_DAYS && fx.dismissed !== x.iso
+        ? `<div class="td-offer"><span>${esc(x.label || "Exams")} ${x.days === 0 ? "start today" : x.days === 1 ? "start tomorrow" : `in ${x.days} days`}. Switch on exam focus?</span><span class="td-offer-b"><button type="button" class="hs-link" data-fx-yes>Switch on</button><button type="button" class="hs-link quiet" data-fx-no>Not now</button></span></div>` : "";
+      const top = `${offer}<div class="td-top"><span class="ss-k">Today${fx.on ? " · exam focus" : ""}</span><span class="td-min">${todayMin >= goalMin ? `${goalMin} min done &#10003;` : `${todayMin} of ${goalMin} min done`}</span></div><div class="td-bar" aria-hidden="true"><i style="width:${pct}%"></i></div>`;
       if (!s) {
         el.innerHTML = `${top}<div class="td-t">What would you like to study today?</div><button type="button" class="hs-btn ss-go" data-change>Choose</button>`;
         el.querySelector("[data-change]").onclick = () => paintSay();
+        bindOffer();
         return;
       }
       const rows = s.items.map((it, i) => ({ it, i, d: describe(m, it), st: itemStatus(m.topics[it.topic_id], it, s.startedAt, m) })).filter(r => r.d);
@@ -1163,6 +1181,7 @@
           <div class="td-then"><span></span><button type="button" class="hs-link" data-change>Change</button></div>`;
         el.querySelector("[data-more]").onclick = () => { const sug = suggestSession(m, 10); if (sug.length) { saveSession(profile, { source: "suggested", startedAt: Date.now(), items: sug }, m); open(sug[0]); } };
         el.querySelector("[data-change]").onclick = () => paintSay();
+        bindOffer();
         return;
       }
       const it = now.it, d = now.d;
@@ -1184,6 +1203,7 @@
         <button type="button" class="hs-btn ss-go" data-go>${started ? "Continue" : "Start"}</button>
         <div class="td-then"><span>${thenLine}</span><button type="button" class="hs-link" data-change>Change</button></div>`;
       el.querySelector("[data-go]").onclick = () => open(it);
+      bindOffer();
       el.querySelector("[data-change]").onclick = () => paintSay();
       const pk = el.querySelector("[data-pick]"); if (pk) pk.onchange = () => {
         const c = m.topics[pk.value]; if (!c) return;
@@ -1191,6 +1211,11 @@
         if (fresh && it.kind === "revise") fresh.mins += 5;
         s.items[now.i] = fresh || it; saveSession(profile, s, m); paintToday();
       };
+    }
+    function bindOffer(){
+      const y = el.querySelector("[data-fx-yes]"), n = el.querySelector("[data-fx-no]");
+      if (y) y.onclick = () => setFocus && setFocus(true);
+      if (n) n.onclick = () => { if (setFocus) setFocus(false, true); };
     }
     const paintSession = paintToday;
 
@@ -1205,18 +1230,31 @@
     const hour = new Date().getHours();
     const hello = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
     const streak = m.goal && m.goal.streakNow ? `${plural(m.goal.streakNow, "day", "days")} in a row` : "";
+    const focusOn = !!(m.focus && m.focus.on);
     const subs = m.subjects.map(sj => {
       const chs = sj.chapters, started = chs.filter(c => c.stage !== "none").length, tested = chs.filter(c => c.tested).length;
       return `<button type="button" class="sv-row" data-subject="${sj.id}"><span class="sv-b"><span class="sv-t">${esc(sj.title)}</span><span class="sv-s">${chs.length ? `${started} of ${plural(chs.length, "topic", "topics")} started${tested ? ` · ${tested} tested` : ""}` : "No topics yet"}</span></span><span class="hs-chev" aria-hidden="true">›</span></button>`;
     }).join("");
     view.innerHTML = `<div class="hs hc">
-      <div class="hc-hello"><h2>${hello}, ${esc(profile.name)}</h2>${streak ? `<span>${streak}</span>` : ""}</div>
+      <div class="hc-top"><div class="hc-hello"><h2>${hello}, ${esc(profile.name)}</h2>${streak ? `<span>${streak}</span>` : ""}</div>
+        <button type="button" class="fx-toggle${focusOn ? " on" : ""}" role="switch" aria-checked="${focusOn}" data-fx-toggle><span class="fx-track" aria-hidden="true"><i></i></span><span>Exam focus${focusOn ? " on" : ""}</span></button></div>
       ${Object.keys(m.topics).length ? `<div id="todaySession"></div>` : ""}
       <div class="sv-sec"><span class="sv-lab">My subjects</span>${m.subjects.length ? `<div class="sv-list">${subs}</div>` : `<div class="hs-empty">No subjects yet.</div>`}</div>
     </div>`;
     const again = () => renderHome(view, m, { profile, openChapter, openSubject, state, sb, reload, openSettings });
     view.querySelectorAll("[data-subject]").forEach(b => b.onclick = () => openSubject(b.dataset.subject));
-    if (view.querySelector("#todaySession")) mountSession(view.querySelector("#todaySession"), m, { profile, openChapter, state, again, sb, reload });
+    // Exam focus: Today becomes exam questions only and subjects open on their past papers. Opt-in, saved per student.
+    const setFocus = (on, notNow) => {
+      const f = { ...(m.focus || {}) };
+      if (notNow) f.dismissed = m.nextExam ? m.nextExam.iso : null;
+      else { f.on = on; if (on) f.since = isoDay(new Date()); else f.dismissed = m.nextExam ? m.nextExam.iso : null; }
+      m.focus = f; saveSession(profile, null);
+      if (sb) sb("student_settings", { method: "POST", prefer: "resolution=merge-duplicates,return=minimal", body: [{ profile_id: profile.id, exam_focus: f, updated_at: new Date().toISOString() }] });
+      if (state) state.subjView = null;
+      again();
+    };
+    view.querySelector("[data-fx-toggle]").onclick = () => setFocus(!focusOn);
+    if (view.querySelector("#todaySession")) mountSession(view.querySelector("#todaySession"), m, { profile, openChapter, state, again, sb, reload, setFocus });
   }
 
   // ---- subject page: a smart list that shows what matters now ----
@@ -1240,7 +1278,8 @@
     const key = (m.groupOf && m.groupOf[subjectId]) || subjectId;
     const s = m.bySubject[key];
     if (!s) { goHome(); return; }
-    const sv = state.subjView && state.subjView.id === key ? state.subjView : (state.subjView = { id: key, mode: "", year: "" });
+    const startOnPapers = m.focus && m.focus.on && Object.keys(m.papers[key] || {}).length;
+    const sv = state.subjView && state.subjView.id === key ? state.subjView : (state.subjView = { id: key, mode: startOnPapers ? "papers" : "", year: "" });
     const again = () => renderSubject(view, m, subjectId, { sb, profile, openChapter, goHome, reload, state });
     const chs = s.chapters.slice().sort((a, b) => (a.bookIdx || 0) - (b.bookIdx || 0) || (a.order_num || 0) - (b.order_num || 0));
     const papers = m.papers[key] || {}, years = Object.keys(papers).sort().reverse();
@@ -1258,8 +1297,9 @@
         <div class="sv-list" style="padding:4px 18px 10px">${parts.map(pt => `<div class="fx-part"><h4>${esc(pt.name)}${pt.sub && !pt.name.toLowerCase().includes(pt.sub.toLowerCase()) ? ` · ${esc(pt.sub)}` : ""}</h4>${pt.qs.map(q => { const c = m.topics[q.topic_id]; const notYet = c && c.stage === "none";
           return `<button type="button" class="fx-q${notYet ? " later" : ""}" data-q="${q.id}"><span class="fx-ql">${esc(q.label || "Question")}</span><span class="fx-ch-b"><span class="s">${c ? `${c.book ? esc(c.book) + " · " : ""}Ch ${esc(String(c.order_num ?? ""))}: ${esc(shortTitle(c.title))}` : ""} · ${q.marks} marks${notYet ? " · not started yet" : ""}</span></span>${chip(q)}</button>`; }).join("")}</div>`).join("")}</div>`;
     } else if (sv.mode === "papers") {
-      body = `<button type="button" class="hs-back" data-mode="">← ${esc(s.title)}</button>
+      body = `${m.focus && m.focus.on ? `<button type="button" class="hs-back" data-home>← Home</button>` : `<button type="button" class="hs-back" data-mode="">← ${esc(s.title)}</button>`}
         <h1>${esc(s.title)} past papers</h1>
+        ${m.focus && m.focus.on ? `<button type="button" class="hs-link" data-mode="" style="align-self:flex-start">Or choose a topic ›</button>` : ""}
         <div class="sv-list">${years.map(y => { const t = papers[y].filter(q => q.v !== undefined).length;
           return `<button type="button" class="sv-row" data-year="${y}"><span class="sv-b"><span class="sv-t">${y} paper</span><span class="sv-s">${plural(papers[y].length, "question", "questions")}${t ? ` · you've tried ${t}` : ""}</span></span><span class="hs-chev" aria-hidden="true">›</span></button>`; }).join("")}</div>`;
     } else {
