@@ -454,7 +454,7 @@
   <div id="view"><div class="loading">Loading…</div></div>
 </div>
 
-<script src="stages.js?v=20261025g"></script>
+<script src="stages.js?v=20261025h"></script>
 <script src="practice.js?v=20261025f"></script>
 <script src="tutor.js?v=20261025c"></script>
 <script src="notes.js?v=20261025c"></script>
@@ -979,7 +979,7 @@ async function renderChapter(){
   document.querySelectorAll("[data-goto]").forEach(b => b.addEventListener("click", () => goTab(b.dataset.goto)));
   // Exam focus: only the exam questions on this page, and back goes to the exam focus homepage
   const focusOn = !!state.examFocus;
-  if (focusOn) { Stages.addCss(); document.querySelector(".cv").classList.add("cv-focus"); state.chapterTab = "refresh"; autoTab = false; }
+  if (focusOn) { Stages.addCss(); document.querySelector(".cv").classList.add("cv-focus"); state.chapterTab = "refresh"; autoTab = false; const cs = document.getElementById("cvStatus"); if (cs) cs.hidden = true; }
   showTab(state.chapterTab);
   document.querySelectorAll(".cv-tab").forEach(b => b.addEventListener("click", () => { autoTab = false; }));
 

@@ -1225,7 +1225,7 @@
   // ---- homepage: Today, then subjects. Nothing else. ----
   function renderHome(view, m, { profile, openChapter, openSubject, state, sb, reload, openSettings }){
     addCss();
-    if (state) { state.examFocus = false; state.fromPaper = false; }
+    if (state) { state.examFocus = !!(m.focus && m.focus.on); state.fromPaper = false; }
     document.body.classList.remove("exam-focus");
     const hour = new Date().getHours();
     const hello = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
@@ -1278,6 +1278,7 @@
     const key = (m.groupOf && m.groupOf[subjectId]) || subjectId;
     const s = m.bySubject[key];
     if (!s) { goHome(); return; }
+    state.examFocus = !!(m.focus && m.focus.on);
     const startOnPapers = m.focus && m.focus.on && Object.keys(m.papers[key] || {}).length;
     const sv = state.subjView && state.subjView.id === key ? state.subjView : (state.subjView = { id: key, mode: startOnPapers ? "papers" : "", year: "" });
     const again = () => renderSubject(view, m, subjectId, { sb, profile, openChapter, goHome, reload, state });
@@ -1310,7 +1311,8 @@
         <h1>${esc(s.title)}</h1>
         <span class="hs-sub" style="font-size:15px">${examLine ? examLine + " · " : ""}${started} of ${plural(chs.length, "topic", "topics")} started${tested ? `, ${tested} tested` : ""} · <button type="button" class="hs-link" data-exam style="font-size:15px">${examLine ? "Change exam date" : "Set exam date"}</button></span>
         <div id="hsExam"${state.examEdit === key ? "" : " hidden"}></div>
-        ${chs.length ? `<div class="sv-list"><span class="sv-lab" style="padding:14px 18px 6px">Topics</span>${chs.map(c => { const [cls, txt] = topicStatus(c);
+        ${chs.length ? `<div class="sv-list"><span class="sv-lab" style="padding:14px 18px 6px">${state.examFocus ? "Exam questions by topic" : "Topics"}</span>${chs.filter(c => !state.examFocus || (c.exam && c.exam.n)).map(c => { const [cls, txt0] = topicStatus(c);
+          const txt = state.examFocus ? `${plural(c.exam.n, "exam question", "exam questions")}${c.exam.tried ? ` · ${c.exam.tried} tried` : ""}` : txt0;
           return `<button type="button" class="sv-row" data-open="${c.id}"><span class="sv-n">${esc(String(c.order_num ?? ""))}</span><span class="sv-b"><span class="sv-t">${esc(shortTitle(c.title))}</span><span class="sv-s ${cls}">${c.book ? esc(c.book) + " · " : ""}${esc(txt)}</span></span><span class="hs-chev" aria-hidden="true">›</span></button>`; }).join("")}</div>` : `<div class="hs-empty">No topics yet.</div>`}
         ${years.length ? `<button type="button" class="sv-papers" data-mode="papers"><span class="sv-ico" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M8 13h8"/><path d="M8 17h5"/></svg></span><span class="sv-b"><span class="sv-t">Past papers</span><span class="sv-s">Real exam papers, ${years.length > 1 ? `${years[years.length - 1]}–${years[0]}` : years[0]}</span></span><span class="hs-chev" aria-hidden="true">›</span></button>` : ""}`;
     }
@@ -1321,7 +1323,7 @@
     const xb = view.querySelector("[data-exam]"); if (xb) xb.onclick = () => { state.examEdit = state.examEdit === key ? null : key; again(); };
     view.querySelectorAll("[data-mode]").forEach(b => b.onclick = () => { sv.mode = b.dataset.mode; sv.year = ""; again(); window.scrollTo({ top: 0 }); });
     view.querySelectorAll("[data-year]").forEach(b => b.onclick = () => { sv.mode = "paper"; sv.year = b.dataset.year; again(); window.scrollTo({ top: 0 }); });
-    view.querySelectorAll("[data-open]").forEach(b => b.onclick = () => { state.fromPaper = false; const c = m.topics[b.dataset.open]; openChapter(c.id, c.subject_id, TAB_FOR[c.stage]); });
+    view.querySelectorAll("[data-open]").forEach(b => b.onclick = () => { state.fromPaper = false; const c = m.topics[b.dataset.open]; openChapter(c.id, c.subject_id, state.examFocus ? "refresh" : TAB_FOR[c.stage]); });
     view.querySelectorAll("[data-q]").forEach(b => b.onclick = () => {
       const qs = papers[sv.year] || [], q = qs.find(x => x.id === b.dataset.q), c = q && m.topics[q.topic_id]; if (!c) return;
       state.paperList = qs.map(x => ({ id: x.id, topic: x.topic_id, subject: (m.topics[x.topic_id] || {}).subject_id }));
