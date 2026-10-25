@@ -58,7 +58,7 @@
   async function mountNotes(slot, { topic, profile, sb, subjectTitle, onTest }){
     if (!slot || !topic) return;
     addCss();
-    let notes = [], qs = [], mode = "list", justMade = null;
+    let notes = [], qs = [], mode = "list", saved = "";
     async function load(){
       [notes, qs] = await Promise.all([
         sb(`student_notes?select=id,title,covered,question_ids,created_at&profile_id=eq.${profile.id}&topic_id=eq.${topic.id}&order=created_at.desc`).catch(() => []),
@@ -80,14 +80,6 @@
         nCourse: course.length, nMine: mine.length
       };
     }
-    function choices(n, intro){
-      const t = tests(n), topics = ((n.covered || {}).topics || []);
-      return `<div class="mn-choose">${intro || ""}
-        <button type="button" class="mn-opt${t.nCourse ? " main" : ""}" data-run="course" ${t.nCourse ? "" : "disabled"}><b>Test me on the course topics my notes cover</b><span>${t.nCourse ? `${esc(topics.slice(0, 3).join(", "))}${topics.length > 3 ? " and more" : ""} · ${Math.min(10, t.nCourse)} questions` : "Your notes didn't match this chapter's course topics"}</span></button>
-        <button type="button" class="mn-opt${t.nCourse ? "" : " main"}" data-run="mine" ${t.nMine ? "" : "disabled"}><b>Just my notes</b><span>${t.nMine} questions written from your notes · good before a class test</span></button>
-        <button type="button" class="mn-opt" data-run="mixed" ${t.nMine && t.nCourse ? "" : "disabled"}><b>Both mixed</b><span>Some from your notes, some from the course</span></button>
-      </div>`;
-    }
     function bindRuns(scope, n){
       scope.querySelectorAll("[data-run]").forEach(b => b.onclick = () => {
         const t = tests(n), ids = t[b.dataset.run];
@@ -97,19 +89,20 @@
 
     function paint(){
       if (mode === "add") return paintAdd();
-      if (mode === "made" && justMade) return paintMade();
       slot.innerHTML = `<div class="mn">
         <div class="mn-head"><span><b>My notes</b><span>Add your class notes or your own notes, and get tested on them.</span></span><button type="button" class="mn-btn ghost" data-add>+ Add my notes</button></div>
+        ${saved ? `<p class="mn-ok" role="status" style="margin:0">${esc(saved)}</p>` : ""}
         ${notes.map(n => { const tp = (n.covered || {}).topics || [];
           return `<div class="mn-note" data-note="${n.id}"><span class="t">${esc(n.title || "My notes")}</span>
             <span class="s">Added ${esc(fmtDay(n.created_at))} · ${(n.question_ids || []).length} questions${tp.length ? ` · covers ${esc(tp.slice(0, 3).join(", "))}${tp.length > 3 ? " and more" : ""}` : ""}</span>
-            <div class="mn-acts"><button type="button" class="mn-btn" data-test>Test me</button><button type="button" class="mn-link quiet" data-remove>Remove</button></div>
-            <div data-pick hidden></div></div>`; }).join("")}
+            ${((n.covered || {}).conflicts || []).length ? `<span class="s">Worth checking with your teacher: ${((n.covered || {}).conflicts || []).map(k => `your notes say "${esc(k.notes_say)}", the course says "${esc(k.course_says)}"`).join("; ")}</span>` : ""}
+            <div class="mn-acts"><button type="button" class="mn-btn" data-run="mine">Test me on my notes</button>${tests(n).nCourse ? `<button type="button" class="mn-link" data-run="course">Test me on the course topics they cover</button>` : ""}<button type="button" class="mn-link quiet" data-remove>Remove</button></div></div>`; }).join("")}
       </div>`;
+      saved = "";
       slot.querySelector("[data-add]").onclick = () => { mode = "add"; paint(); };
       slot.querySelectorAll("[data-note]").forEach(el => {
-        const n = notes.find(x => x.id === el.dataset.note), pick = el.querySelector("[data-pick]");
-        el.querySelector("[data-test]").onclick = () => { if (pick.hidden) { pick.innerHTML = choices(n); bindRuns(pick, n); } pick.hidden = !pick.hidden; };
+        const n = notes.find(x => x.id === el.dataset.note);
+        bindRuns(el, n);
         el.querySelector("[data-remove]").onclick = async (e) => {
           const b = e.currentTarget;
           if (b.dataset.sure !== "1") { b.dataset.sure = "1"; b.textContent = "Remove these notes and their questions?"; b.classList.remove("quiet"); return; }
@@ -133,9 +126,9 @@
         <label class="mn-file">+ Add photos or a PDF<input type="file" accept="image/*,application/pdf" multiple></label>
         <div class="mn-files"></div>
         <p class="mn-err" hidden></p>
-        <div class="mn-acts"><button type="button" class="mn-btn" data-make>Make my test</button><button type="button" class="mn-link quiet" data-cancel>Cancel</button></div>
+        <div class="mn-acts"><button type="button" class="mn-btn" data-make="test">Test me on my notes</button><button type="button" class="mn-btn ghost" data-make="save">Save</button><button type="button" class="mn-link quiet" data-cancel>Cancel</button></div>
       </div></div>`;
-      const ta = slot.querySelector("textarea"), inp = slot.querySelector("input[type=file]"), list = slot.querySelector(".mn-files"), err = slot.querySelector(".mn-err"), make = slot.querySelector("[data-make]");
+      const ta = slot.querySelector("textarea"), inp = slot.querySelector("input[type=file]"), list = slot.querySelector(".mn-files"), err = slot.querySelector(".mn-err"), makes = slot.querySelectorAll("[data-make]");
       const fail = m => { err.textContent = m; err.hidden = false; };
       inp.onchange = async () => {
         err.hidden = true;
@@ -153,13 +146,15 @@
       };
       slot.querySelector("[data-cancel]").onclick = () => { mode = "list"; paint(); };
       ta.focus();
-      make.onclick = async () => {
+      makes.forEach(make => make.onclick = async () => {
+        const andTest = make.dataset.make === "test";
         const text = ta.value.trim();
         if (!text && !files.images.length && !files.pdf) { fail("Type or paste your notes, or add a photo or PDF first."); return; }
         const today = new Date(); today.setHours(0, 0, 0, 0);
         const todays = await sb(`student_notes?select=id&profile_id=eq.${profile.id}&created_at=gte.${encodeURIComponent(today.toISOString())}`).catch(() => []);
         if ((todays || []).length >= DAILY_LIMIT) { fail(`You've added ${DAILY_LIMIT} sets of notes today. Add more tomorrow.`); return; }
-        make.disabled = true; make.textContent = "Reading your notes… (about 30 seconds)"; err.hidden = true;
+        const label = make.textContent;
+        makes.forEach(b => b.disabled = true); make.textContent = andTest ? "Reading your notes… (about 20 seconds)" : "Saving…"; err.hidden = true;
         try {
           const course = courseQs().slice(0, 60).map(q => ({ id: q.id, label: q.topic_label || "", prompt: q.prompt, answer: q.qtype === "mcq" ? ((q.options || [])[q.answer_index] || "") : (q.model_answer || "") }));
           const r = await fetch("/api/notes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
@@ -180,22 +175,13 @@
             throw new Error("Your notes couldn't be saved. Try again.");
           }
           await load();
-          justMade = notes.find(n => n.id === noteId) || null; mode = justMade ? "made" : "list"; paint();
-        } catch (x) { fail(x.message); make.disabled = false; make.textContent = "Make my test"; }
-      };
+          const n = notes.find(x => x.id === noteId);
+          if (andTest && n) { onTest(tests(n).mine, "My notes"); return; }
+          mode = "list"; saved = `Saved "${d.title}". ${rows.length} questions are ready whenever you want to test yourself.`; paint();
+        } catch (x) { fail(x.message); makes.forEach(b => b.disabled = false); make.textContent = label; }
+      });
     }
 
-    function paintMade(){
-      const n = justMade, c = (n.covered || {}), conflicts = c.conflicts || [];
-      slot.innerHTML = `<div class="mn">
-        <div class="mn-ok"><b>${esc(n.title || "Your notes")} added.</b> ${(n.question_ids || []).length} questions written from them${(c.topics || []).length ? `, and they cover ${esc(c.topics.join(", "))}` : ""}.</div>
-        ${conflicts.length ? `<div class="mn-warn"><b>Worth checking with your teacher</b>${conflicts.map(k => `Your notes say: ${esc(k.notes_say)}<br>The course says: ${esc(k.course_says)}`).join("<br><br>")}</div>` : ""}
-        ${choices(n, `<b style="font-size:17px">What do you want to be tested on?</b>`)}
-        <button type="button" class="mn-link quiet" data-done style="align-self:flex-start">Not now</button>
-      </div>`;
-      bindRuns(slot, n);
-      slot.querySelector("[data-done]").onclick = () => { mode = "list"; justMade = null; paint(); };
-    }
 
     await load();
     paint();
