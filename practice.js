@@ -742,7 +742,8 @@
     function next(){
       if (session.i >= session.queue.length) return finish();
       const entry = session.queue[session.i], { q, retry } = entry;
-      const label = q.qtype === "exam" ? (isPast(q) ? `Past paper · ${esc(q.source || "")} · ${q.marks || 5} marks` : `Exam-style question · ${q.marks || 5} marks`) : q.qtype === "recall" ? "Short answer" : "Quick quiz";
+      const fromNotes = q.source === "From your notes" ? " · From your notes" : "";
+      const label = q.qtype === "exam" ? (isPast(q) ? `Past paper · ${esc(q.source || "")} · ${q.marks || 5} marks` : `Exam-style question · ${q.marks || 5} marks`) : (q.qtype === "recall" ? "Short answer" : "Quick quiz") + fromNotes;
       const card = h(`<div class="pr-card">
         <div class="pr-row" style="justify-content:space-between"><button type="button" class="pr-btn ghost" data-stop>${session.paper && goHome ? "← Back to the paper" : "← Go back"}</button><span class="pr-small" style="font-variant-numeric:tabular-nums">${entry.again ? "Improving your answer" : retry ? "Second try" : session.memory ? "Memory check" : `Question ${session.i+1} of ${session.total}`}</span></div>
         <div class="pr-progress"><i style="width:${Math.min(session.i,session.total)/session.total*100}%"></i></div>
@@ -1117,7 +1118,15 @@
       start("Exam paper", [q], "prep", false, { paper: true });
       return true;
     }
-    return { refresh: paintStats, startToday: () => start("Your Daily Practice", todaysPick()), runToday, runMemory, runExam, runQuestion };
+    // A chosen list of questions (e.g. a test from "My notes")
+    function runList(ids, name){
+      const list = (ids || []).map(id => questions.find(q => q.id === id)).filter(Boolean);
+      if (!list.length) return false;
+      goTo("test");
+      start(name || "Practice", list);
+      return true;
+    }
+    return { refresh: paintStats, startToday: () => start("Your Daily Practice", todaysPick()), runToday, runMemory, runExam, runQuestion, runList };
   }
   window.mountPractice = mountPractice;
 })();

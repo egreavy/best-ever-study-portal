@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Annabel's Study Portal</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<script src="theme.js?v=20261022r" data-profile="0525676f-a10f-424d-b707-8f75e5b3a053"></script>
-<script src="stickers.js?v=20261022r"></script>
-<script src="rewards.js?v=20261022r" data-profile="0525676f-a10f-424d-b707-8f75e5b3a053"></script>
+<script src="theme.js?v=20261025a" data-profile="0525676f-a10f-424d-b707-8f75e5b3a053"></script>
+<script src="stickers.js?v=20261025a"></script>
+<script src="rewards.js?v=20261025a" data-profile="0525676f-a10f-424d-b707-8f75e5b3a053"></script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap">
 <style>
   :root{
@@ -451,9 +451,10 @@
   <div id="view"><div class="loading">Loading…</div></div>
 </div>
 
-<script src="stages.js?v=20261022r"></script>
-<script src="practice.js?v=20261022r"></script>
-<script src="tutor.js?v=20261022r"></script>
+<script src="stages.js?v=20261025a"></script>
+<script src="practice.js?v=20261025a"></script>
+<script src="tutor.js?v=20261025a"></script>
+<script src="notes.js?v=20261025a"></script>
 <script>
 const SUPABASE_URL = "https://dhxwajidrtyukyxmiyml.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRoeHdhamlkcnR5dWt5eG1peW1sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYzMzYyNzQsImV4cCI6MjA1MTkxMjI3NH0.fnH1eI1vLtQASjII_6K0d6NZevD62tnthXe0uyMgh0s";
@@ -941,6 +942,7 @@ async function renderChapter(){
       <div class="cv-tip"><b>Tip:</b> Watching the video or reading the revision guide before a topic is taught in class gives you a head start, so the lesson makes more sense. Going over them again afterwards helps it stick.</div>
       <button type="button" class="cv-card cv-first" data-goto2="test"><span><b>Already know some of this?</b> You can test yourself first.</span><span class="cv-first-go">Check what you know &rsaquo;</span></button>
       <div class="cv-card cv-list" id="stepsContainer"></div>
+      <div class="cv-card" id="notesSlot"></div>
       <div class="cv-card cv-foot" id="classFoot"></div>
     </section>
 
@@ -1028,11 +1030,15 @@ async function renderChapter(){
   }).then(api => {
     practiceApi = api;
     if (api && state.todayRun === state.topicId) { state.todayRun = null; autoTab = false; api.runToday(); }
+    if (api && state.notesRun && state.notesRun.topic === state.topicId) { const r = state.notesRun; state.notesRun = null; autoTab = false; api.runList(r.ids, r.name); }
     if (api && state.examRun === state.topicId) { state.examRun = null; autoTab = false; api.runExam(); }
     if (api && state.paperRun && state.paperRun.topic === state.topicId) { const r = state.paperRun; state.paperRun = null; state.paperCurrent = r.qid; autoTab = false; api.runQuestion(r.qid); }
     if (api && state.memoryRun && state.memoryRun.topic === state.topicId) { const r = state.memoryRun; state.memoryRun = null; autoTab = false; api.runMemory(r.qid, r.origin, r.days); }
     if (!api && autoTab) { autoTab = false; paintTabs(); }
   });
+  // My notes: add notes on the Learn tab, then test from them (reopens the chapter so the new questions load)
+  if (topic && window.mountNotes) window.mountNotes(document.getElementById("notesSlot"), { topic, profile: PROFILE, sb, subjectTitle: topic.subject_title,
+    onTest: (ids, name) => { state.notesRun = { topic: topic.id, ids, name }; openChapter(topic.id, topic.subject_id, "test"); } });
   if (topic && window.mountTutor) window.mountTutor(document.getElementById("tutorSlot"), { topic, profile: PROFILE, sb });
 
   const backBtn = document.getElementById("backBtn");
