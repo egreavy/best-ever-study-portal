@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Annabel's Study Portal</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<script src="theme.js?v=20261025a" data-profile="0525676f-a10f-424d-b707-8f75e5b3a053"></script>
-<script src="stickers.js?v=20261025a"></script>
-<script src="rewards.js?v=20261025a" data-profile="0525676f-a10f-424d-b707-8f75e5b3a053"></script>
+<script src="theme.js?v=20261025c" data-profile="0525676f-a10f-424d-b707-8f75e5b3a053"></script>
+<script src="stickers.js?v=20261025c"></script>
+<script src="rewards.js?v=20261025c" data-profile="0525676f-a10f-424d-b707-8f75e5b3a053"></script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap">
 <style>
   :root{
@@ -385,6 +385,9 @@
   .cv-card{background:var(--t-card);border-radius:14px;padding:16px 20px;margin:0 0 10px;}
   .cv-empty{color:var(--t-muted);font-size:15px;line-height:1.5;}
   .cv-intro{display:flex;flex-direction:column;gap:2px;margin:0 0 10px;}
+  .cv-status{font-size:15px;font-weight:600;color:var(--t-muted);margin:-4px 0 14px}
+  .cv-status.on{color:var(--t-accent)}
+  .cv-tab-s{display:none!important}
   .cv-tip{background:var(--t-accent-tint);border-radius:12px;padding:12px 16px;margin:0 0 10px;font-size:15px;line-height:1.5;color:var(--t-ink)}
   .cv-tip b{color:var(--t-accent)}
   .cv-intro b{font-size:17px;}
@@ -451,10 +454,10 @@
   <div id="view"><div class="loading">Loading…</div></div>
 </div>
 
-<script src="stages.js?v=20261025a"></script>
-<script src="practice.js?v=20261025a"></script>
-<script src="tutor.js?v=20261025a"></script>
-<script src="notes.js?v=20261025b"></script>
+<script src="stages.js?v=20261025c"></script>
+<script src="practice.js?v=20261025c"></script>
+<script src="tutor.js?v=20261025c"></script>
+<script src="notes.js?v=20261025c"></script>
 <script>
 const SUPABASE_URL = "https://dhxwajidrtyukyxmiyml.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRoeHdhamlkcnR5dWt5eG1peW1sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYzMzYyNzQsImV4cCI6MjA1MTkxMjI3NH0.fnH1eI1vLtQASjII_6K0d6NZevD62tnthXe0uyMgh0s";
@@ -537,7 +540,9 @@ function openChapter(topicId, subjectId, tab){
   render(); window.scrollTo({ top: 0 });
 }
 function openSubject(subjectId){ state.view = "subject"; state.subjectId = subjectId; render(); window.scrollTo({ top: 0 }); }
-function goHome(){ state.view = "dashboard"; render(); window.scrollTo({ top: 0 }); }
+function goHome(){ state.view = "dashboard"; state.fromPaper = false; render(); window.scrollTo({ top: 0 }); }
+// From a past-paper question back to that paper on the subject page
+function backToPaper(){ const p = state.paperFrom || {}; state.view = "subject"; state.subjectId = p.subject || state.subjectId; state.subjView = { id: p.key, mode: "paper", year: p.year }; state.fromPaper = false; render(); window.scrollTo({ top: 0 }); }
 
 async function renderDashboard(){
   const v = document.getElementById("view");
@@ -734,6 +739,8 @@ async function renderChapter(){
   }
   function paintTabs(){
     const info = stageInfo();
+    const cs = document.getElementById("cvStatus");
+    if (cs) { const line = info.tested ? "Tested \u2713" : Stages.statusLine(info); cs.textContent = line; cs.className = "cv-status" + (info.stage === "test" || info.stage === "refresh" || info.tested ? " on" : ""); }
     const set = (k, icon, sub, now) => {
       const b = document.getElementById("tabbtn-" + k); if (!b) return;
       b.querySelector(".cv-tab-i").innerHTML = icon === "tick" ? `<span class="cv-tick" aria-hidden="true">&#10003;</span>` : icon === "now" ? `<span class="cv-now" aria-hidden="true"></span>` : "";
@@ -913,7 +920,7 @@ async function renderChapter(){
     updateProgressUI();
   }
 
-  const TABS = [["learn", "Learn"], ["test", "Quick Tests"], ["refresh", "Exam Prep"]];
+  const TABS = [["learn", "Learn"], ["test", "Test"], ["refresh", "Exam questions"]];
   // Open on the step he's at (worked out again once the questions have loaded)
   let autoTab = false;
   if (!state.chapterTab || state.chapterTabTopic !== state.topicId) {
@@ -926,24 +933,14 @@ async function renderChapter(){
   <div class="cv">
     <div class="crumb"><span id="backBtn" role="button" tabindex="0">&larr; ${esc(topic && topic.subject_title ? topic.subject_title : "Back to subjects")}</span></div>
     <h2 class="cv-title">${esc(topic ? topic.title : "")}</h2>
-    <div class="cv-meta">
-      <button type="button" class="cv-flag${currentFlag.flagType ? " active" : ""}" id="chapFlagToggle">${currentFlag.flagType ? "&check; On my revision list" : "+ Add to revision list"}</button>
-    </div>
-    ${currentFlag.flagType ? `
-      <div class="flag-note-row">
-        <input type="text" id="chapNoteInput" placeholder="Add a note, e.g. test on Tue 29/09" value="${esc(currentFlag.note)}" />
-        <button id="chapNoteSave">Save</button>
-      </div>` : ""}
+    <div class="cv-status" id="cvStatus"></div>
     <div class="cv-tabs" role="tablist" aria-label="Chapter sections">
       ${TABS.map(([k, l]) => `<button type="button" role="tab" class="cv-tab" id="tabbtn-${k}" data-tab="${k}" aria-controls="tab-${k}"><span class="cv-tab-l"><span class="cv-tab-i"></span>${l}</span><span class="cv-tab-s"></span></button>`).join("")}
     </div>
 
     <section id="tab-learn" role="tabpanel" aria-labelledby="tabbtn-learn" hidden>
-      <div class="cv-tip"><b>Tip:</b> Watching the video or reading the revision guide before a topic is taught in class gives you a head start, so the lesson makes more sense. Going over them again afterwards helps it stick.</div>
-      <button type="button" class="cv-card cv-first" data-goto2="test"><span><b>Already know some of this?</b> You can test yourself first.</span><span class="cv-first-go">Check what you know &rsaquo;</span></button>
       <div class="cv-card cv-list" id="stepsContainer"></div>
       <div class="cv-card" id="notesSlot"></div>
-      <div class="cv-card cv-foot" id="classFoot"></div>
     </section>
 
     <section id="tab-test" role="tabpanel" aria-labelledby="tabbtn-test" hidden>
@@ -953,10 +950,9 @@ async function renderChapter(){
     </section>
 
     <section id="tab-refresh" role="tabpanel" aria-labelledby="tabbtn-refresh" hidden>
-      <div id="examSlot"></div>
+      <div id="examSlot" hidden></div>
       <div id="prepSlot"><div class="cv-card cv-empty">Exam questions for this chapter are coming soon.</div></div>
-      <div id="refreshSlot"></div>
-      <button type="button" class="cv-back-learn" id="prepBackLearn" data-goto="learn">Need a reminder first? Go back to Learn &rsaquo;</button>
+      <div id="refreshSlot" hidden></div>
     </section>
   </div>
   `;
@@ -993,7 +989,7 @@ async function renderChapter(){
     paperSlot: document.getElementById("paperSlot"),
     refreshSlot: document.getElementById("refreshSlot"),
     prepSlot: document.getElementById("prepSlot"),
-    prepHide: [document.getElementById("examSlot"), document.getElementById("refreshSlot"), document.getElementById("prepBackLearn")],
+    prepHide: [],
     rightSlot: document.getElementById("rightSlot"),
     freshSince: () => freshSince,
     goTo: goTab,
@@ -1006,6 +1002,7 @@ async function renderChapter(){
     hideDuring: [document.getElementById("pairRow"), document.getElementById("practiceMoreSlot"), document.getElementById("extraPractice")],
     dailyGoal: Stages.DAILY_GOAL,
     goHome,
+    backToPaper: () => (state.fromPaper && state.paperFrom ? backToPaper() : goHome()),
     // After a chapter in "today's 30 minutes": the next chapter to carry on with
     nextUp: async (excludeId) => {
       const { model } = await loadModel(); state.model = model;
@@ -1018,7 +1015,7 @@ async function renderChapter(){
     paperNext: (go) => {
       const L = state.paperList || [], cur = state.paperCurrent, i = L.findIndex(x => x.id === cur);
       const n = i >= 0 ? L[i + 1] : null; if (!n || !go) return n;
-      state.paperRun = { topic: n.topic, qid: n.id }; openChapter(n.topic, n.subject, "refresh"); return n;
+      state.paperRun = { topic: n.topic, qid: n.id }; state.fromPaper = true; openChapter(n.topic, n.subject, "refresh"); return n;
     },
     // After a round, when today's session has another item: go to it
     sessionNext: async (currentId) => {
@@ -1042,8 +1039,8 @@ async function renderChapter(){
   if (topic && window.mountTutor) window.mountTutor(document.getElementById("tutorSlot"), { topic, profile: PROFILE, sb });
 
   const backBtn = document.getElementById("backBtn");
-  if (focusOn) backBtn.innerHTML = state.fxMode === "paper" ? "&larr; Back to the paper" : "&larr; Exam focus";
-  const goBack = () => { if (focusOn) { goHome(); return; } state.view = "subject"; render(); window.scrollTo({ top: 0 }); };
+  if (state.fromPaper && state.paperFrom) backBtn.innerHTML = "&larr; Back to the paper";
+  const goBack = () => { if (state.fromPaper && state.paperFrom) { backToPaper(); return; } state.view = "subject"; render(); window.scrollTo({ top: 0 }); };
   backBtn.addEventListener("click", goBack);
   backBtn.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); goBack(); } });
 

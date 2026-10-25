@@ -226,6 +226,30 @@
   .ss-add{border:2px dashed var(--t-accent);background:var(--t-card);color:var(--t-accent);border-radius:999px;min-height:44px;font:inherit;font-weight:700;font-size:15px;cursor:pointer}
   .ss-k{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--t-accent)}
   .ss-count{font-size:19px;font-weight:700}
+  .hc .hc-hello{display:flex;flex-direction:column;gap:4px}
+  .td{gap:12px}
+  .td-top{display:flex;justify-content:space-between;align-items:center}
+  .td-min{font-size:14px;font-weight:700;color:var(--t-muted)}
+  .td-bar{height:6px;border-radius:3px;background:var(--t-line);overflow:hidden}.td-bar i{display:block;height:100%;background:var(--t-accent)}
+  .td-now{display:flex;flex-direction:column;gap:4px}
+  .td-t{font-size:21px;font-weight:700;line-height:1.25}
+  .td-then{display:flex;justify-content:space-between;align-items:center;gap:12px;border-top:1px solid var(--t-line);padding-top:10px;font-size:15px;color:var(--t-ink)}
+  .sv{gap:16px}
+  #hsExam[hidden]{display:none!important}
+  .sv-sec{display:flex;flex-direction:column;gap:8px}
+  .sv-lab{display:block;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--t-muted)}
+  .sv-list{background:var(--t-card);border-radius:18px;display:flex;flex-direction:column;overflow:hidden}
+  .sv-row{display:flex;align-items:center;gap:12px;width:100%;padding:14px 18px;border:none;border-top:1px solid var(--t-line);background:none;font:inherit;color:var(--t-ink);text-align:left;cursor:pointer}
+  .sv-list>.sv-row:first-child,.sv-list>.sv-lab+.sv-row{border-top:none}
+  .sv-row:hover .sv-t{text-decoration:underline}
+  .sv-row:focus-visible,.sv-papers:focus-visible{outline:3px solid var(--t-accent);outline-offset:-3px}
+  .sv-n{flex:none;width:26px;font-size:15px;font-weight:700;color:var(--t-muted)}
+  .sv-b{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+  .sv-t{font-size:17px;font-weight:700;line-height:1.3}
+  .sv-s{font-size:14px;color:var(--t-muted)}
+  .sv-s.ok{color:var(--t-accent);font-weight:700}.sv-s.now{color:var(--t-accent);font-weight:600}.sv-s.dim{color:var(--t-muted)}
+  .sv-papers{display:flex;align-items:center;gap:14px;width:100%;padding:16px 18px;border:2px solid var(--t-line);border-radius:18px;background:var(--t-card);font:inherit;color:var(--t-ink);text-align:left;cursor:pointer}
+  .sv-ico{flex:none;width:44px;height:44px;border-radius:12px;background:var(--t-accent-tint);color:var(--t-accent);display:grid;place-items:center}
   .fx-ask{background:var(--t-card);border:2px solid var(--t-accent-soft);border-radius:18px;padding:18px 22px;display:flex;align-items:center;gap:14px 18px;flex-wrap:wrap}
   .fx-ask-b{flex:1 1 280px;display:flex;flex-direction:column;gap:4px;font-size:15px;line-height:1.45}.fx-ask-b b{font-size:17px}
   .fx-ask-btns{display:flex;gap:10px;flex-wrap:wrap}
@@ -939,6 +963,11 @@
   function suggestSession(m, need){
     const items = []; let total = 0;
     const mem = memoryItem(m); if (mem) { items.push(mem); total += mem.mins; }
+    // In the three weeks before exams, start with an exam question from a chapter he has started (most marks to win)
+    if (m.nextExam && m.nextExam.days <= REFRESH_DAYS) {
+      const ec = Object.values(m.topics).filter(c => c.stage !== "none" && c.exam && c.exam.open && (!mem || c.id !== mem.topic_id)).sort((a, b) => b.exam.openMarks - a.exam.openMarks)[0];
+      if (ec) { items.push({ topic_id: ec.id, kind: "exam", mins: 12 }); total += 12; }
+    }
     for (const p of todayPlan(m)) {
       if (total >= need) break;
       if (mem && p.c.id === mem.topic_id) continue;
@@ -968,7 +997,7 @@
     else if (it.kind === "revise") { what = what || "Revise"; detail = `revision guide, then a quick round · about ${it.mins} min`; }
     else {
       const fixOnly = st.quickFix && !st.quickNew && (st.quickLeft || 0) <= it.q;
-      what = what || (fixOnly ? `${plural(st.quickFix, "question", "questions")} you got wrong` : (st.quickLeft && st.quickLeft <= it.q ? "Finish Quick Tests" : "Quick Tests"));
+      what = what || (fixOnly ? `${plural(st.quickFix, "question", "questions")} you got wrong` : "Quick test");
       detail = `${it.rounds > 1 ? it.rounds + " rounds" : "1 round"} · about ${it.mins} min`;
     }
     return { c, subj: subjOf(m, c), name: `Ch ${c.order_num ?? ""}: ${short}`, short, what, detail };
@@ -987,7 +1016,7 @@
       title: `Next in today's session: ${d.subj} · ${d.name}`, note: `${d.what} · ${d.detail}.` };
   }
 
-  function mountSession(el, m, { profile, openChapter, state, again }){
+  function mountSession(el, m, { profile, openChapter, state, again, sb, reload }){
     const goalMin = m.goal ? m.goal.minutes : DAILY_GOAL, todayMin = m.goal ? m.goal.today : 0;
     const need = todayMin >= goalMin ? 10 : goalMin - todayMin;
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -997,43 +1026,29 @@
       const c = m.topics[it.topic_id]; if (!c) return;
       if (it.kind === "test") { state.todayRun = c.id; openChapter(c.id, c.subject_id, "test"); }
       else if (it.kind === "memory") { state.memoryRun = { topic: c.id, qid: it.qid, origin: it.origin, days: it.days }; openChapter(c.id, c.subject_id, "refresh"); }
-      else openChapter(c.id, c.subject_id, it.kind === "exam" ? "refresh" : "learn");
+      else if (it.kind === "exam") { state.examRun = c.id; openChapter(c.id, c.subject_id, "refresh"); }
+      else openChapter(c.id, c.subject_id, "learn");
     };
 
-    // 1. The suggestion
-    function paintAsk(){
-      const sug = suggestSession(m, need);
-      el.className = "pl";
-      if (!sug.length) {
-        el.innerHTML = `${head()}<div class="ss-lead">What would you like to study today?</div>
-          <span class="hs-sub" style="font-size:15px">Say a chapter or two, like "test the consumer, revise evidence for Jesus".</span>
-          <button type="button" class="hs-btn ss-go ss-say" data-say style="justify-content:center">${QA_MIC} Say it</button>`;
-        el.querySelector("[data-say]").onclick = () => paintSay();
-        return;
-      }
-      el.innerHTML = `${head()}
-        <div class="ss-lead">${todayMin >= goalMin ? "Fancy a bonus round?" : "Here's what I'd do today"} <span>(about ${sum(sug)} min)</span></div>
-        <ol class="ss-sug">${sug.map((it, i) => { const d = describe(m, it); return `<li><span class="ss-num">${i + 1}</span><span><b>${esc(d.what)} on ${esc(d.short)}</b><span class="s">${esc(d.subj)} · ${esc(d.detail)}</span></span></li>`; }).join("")}</ol>
-        <button type="button" class="hs-btn ss-go" data-go>Let's go</button>
-        <div class="ss-change"><span>Want to change anything?</span><button type="button" class="hs-btn ghost ss-say" data-say>${QA_MIC} Say it</button></div>`;
-      el.querySelector("[data-go]").onclick = () => { saveSession(profile, { source: "suggested", startedAt: Date.now(), items: sug }, m); paintSession(); };
-      el.querySelector("[data-say]").onclick = () => paintSay();
-    }
+    // Today starts itself from the suggestion; "Change" lets him say what he'd rather do
+    function paintAsk(){ saveSession(profile, null); paintToday(); }
 
     // 2. Say (or type) what they want instead
     function paintSay(value){
-      el.className = "pl";
-      el.innerHTML = `${head()}
+      el.className = "pl td";
+      el.innerHTML = `<span class="ss-k">Today</span>
         <div class="ss-lead">What do you want to do today?</div>
         <span class="hs-sub" style="font-size:15px">Say or type chapters, like "revise evidence for Jesus, test the consumer".</span>
         <form class="qa-row"><div class="qa-box"><input type="text" name="t" autocomplete="off" aria-label="What you want to study today" placeholder='e.g. "test the consumer, revise ch 5 religion"'>${SR ? `<button type="button" class="qa-mic" aria-label="Speak" title="Speak">${QA_MIC}</button>` : ""}</div><button class="hs-btn" type="submit" style="min-height:48px;padding:10px 22px;font-size:16px">Set it up</button></form>
         <p class="ss-listen" hidden><i aria-hidden="true"></i><span>Listening… say what you'd like to study. Tap the microphone when you've finished.</span></p>
         <p class="qa-err" hidden></p>
-        <div class="ss-foot"><button type="button" class="hs-link" data-cancel>Back to my suggestion</button></div>`;
+        <div class="ss-foot"><button type="button" class="hs-link" data-cancel>Back</button><button type="button" class="hs-link" data-school>Tell me about a class test or what you did in class</button></div>
+        <div class="qa" data-qa hidden style="padding:0"></div>`;
       const listening = el.querySelector(".ss-listen");
       const form = el.querySelector("form"), input = form.querySelector("input[name=t]"), err = el.querySelector(".qa-err"), mic = el.querySelector(".qa-mic");
       if (value) input.value = value;
-      el.querySelector("[data-cancel]").onclick = () => { stop(); paintAsk(); };
+      el.querySelector("[data-cancel]").onclick = () => { stop(); paintToday(); };
+      el.querySelector("[data-school]").onclick = (e) => { stop(); e.currentTarget.hidden = true; const q = el.querySelector("[data-qa]"); q.hidden = false; if (sb) mountQuickAdd(q, m, { sb, profile, reload: reload || again, state }); };
       // Speech: words appear in the box as they're spoken, and the mic button clearly shows when it's listening.
       // "Say it" starts listening straight away; the mic button then shows it's on and stops it.
       let rec = null, heard = false;
@@ -1128,212 +1143,79 @@
       return { source: "mine", startedAt: Date.now(), items, unclear };
     }
 
-    // 3. Today's session list
-    function paintSession(){
-      const s = loadSession(profile); if (!s) { paintAsk(); return; }
+    // 3. The Today card: what to do now, one button, and what comes next
+    function paintToday(){
+      let s = loadSession(profile);
+      if (!s) { const sug = suggestSession(m, need); if (sug.length) { s = { source: "suggested", startedAt: Date.now(), items: sug }; saveSession(profile, s, m); } }
+      el.className = "pl td";
+      const pct = Math.min(100, Math.round(todayMin / goalMin * 100));
+      const top = `<div class="td-top"><span class="ss-k">Today</span><span class="td-min">${todayMin >= goalMin ? `${goalMin} min done &#10003;` : `${todayMin} of ${goalMin} min done`}</span></div><div class="td-bar" aria-hidden="true"><i style="width:${pct}%"></i></div>`;
+      if (!s) {
+        el.innerHTML = `${top}<div class="td-t">What would you like to study today?</div><button type="button" class="hs-btn ss-go" data-change>Choose</button>`;
+        el.querySelector("[data-change]").onclick = () => paintSay();
+        return;
+      }
       const rows = s.items.map((it, i) => ({ it, i, d: describe(m, it), st: itemStatus(m.topics[it.topic_id], it, s.startedAt, m) })).filter(r => r.d);
-      const doneN = rows.filter(r => r.st.done).length, left = rows.filter(r => !r.st.done);
-      const nextIdx = left.length ? left[0].i : -1;
-      const minsLeft = sum(left.map(r => r.it));
-      const short = left.length && todayMin + minsLeft < goalMin - 3;
-      el.className = "pl";
-      if (!rows.length) { saveSession(profile, null); paintAsk(); return; }
-      const allDone = !left.length;
-      const line = allDone ? (todayMin >= goalMin ? `All done &#10003; and today's ${goalMin} minutes are in.` : `All done &#10003; ${goalMin - todayMin} minutes to go today.`)
-        : `About ${minsLeft} min${doneN ? " left" : ""}${!short ? (todayMin >= goalMin ? "" : ` · gets you to your ${goalMin} today`) : ` · ${goalMin - todayMin - minsLeft} short of your ${goalMin}`}`;
-      const chapterPick = (it, i) => {
+      const left = rows.filter(r => !r.st.done), now = left[0], then = left[1];
+      if (!now) {
+        el.innerHTML = `${top}<div class="td-t">All done for today &#10003;</div><span class="hs-sub" style="font-size:15px">${todayMin >= goalMin ? "Anything more is a bonus." : `${goalMin - todayMin} more minutes would hit today's goal.`}</span>
+          <button type="button" class="hs-btn ss-go" data-more>Another round</button>
+          <div class="td-then"><span></span><button type="button" class="hs-link" data-change>Change</button></div>`;
+        el.querySelector("[data-more]").onclick = () => { const sug = suggestSession(m, 10); if (sug.length) { saveSession(profile, { source: "suggested", startedAt: Date.now(), items: sug }, m); open(sug[0]); } };
+        el.querySelector("[data-change]").onclick = () => paintSay();
+        return;
+      }
+      const it = now.it, d = now.d;
+      const chapterPick = () => {
         const c = m.topics[it.topic_id], chs = (m.bySubject[c.subject_id] || { chapters: [] }).chapters.slice().sort((a, b) => (a.order_num || 0) - (b.order_num || 0));
-        return `<div class="ss-check"><span>Is this the right chapter?</span><select data-pick="${i}" aria-label="Which chapter">${chs.map(x => `<option value="${x.id}"${x.id === c.id ? " selected" : ""}>Ch ${x.order_num ?? ""}: ${esc(shortTitle(x.title))}</option>`).join("")}</select><button type="button" class="hs-btn small" data-sure="${i}" style="align-self:flex-start">Yes, that's it</button></div>`;
+        return `<div class="ss-check" style="margin:0"><span>Is this the right chapter?</span><select data-pick aria-label="Which chapter">${chs.map(x => `<option value="${x.id}"${x.id === c.id ? " selected" : ""}>Ch ${x.order_num ?? ""}: ${esc(shortTitle(x.title))}</option>`).join("")}</select></div>`;
       };
-      const progress = r => r.it.kind === "memory" && r.st.done ? (r.st.pass ? "Remembered ✓" : "Done · it'll come back in a few days") : r.st.done ? "Done" : (r.it.kind === "test" || r.it.kind === "revise") && r.st.n ? `${Math.min(r.st.n, r.it.q)} of ${r.it.q} answered` : "";
-      el.innerHTML = `${head()}
-        <span class="ss-k">${s.source === "mine" ? "Your plan" : "Suggested plan"}</span>
-        <div><div class="ss-count">${allDone ? "All done" : `${doneN} of ${rows.length} done`}</div><span class="hs-sub" style="font-size:15px">${line}</span></div>
-        ${rows.map(r => `<div class="ss-row${r.st.done ? " done" : ""}${r.i === nextIdx ? " next" : ""}">
-          <div class="ss-main"><span class="ss-tick" aria-hidden="true">${r.st.done ? "&#10003;" : ""}</span>
-            <button type="button" class="ss-b" data-item="${r.i}"><span class="pl-k">${esc(r.d.subj)}</span><span class="pl-t">${esc(r.d.name)}</span><span class="pl-n">${esc(r.d.what)} · ${esc(r.d.detail)}${progress(r) ? " · " + esc(progress(r)) : ""}</span></button>
-            ${r.st.done ? "" : `<button type="button" class="ss-x" data-remove="${r.i}" aria-label="Remove ${esc(r.d.short)} from today's session" title="Remove">&times;</button>`}</div>
-          ${r.it.added && !r.st.done ? `<span class="ss-tag">Added by me: it's due</span>` : ""}
-          ${r.it.unsure && !r.st.done ? chapterPick(r.it, r.i) : ""}
-          ${r.i === nextIdx ? `<button type="button" class="hs-btn ss-start" data-item="${r.i}">${r.st.n ? "Keep going" : "Start"}</button>` : ""}
-        </div>`).join("")}
-        ${short ? `<button type="button" class="ss-add" data-add>+ Add a round to reach ${goalMin}</button>` : ""}
-        ${(s.unclear || []).length ? `<span class="hs-sub">Couldn't match ${s.unclear.map(u => `"${esc(u.said)}"`).join(", ")} to a chapter. Add it from "Or choose yourself" below.</span>` : ""}
-        <div class="ss-foot">${allDone ? `<button type="button" class="hs-btn" data-new>Plan some more</button>` : `<button type="button" class="hs-link" data-new>Change plan</button>`}</div>`;
-      el.querySelectorAll("[data-item]").forEach(b => b.onclick = () => open(s.items[+b.dataset.item]));
-      el.querySelectorAll("[data-remove]").forEach(b => b.onclick = () => { s.items.splice(+b.dataset.remove, 1); saveSession(profile, s.items.length ? s : null); paintSession(); });
-      el.querySelectorAll("[data-pick]").forEach(sel => sel.onchange = () => {
-        const it = s.items[+sel.dataset.pick], c = m.topics[sel.value]; if (!c) return;
+      const started = (it.kind === "test" || it.kind === "revise") && now.st.n;
+      const detail = it.kind === "memory" ? `A ${it.marks ? it.marks + "-mark " : ""}exam question from memory · about ${it.mins} min`
+        : it.kind === "exam" ? `Write one and get it marked · about ${it.mins} min`
+        : it.kind === "learn" ? `Video or revision guide · about ${it.mins} min`
+        : it.kind === "revise" ? `Revision guide, then a quick round · about ${it.mins} min`
+        : `${it.q || 10} questions · about ${it.mins} min${started ? ` · ${Math.min(now.st.n, it.q)} done` : ""}`;
+      const thenLine = then ? `Then: ${then.d.what.charAt(0).toLowerCase() + then.d.what.slice(1)} on ${esc(then.d.short)}` : rows.length > 1 ? `${rows.length - left.length} of ${rows.length} done today` : "";
+      el.innerHTML = `${top}
+        <div class="td-now"><span class="pl-k">Now · ${esc(d.subj)}</span><span class="td-t">${esc(d.what)}: ${esc(d.short)}</span><span class="hs-sub" style="font-size:15px">${detail}</span></div>
+        ${it.unsure ? chapterPick() : ""}
+        <button type="button" class="hs-btn ss-go" data-go>${started ? "Continue" : "Start"}</button>
+        <div class="td-then"><span>${thenLine}</span><button type="button" class="hs-link" data-change>Change</button></div>`;
+      el.querySelector("[data-go]").onclick = () => open(it);
+      el.querySelector("[data-change]").onclick = () => paintSay();
+      const pk = el.querySelector("[data-pick]"); if (pk) pk.onchange = () => {
+        const c = m.topics[pk.value]; if (!c) return;
         const fresh = it.kind === "learn" || it.kind === "exam" || !(c.stats && c.stats.quickTotal) ? { topic_id: c.id, kind: it.kind === "exam" ? "exam" : "learn", mins: it.kind === "exam" ? 12 : 8 } : testItem(c, 1, it.kind);
         if (fresh && it.kind === "revise") fresh.mins += 5;
-        s.items[+sel.dataset.pick] = fresh || it; saveSession(profile, s, m); paintSession();
-      });
-      el.querySelectorAll("[data-sure]").forEach(b => b.onclick = () => { delete s.items[+b.dataset.sure].unsure; saveSession(profile, s); paintSession(); });
-      const add = el.querySelector("[data-add]"); if (add) add.onclick = () => {
-        // another round on the first test item with questions to spare, otherwise the next chapter from today's plan
-        const more = s.items.find(it => it.kind === "test" && !it.added && m.topics[it.topic_id] && (m.topics[it.topic_id].stats.quickLeft || 0) > it.q);
-        if (more) { const t = testItem(m.topics[more.topic_id], more.rounds + 1); if (t) { Object.assign(more, { rounds: t.rounds, q: t.q, mins: t.mins }); delete more.what; } }
-        else { const extra = todayPlan(m).map(p => p.c).find(c => !s.items.some(it => it.topic_id === c.id)); const t = extra && testItem(extra, 1); if (t) s.items.push(t); }
-        saveSession(profile, s, m); paintSession();
+        s.items[now.i] = fresh || it; saveSession(profile, s, m); paintToday();
       };
-      el.querySelector("[data-new]").onclick = () => { saveSession(profile, null); paintAsk(); };
     }
+    const paintSession = paintToday;
 
-    if (loadSession(profile)) paintSession(); else paintAsk();
-  }
-
-  // ---- Exam focus ----
-  // Two weeks before exams the homepage offers exam focus (never switches it on by itself). When on, the
-  // homepage is just subjects → chapters → exam questions, highest marks first, with nothing else on screen.
-  const FOCUS_DAYS = 14;
-  async function saveFocus(sb, profile, f){
-    try { await sb("student_settings", { method: "POST", prefer: "resolution=merge-duplicates,return=minimal", body: [{ profile_id: profile.id, exam_focus: f, updated_at: new Date().toISOString() }] }); } catch (e) {}
-  }
-  function focusPrompt(m){
-    const f = m.focus || {}, x = m.nextExam;
-    if (f.on || !x || x.days > FOCUS_DAYS) return "";
-    if (f.dismissed === x.iso || (f.snooze && f.snooze >= isoDay(new Date()))) return "";
-    const when = x.days === 0 ? "start today" : x.days === 1 ? "start tomorrow" : `are ${x.days} days away`;
-    return `<div class="fx-ask"><span class="fx-ask-b"><b>${esc(x.label || "Your exams")} ${when}.</b><span>Want to switch on exam focus? It keeps things simple: just exam questions, one subject at a time. You can switch it off any time with the Exam focus switch at the top.</span></span>
-      <span class="fx-ask-btns"><button type="button" class="hs-btn" data-fx-on>Switch on exam focus</button><button type="button" class="hs-btn ghost" data-fx-later>Not now</button></span></div>`;
-  }
-  function focusHtml(m, state){
-    const x = m.nextExam, open = state.fxOpen || null;
-    const line = x ? `${esc(x.label || "Exams")} ${x.days === 0 ? "start today" : x.days === 1 ? "start tomorrow" : `in ${x.days} days`}` : "Just exam questions, one subject at a time";
-    const mode = state.fxMode || "", year = state.fxYear || "";
-    const chip = qq => qq.best ? `<span class="pp-chip${qq.best.a / Math.max(1, qq.best.b) >= 0.6 ? " good" : " mid"}">${qq.best.a}/${qq.best.b}</span>` : qq.v !== undefined ? `<span class="pp-chip${qq.v >= 1 ? " good" : " mid"}">${qq.v >= 1 ? "Got it" : "Tried"}</span>` : `<span class="pp-chip">Not tried</span>`;
-    // One year's paper, as set: sections in order, each question opens straight into that question
-    const sjOpen = open ? m.bySubject[open] : null;
-    if (sjOpen && mode === "paper" && m.papers[open] && m.papers[open][year]) {
-      const qs = m.papers[open][year], tried = qs.filter(q => q.v !== undefined), withMarks = tried.filter(q => q.best);
-      const got = withMarks.reduce((t, q) => t + q.best.a, 0), of = withMarks.reduce((t, q) => t + q.best.b, 0);
-      const parts = []; qs.forEach(q => { const last = parts[parts.length - 1]; if (!last || last.key !== q.part.toLowerCase()) parts.push({ key: q.part.toLowerCase(), name: q.part, sub: q.sub, qs: [q] }); else { last.qs.push(q); if (!last.sub && q.sub) last.sub = q.sub; } });
-      return `<div class="pl fx">
-        <div class="fx-top"><button type="button" class="hs-link" data-fx-back="papers">&larr; ${esc(sjOpen.title)} papers</button></div>
-        <div class="ss-lead">${esc(sjOpen.title)} · ${esc(year)} paper</div>
-        <span class="hs-sub" style="font-size:15px">The questions as they were set in the ${esc(year)} exam. In the real exam you choose which questions to answer, so start with chapters you've covered. Tap a question to answer it. It's marked like the real exam.</span>
-        <div class="fx-pstat"><b>${tried.length} of ${qs.length} tried</b>${of ? ` · ${got} of ${of} marks on those` : ""}</div>
-        ${parts.map(pt => `<div class="fx-part"><h4>${esc(pt.name)}${pt.sub && !pt.name.toLowerCase().includes(pt.sub.toLowerCase()) ? ` · ${esc(pt.sub)}` : ""}</h4>${pt.qs.map(q => { const c = m.topics[q.topic_id]; const notYet = c && c.stage === "none";
-          return `<button type="button" class="fx-q${notYet ? " later" : ""}" data-fx-q="${q.id}"><span class="fx-ql">${esc(q.label || "Question")}</span><span class="fx-ch-b"><span class="s">${c ? `${c.book ? esc(c.book) + " · " : ""}Ch ${esc(String(c.order_num ?? ""))}: ${esc(shortTitle(c.title))}` : ""} · ${q.marks} marks${notYet ? " · not started yet" : ""}</span></span>${chip(q)}</button>`; }).join("")}</div>`).join("")}
-      </div>`;
-    }
-    const subs = m.subjects.map(sj => {
-      const chs = sj.chapters.filter(c => c.exam && c.exam.n).sort((a, b) => (a.bookIdx || 0) - (b.bookIdx || 0) || (a.order_num || 0) - (b.order_num || 0));
-      if (!chs.length) return "";
-      const n = chs.reduce((t, c) => t + c.exam.n, 0), tried = chs.reduce((t, c) => t + c.exam.tried, 0);
-      const years = Object.keys(m.papers[sj.id] || {}).sort().reverse();
-      const isOpen = open === sj.id;
-      let body = "";
-      if (isOpen && !mode) {
-        body = `<div class="fx-modes">
-          ${years.length ? `<button type="button" class="fx-mode" data-fx-mode="papers"><b>Try an exam paper</b><span>A real past paper, as set · ${years.length > 1 ? `${years[years.length - 1]}–${years[0]}` : years[0]}</span></button>` : ""}
-          <button type="button" class="fx-mode" data-fx-mode="topics"><b>Choose a topic</b><span>A more focused session on one chapter</span></button></div>`;
-      } else if (isOpen && mode === "papers") {
-        body = `<div class="fx-chs"><button type="button" class="hs-link fx-sub-back" data-fx-back="">&larr; Back</button>${years.map(y => { const qs = m.papers[sj.id][y], t = qs.filter(q => q.v !== undefined).length;
-          return `<button type="button" class="fx-ch" data-fx-year="${y}"><span class="fx-ch-b"><span class="t">${y} paper</span><span class="s">${plural(qs.length, "question", "questions")}${t ? ` · you've tried ${t}` : ""}</span></span><span class="hs-chev" aria-hidden="true">›</span></button>`; }).join("")}</div>`;
-      } else if (isOpen && mode === "topics") {
-        body = `<div class="fx-chs"><button type="button" class="hs-link fx-sub-back" data-fx-back="">&larr; Back</button>
-          ${chs.map(c => `<button type="button" class="fx-ch" data-fx-ch="${c.id}"><span class="fx-ch-b"><span class="t">${c.book ? esc(c.book) + " · " : ""}Ch ${esc(String(c.order_num ?? ""))}: ${esc(shortTitle(c.title))}</span><span class="s">${plural(c.exam.n, "question", "questions")}${c.exam.open ? ` · ${c.exam.openMarks} marks to win` : " · all done"}</span></span><span class="hs-chev" aria-hidden="true">›</span></button>`).join("")}</div>`;
-      }
-      return `<div class="fx-subj${isOpen ? " open" : ""}">
-        <button type="button" class="fx-sh" data-fx-subj="${sj.id}" aria-expanded="${isOpen}"><span><b>${esc(sj.title)}</b><span class="s">${plural(n, "exam question", "exam questions")} · ${tried} tried</span></span><span class="hs-chev" aria-hidden="true">${isOpen ? "&#709;" : "›"}</span></button>
-        ${body}
-      </div>`;
-    }).join("");
-    const mem = memoryItem(m);
-    const memHtml = mem ? (() => { const c = m.topics[mem.topic_id]; return `<button type="button" class="fx-mem" data-fx-mem><span class="fx-ch-b"><span class="ss-k">Memory check due</span><span class="t">${esc(subjOf(m, c))} · ${esc(shortTitle(c.title))}</span><span class="s">A ${mem.marks}-mark question from memory · about ${mem.mins} min</span></span><span class="hs-chev" aria-hidden="true">›</span></button>`; })() : "";
-    return `<div class="pl fx">
-      <span class="ss-k">Exam focus</span>
-      <div class="ss-lead">${line}</div>
-      <span class="hs-sub" style="font-size:15px">Pick a subject, then try a real exam paper or choose a topic for a more focused session.</span>
-      ${memHtml}
-      <div class="fx-list">${subs || `<span class="hs-sub">No exam questions yet.</span>`}</div>
-    </div>`;
+    paintToday();
   }
 
-  // ---- homepage ----
+  // ---- homepage: Today, then subjects. Nothing else. ----
   function renderHome(view, m, { profile, openChapter, openSubject, state, sb, reload, openSettings }){
     addCss();
-    const w = m.week;
+    if (state) { state.examFocus = false; state.fromPaper = false; }
+    document.body.classList.remove("exam-focus");
     const hour = new Date().getHours();
-    const cele = window.Decor && m.goal ? Decor.celebration(m.goal) : null;
     const hello = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
-    const letters = ["M","T","W","T","F","S","S"], todayKey = dayKey(new Date());
-    const dots = letters.map((l, i) => {
-      const d = new Date(w.ws.getTime() + i * DAY), k = dayKey(d);
-      return `<span class="hc-day${w.days.has(k) ? " on" : ""}${k === todayKey ? " today" : ""}"><i></i>${l}</span>`;
+    const streak = m.goal && m.goal.streakNow ? `${plural(m.goal.streakNow, "day", "days")} in a row` : "";
+    const subs = m.subjects.map(sj => {
+      const chs = sj.chapters, tested = chs.filter(c => c.tested).length;
+      return `<button type="button" class="sv-row" data-subject="${sj.id}"><span class="sv-b"><span class="sv-t">${esc(sj.title)}</span><span class="sv-s">${chs.length ? `${tested} of ${plural(chs.length, "topic", "topics")} tested` : "No topics yet"}</span></span><span class="hs-chev" aria-hidden="true">›</span></button>`;
     }).join("");
-    const rev = revisionList(m);
-    const best = rev[0] || null;
-    const rest = rev;
-    const showAll = state && state.homeShowAll;
-    const subjTitle = id => (m.bySubject[id] || {}).title || "";
-    const weekOpen = state && state.weekOpen;
-    const chips = m.subjects.map(s => {
-      const b = subjectBar(s.chapters);
-      return `<button type="button" class="hc-chip" data-subject="${s.id}"><b>${esc(s.title)}</b>${b.bar}</button>`;
-    }).join("");
-    const bestNote = best ? [subjTitle(best.subject_id), best.flag && best.flag.note ? best.flag.note : "", best.line].filter(Boolean).join(" · ") : "";
-    const row = c => `<button type="button" class="hc-row" data-open="${c.id}" data-tab="${TAB_FOR[c.stage]}">
-        <span class="hc-row-b"><span class="hc-row-t">${esc(shortTitle(c.title))}</span><span class="hc-row-s">${esc(subjTitle(c.subject_id))}${c.book ? " " + esc(c.book) : ""} · ${esc(c.flag && c.flag.note ? c.flag.note : stepLevel(c)[1].toLowerCase())}</span></span>
-        ${stepsArrows(c)}<span class="hs-chev" aria-hidden="true">›</span></button>`;
-    const goalMin = m.goal ? m.goal.minutes : DAILY_GOAL, todayMin = m.goal ? m.goal.today : 0;
-    const focusOn = !!(m.focus && m.focus.on);
-    if (state) state.examFocus = focusOn;
-    document.body.classList.toggle("exam-focus", focusOn);
     view.innerHTML = `<div class="hs hc">
-      <div class="hc-top">
-        <div class="hc-hello"><h2>${hello}, ${esc(profile.name)}</h2><span>${m.goal && m.goal.streakNow ? `${plural(m.goal.streakNow, "day", "days")} in a row · ` : ""}${goalMin} minutes of testing a day</span></div>
-        <div class="hc-meta">
-          <button type="button" class="fx-toggle${focusOn ? " on" : ""}" role="switch" aria-checked="${focusOn}" data-fx-toggle><span class="fx-track" aria-hidden="true"><i></i></span><span>Exam focus${focusOn ? " on" : ""}</span></button>
-          <button type="button" class="hs-link hc-weeklink" data-week aria-expanded="${!!weekOpen}">This week: ${hm(w.testSec)} testing</button>
-        </div>
-      </div>
-      ${focusOn ? focusHtml(m, state || {}) : `${focusPrompt(m)}${Object.keys(m.topics).length ? `<div id="todaySession"></div>` : ""}`}
-      ${weekOpen ? `<div class="hc-week">
-        <div class="hc-days" aria-label="Days studied this week">${dots}</div>
-        <div class="hc-stats">
-          <div><b>${hm(w.testSec)}</b><span>testing myself</span></div>
-          <div><b>${w.learnMin ? "about " + hm(w.learnMin * 60) : "0 m"}</b><span>learning</span></div>
-          <div><b>${w.answered}</b><span>questions answered</span></div>
-          <div><b>${w.fixed}</b><span>answers fixed</span></div>
-        </div>
-        ${m.goal ? `<span class="hc-goal">${esc(m.goal.streakRule)}. Today: ${m.goal.today} of ${m.goal.minutes} minutes.${window.Decor ? (() => { const n = Decor.nextUp(m.goal)[0]; return n ? ` Next reward: ${n.name} (${n.have} of ${n.need} ${n.unit}).` : ""; })() : ""}</span>` : ""}</div>` : ""}
-      ${!focusOn && cele ? `<div class="hc-cele"><span class="hc-cele-b"><b>Reward earned for ${esc(cele.why[cele.why.length - 1])}!</b><span>Choose one for your page${cele.left > 1 ? ` (${cele.left} to choose)` : ""}.</span></span><span class="hc-cele-btns"><button type="button" class="hs-btn" data-spend="sticker">+1 sticker</button><button type="button" class="hs-btn" data-spend="writing">+1 writing</button><button type="button" class="hs-btn" data-spend="photo">+1 photo</button></span></div>` : ""}
-      ${focusOn ? "" : `<div class="hc-card">
-        <h3 style="margin:0;font-size:19px">Or choose yourself</h3>
-        ${m.subjects.length ? `<div class="hc-sec"><span class="hc-label">Pick a subject</span><div class="hc-chips">${chips}</div></div>` : `<div class="hs-empty">No subjects yet.</div>`}
-        ${rest.length ? `<div class="hc-sec"><span class="hc-label">My revision list</span>
-          <div class="hc-list">${rest.slice(0, showAll ? rest.length : 3).map(row).join("")}</div>
-          ${rest.length > 3 ? `<button type="button" class="hs-link" style="align-self:flex-start" data-all>${showAll ? "Show fewer" : `See all ${rest.length}`}</button>` : ""}</div>` : ""}
-      </div>
-      <div class="qa" id="quickAdd"></div>`}
+      <div class="hc-hello"><h2>${hello}, ${esc(profile.name)}</h2>${streak ? `<span>${streak}</span>` : ""}</div>
+      ${Object.keys(m.topics).length ? `<div id="todaySession"></div>` : ""}
+      <div class="sv-sec"><span class="sv-lab">My subjects</span>${m.subjects.length ? `<div class="sv-list">${subs}</div>` : `<div class="hs-empty">No subjects yet.</div>`}</div>
     </div>`;
-    view.querySelectorAll("[data-subject]").forEach(b => b.onclick = () => openSubject(b.dataset.subject));
-    view.querySelectorAll("[data-open]").forEach(b => b.onclick = () => { const c = m.topics[b.dataset.open]; openChapter(c.id, c.subject_id, b.dataset.tab); });
     const again = () => renderHome(view, m, { profile, openChapter, openSubject, state, sb, reload, openSettings });
-    const all = view.querySelector("[data-all]"); if (all) all.onclick = () => { state.homeShowAll = !showAll; again(); };
-    view.querySelector("[data-week]").onclick = () => { state.weekOpen = !weekOpen; again(); };
-    view.querySelectorAll("[data-spend]").forEach(b => b.onclick = async () => { b.disabled = true; await Decor.spend(sb, b.dataset.spend); if (openSettings) openSettings(); });
-    const qaBtn = view.querySelector("[data-qa]"); if (qaBtn) qaBtn.onclick = () => { state.qaOpen = true; again(); const i = view.querySelector("#quickAdd input"); if (i) i.focus(); };
-    view.querySelectorAll("[data-today]").forEach(td => td.onclick = () => { const c = m.topics[td.dataset.today]; state.todayRun = c.id; openChapter(c.id, c.subject_id, "test"); });
-    // exam focus controls
-    const setFocus = (f) => { m.focus = f; saveFocus(sb, profile, f); again(); window.scrollTo({ top: 0 }); };
-    view.querySelectorAll("[data-fx-on]").forEach(b => b.onclick = () => setFocus({ ...(m.focus || {}), on: true, since: isoDay(new Date()) }));
-    const later = view.querySelector("[data-fx-later]"); if (later) later.onclick = () => setFocus({ ...(m.focus || {}), on: false, snooze: isoDay(new Date(Date.now() + 3 * DAY)) });
-    const tg = view.querySelector("[data-fx-toggle]"); if (tg) tg.onclick = () => focusOn
-      ? setFocus({ ...(m.focus || {}), on: false, dismissed: m.nextExam ? m.nextExam.iso : null })
-      : setFocus({ ...(m.focus || {}), on: true, since: isoDay(new Date()) });
-    view.querySelectorAll("[data-fx-subj]").forEach(b => b.onclick = () => { state.fxOpen = state.fxOpen === b.dataset.fxSubj ? null : b.dataset.fxSubj; state.fxMode = ""; state.fxYear = ""; again(); });
-    view.querySelectorAll("[data-fx-mode]").forEach(b => b.onclick = () => { state.fxMode = b.dataset.fxMode; again(); });
-    view.querySelectorAll("[data-fx-year]").forEach(b => b.onclick = () => { state.fxMode = "paper"; state.fxYear = b.dataset.fxYear; again(); window.scrollTo({ top: 0 }); });
-    view.querySelectorAll("[data-fx-back]").forEach(b => b.onclick = () => { state.fxMode = b.dataset.fxBack; state.fxYear = ""; again(); });
-    view.querySelectorAll("[data-fx-q]").forEach(b => b.onclick = () => { const qs = (m.papers[state.fxOpen] || {})[state.fxYear] || []; const q = qs.find(x => x.id === b.dataset.fxQ); const c = q && m.topics[q.topic_id]; if (!c) return;
-      state.paperList = qs.map(x => ({ id: x.id, topic: x.topic_id, subject: (m.topics[x.topic_id] || {}).subject_id })); state.paperRun = { topic: c.id, qid: q.id }; openChapter(c.id, c.subject_id, "refresh"); });
-    view.querySelectorAll("[data-fx-ch]").forEach(b => b.onclick = () => { const c = m.topics[b.dataset.fxCh]; state.examRun = c.id; openChapter(c.id, c.subject_id, "refresh"); });
-    const fm = view.querySelector("[data-fx-mem]"); if (fm) fm.onclick = () => { const it = memoryItem(m); const c = m.topics[it.topic_id]; state.memoryRun = { topic: c.id, qid: it.qid, origin: it.origin, days: it.days }; openChapter(c.id, c.subject_id, "refresh"); };
-    if (view.querySelector("#todaySession")) mountSession(view.querySelector("#todaySession"), m, { profile, openChapter, state, again });
-    if (sb && view.querySelector("#quickAdd")) mountQuickAdd(view.querySelector("#quickAdd"), m, { sb, profile, reload, state });
+    view.querySelectorAll("[data-subject]").forEach(b => b.onclick = () => openSubject(b.dataset.subject));
+    if (view.querySelector("#todaySession")) mountSession(view.querySelector("#todaySession"), m, { profile, openChapter, state, again, sb, reload });
   }
 
   // ---- subject page: a smart list that shows what matters now ----
@@ -1344,74 +1226,67 @@
     if (contiguous && nums.length === 1) return `Chapter ${nums[0]}`;
     return plural(chs.length, "chapter", "chapters");
   }
+  function topicStatus(c){
+    const st = c.stats || {};
+    if (c.tested) return ["ok", "Tested ✓"];
+    if (c.stage === "refresh") return ["now", "Exam prep"];
+    if (c.stage === "test") return ["now", st.quickFix ? `Testing · ${st.quickFix} to fix` : "Testing"];
+    if (c.stage === "learn") return ["", "Learning"];
+    return ["dim", "Not started"];
+  }
   function renderSubject(view, m, subjectId, { sb, profile, openChapter, goHome, reload, state }){
     addCss();
-    const s = m.bySubject[(m.groupOf && m.groupOf[subjectId]) || subjectId];
+    const key = (m.groupOf && m.groupOf[subjectId]) || subjectId;
+    const s = m.bySubject[key];
     if (!s) { goHome(); return; }
+    const sv = state.subjView && state.subjView.id === key ? state.subjView : (state.subjView = { id: key, mode: "", year: "" });
+    const again = () => renderSubject(view, m, subjectId, { sb, profile, openChapter, goHome, reload, state });
     const chs = s.chapters.slice().sort((a, b) => (a.bookIdx || 0) - (b.bookIdx || 0) || (a.order_num || 0) - (b.order_num || 0));
-    const isTested = c => c.done && (c.stage === "test" || c.stage === "refresh");
-    const onTheGo = chs.filter(c => (c.stage !== "none" && !isTested(c)) || (c.flag && !isTested(c)));
-    const tested = chs.filter(isTested);
-    const reached = Math.max(-1, ...chs.map((c, i) => (c.stage !== "none" || c.flag) ? i : -1));
-    const notStarted = chs.filter(c => c.stage === "none" && !c.flag);
-    const comingUp = notStarted.filter(c => chs.indexOf(c) > reached).slice(0, 3);
-    const later = notStarted.filter(c => !comingUp.includes(c));
-    const open = state.subjectOpen = state.subjectOpen || {};
-    const b = subjectBar(chs);
-
-    const row = (c) => {
-      const tag = isTested(c) ? "" : stepsMark(c);
-      const classBtn = "";
-      const note = c.flag && c.flag.note ? ` · ${esc(c.flag.note)}` : "";
-      const on = !!c.flag;
-      const mark = `<button type="button" class="hs-mark${on ? " on" : ""}" data-mark="${c.id}" aria-pressed="${on}" aria-label="${on ? "On your revision list. Tap to remove" : "Add to your revision list"}" title="${on ? "On your revision list" : "Add to your revision list"}">${BOOKMARK}</button>`;
-      return `<div class="hs-rowwrap"><button type="button" class="hs-row${c.stage === "none" ? " dim" : ""}" data-open="${c.id}" data-tab="${TAB_FOR[c.stage]}">
-        <span class="hs-num${isTested(c) ? " ok" : ""}">${isTested(c) ? "✓" : esc(String(c.order_num ?? "-"))}</span>
-        <span class="hs-row-b"><span class="hs-row-t">${esc(shortTitle(c.title))}</span><span class="hs-row-s">${c.book ? esc(c.book) + " · " : ""}${esc(c.stage === "none" ? (comingUp.includes(c) ? "Coming up next" : "Not started") : c.line)}${note}</span>${classBtn ? `<span style="display:block;margin-top:6px">${classBtn}</span>` : ""}</span>
-        ${tag}<span class="hs-chev" aria-hidden="true">›</span></button>${mark}</div>`;
-    };
-    const fold = (key, title, sub, list, icon) => {
-      if (!list.length) return "";
-      const isOpen = !!open[subjectId + key];
-      return `<button type="button" class="hs-row hs-fold" data-fold="${key}" aria-expanded="${isOpen}">
-          <span class="hs-num${icon === "✓" ? " ok" : ""}">${icon}</span>
-          <span class="hs-row-b"><span class="hs-row-t" style="font-size:16px">${esc(title)}</span><span class="hs-row-s">${esc(sub)}</span></span>
-          <span class="hs-show">${isOpen ? "Hide" : "Show"}</span></button>${isOpen ? list.map(row).join("") : ""}`;
-    };
-    const opensSoon = s.exam ? (() => { const d = parseDate(s.exam.exam_date); return d ? `Exam prep from ${fmtDate(new Date(d - REFRESH_DAYS * DAY))}` : ""; })() : "";
-    const testedSub = tested.some(c => c.stage === "refresh") ? "Exam ready" : (opensSoon || "Well done");
-    let listHtml = "";
-    listHtml += fold("tested", `${rangeText(tested)} · ${tested.length === 1 ? "tested" : "all tested"}`, testedSub, tested, "✓");
-    if (onTheGo.length) listHtml += `<span class="hs-group">On the go</span>` + onTheGo.map(row).join("");
-    if (comingUp.length) listHtml += `<span class="hs-group">Coming up</span>` + comingUp.map(row).join("");
-    listHtml += fold("later", `${rangeText(later)}`, later.length && comingUp.length ? "Later in the year" : "Start any time", later, "…");
-
-    view.innerHTML = `<div class="hs">
-      <button type="button" class="hs-back" data-home>← Home</button>
-      <h1>${esc(s.title)}</h1>
-      <div style="display:flex;flex-direction:column;gap:8px">${b.bar}<span class="hs-sub" style="font-size:16px">${esc(b.parts.length ? b.parts.join(" · ") : "Pick a chapter to start")}</span></div>
-      <div id="hsExam"></div>
-      <div class="hs-head"><h3>Chapters</h3></div>
-      ${chs.length ? `<div class="hs-list"><span class="hs-markkey"><span class="hs-mark on">${BOOKMARK}</span>Tap the bookmark to add a chapter to your revision list</span>${listHtml}</div>` : `<div class="hs-empty">No chapters yet.</div>`}
-    </div>`;
-    examBox(view.querySelector("#hsExam"), { sb, profile, subjectId: (s.members || [s.id])[0], subjectIds: s.members || [s.id], exam: s.exam, onChange: () => reload() });
-    view.querySelector("[data-home]").onclick = goHome;
-    view.querySelectorAll("[data-fold]").forEach(b2 => b2.onclick = () => { open[subjectId + b2.dataset.fold] = !open[subjectId + b2.dataset.fold]; renderSubject(view, m, subjectId, { sb, profile, openChapter, goHome, reload, state }); });
-    view.querySelectorAll("[data-mark]").forEach(el => el.addEventListener("click", async () => {
-      const id = el.dataset.mark, on = el.getAttribute("aria-pressed") === "true";
-      el.disabled = true; el.classList.toggle("on", !on); el.setAttribute("aria-pressed", String(!on));
-      try {
-        if (on) await sb(`topic_flags?topic_id=eq.${id}&profile_id=eq.${profile.id}`, { method: "DELETE", prefer: "return=minimal" });
-        else await sb("topic_flags", { method: "POST", prefer: "resolution=merge-duplicates,return=minimal", body: [{ topic_id: id, profile_id: profile.id, flag_type: "revise", note: "", updated_at: new Date().toISOString() }] });
-      } catch (e) {}
-      reload();
-    }));
-    view.querySelectorAll("[data-classdone]").forEach(el => {
-      const act = async (e) => { e.stopPropagation(); e.preventDefault(); el.textContent = "Saving…"; await markClassDone(sb, profile, el.dataset.classdone, true); reload(); };
-      el.addEventListener("click", act);
-      el.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") act(e); });
+    const papers = m.papers[key] || {}, years = Object.keys(papers).sort().reverse();
+    const chip = qq => qq.best ? `<span class="pp-chip${qq.best.a / Math.max(1, qq.best.b) >= 0.6 ? " good" : " mid"}">${qq.best.a}/${qq.best.b}</span>` : qq.v !== undefined ? `<span class="pp-chip${qq.v >= 1 ? " good" : " mid"}">${qq.v >= 1 ? "Got it" : "Tried"}</span>` : `<span class="pp-chip">Not tried</span>`;
+    let body;
+    if (sv.mode === "paper" && papers[sv.year]) {
+      // one real paper, as set: sections in order; each question opens straight into that question
+      const qs = papers[sv.year], tried = qs.filter(q => q.v !== undefined), withMarks = tried.filter(q => q.best);
+      const got = withMarks.reduce((t, q) => t + q.best.a, 0), of = withMarks.reduce((t, q) => t + q.best.b, 0);
+      const parts = []; qs.forEach(q => { const last = parts[parts.length - 1]; if (!last || last.key !== q.part.toLowerCase()) parts.push({ key: q.part.toLowerCase(), name: q.part, sub: q.sub, qs: [q] }); else { last.qs.push(q); if (!last.sub && q.sub) last.sub = q.sub; } });
+      body = `<button type="button" class="hs-back" data-mode="papers">← ${esc(s.title)} past papers</button>
+        <h1>${esc(s.title)} · ${esc(sv.year)} paper</h1>
+        <span class="hs-sub" style="font-size:15px">The questions as they were set. In the real exam you choose which to answer, so start with topics you've covered. Each one is marked like the real exam.</span>
+        <div class="fx-pstat"><b>${tried.length} of ${qs.length} tried</b>${of ? ` · ${got} of ${of} marks on those` : ""}</div>
+        <div class="sv-list" style="padding:4px 18px 10px">${parts.map(pt => `<div class="fx-part"><h4>${esc(pt.name)}${pt.sub && !pt.name.toLowerCase().includes(pt.sub.toLowerCase()) ? ` · ${esc(pt.sub)}` : ""}</h4>${pt.qs.map(q => { const c = m.topics[q.topic_id]; const notYet = c && c.stage === "none";
+          return `<button type="button" class="fx-q${notYet ? " later" : ""}" data-q="${q.id}"><span class="fx-ql">${esc(q.label || "Question")}</span><span class="fx-ch-b"><span class="s">${c ? `${c.book ? esc(c.book) + " · " : ""}Ch ${esc(String(c.order_num ?? ""))}: ${esc(shortTitle(c.title))}` : ""} · ${q.marks} marks${notYet ? " · not started yet" : ""}</span></span>${chip(q)}</button>`; }).join("")}</div>`).join("")}</div>`;
+    } else if (sv.mode === "papers") {
+      body = `<button type="button" class="hs-back" data-mode="">← ${esc(s.title)}</button>
+        <h1>${esc(s.title)} past papers</h1>
+        <div class="sv-list">${years.map(y => { const t = papers[y].filter(q => q.v !== undefined).length;
+          return `<button type="button" class="sv-row" data-year="${y}"><span class="sv-b"><span class="sv-t">${y} paper</span><span class="sv-s">${plural(papers[y].length, "question", "questions")}${t ? ` · you've tried ${t}` : ""}</span></span><span class="hs-chev" aria-hidden="true">›</span></button>`; }).join("")}</div>`;
+    } else {
+      const tested = chs.filter(c => c.tested).length;
+      const ex = s.exam ? parseDate(s.exam.exam_date) : null, today = startOfDay(new Date());
+      const examLine = ex && ex >= today ? `${esc(s.exam.label || "Exams")} ${untilText(ex)}` : "";
+      body = `<button type="button" class="hs-back" data-home>← Home</button>
+        <h1>${esc(s.title)}</h1>
+        <span class="hs-sub" style="font-size:15px">${examLine ? examLine + " · " : ""}${tested} of ${plural(chs.length, "topic", "topics")} tested · <button type="button" class="hs-link" data-exam style="font-size:15px">${examLine ? "Change exam date" : "Set exam date"}</button></span>
+        <div id="hsExam"${state.examEdit === key ? "" : " hidden"}></div>
+        ${chs.length ? `<div class="sv-list"><span class="sv-lab" style="padding:14px 18px 6px">Topics</span>${chs.map(c => { const [cls, txt] = topicStatus(c);
+          return `<button type="button" class="sv-row" data-open="${c.id}"><span class="sv-n">${esc(String(c.order_num ?? ""))}</span><span class="sv-b"><span class="sv-t">${esc(shortTitle(c.title))}</span><span class="sv-s ${cls}">${c.book ? esc(c.book) + " · " : ""}${esc(txt)}</span></span><span class="hs-chev" aria-hidden="true">›</span></button>`; }).join("")}</div>` : `<div class="hs-empty">No topics yet.</div>`}
+        ${years.length ? `<button type="button" class="sv-papers" data-mode="papers"><span class="sv-ico" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M8 13h8"/><path d="M8 17h5"/></svg></span><span class="sv-b"><span class="sv-t">Past papers</span><span class="sv-s">Real exam papers, ${years.length > 1 ? `${years[years.length - 1]}–${years[0]}` : years[0]}</span></span><span class="hs-chev" aria-hidden="true">›</span></button>` : ""}`;
+    }
+    view.innerHTML = `<div class="hs sv">${body}</div>`;
+    const hb = view.querySelector("[data-home]"); if (hb) hb.onclick = goHome;
+    const eb = view.querySelector("#hsExam");
+    if (eb) examBox(eb, { sb, profile, subjectId: (s.members || [s.id])[0], subjectIds: s.members || [s.id], exam: s.exam, onChange: () => { state.examEdit = null; reload(); } });
+    const xb = view.querySelector("[data-exam]"); if (xb) xb.onclick = () => { state.examEdit = state.examEdit === key ? null : key; again(); };
+    view.querySelectorAll("[data-mode]").forEach(b => b.onclick = () => { sv.mode = b.dataset.mode; sv.year = ""; again(); window.scrollTo({ top: 0 }); });
+    view.querySelectorAll("[data-year]").forEach(b => b.onclick = () => { sv.mode = "paper"; sv.year = b.dataset.year; again(); window.scrollTo({ top: 0 }); });
+    view.querySelectorAll("[data-open]").forEach(b => b.onclick = () => { state.fromPaper = false; const c = m.topics[b.dataset.open]; openChapter(c.id, c.subject_id, TAB_FOR[c.stage]); });
+    view.querySelectorAll("[data-q]").forEach(b => b.onclick = () => {
+      const qs = papers[sv.year] || [], q = qs.find(x => x.id === b.dataset.q), c = q && m.topics[q.topic_id]; if (!c) return;
+      state.paperList = qs.map(x => ({ id: x.id, topic: x.topic_id, subject: (m.topics[x.topic_id] || {}).subject_id }));
+      state.paperFrom = { subject: subjectId, key, year: sv.year }; state.fromPaper = true;
+      state.paperRun = { topic: c.id, qid: q.id }; openChapter(c.id, c.subject_id, "refresh");
     });
-    view.querySelectorAll("[data-open]").forEach(b2 => b2.addEventListener("click", (e) => { if (e.target.closest("[data-classdone]")) return; openChapter(b2.dataset.open, subjectId, b2.dataset.tab); }));
   }
 
   window.Stages = { ago, leftOff, nextUp, sessionNext, ringSvg, DAILY_GOAL, loadOverview, buildModel, renderHome, renderSubject, chapterStage, statusLine, examBox, markClassDone, startFresh, parseDate, fmtDate, untilText, REFRESH_DAYS, PRACTICE_TITLES, addCss };
