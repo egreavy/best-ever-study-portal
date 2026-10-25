@@ -135,6 +135,11 @@
   .pr-hear.on{border-color:var(--t-accent);color:var(--t-accent)}
   .pr-more>summary,.pr-modelbl>summary{cursor:pointer;font-weight:700;min-height:36px;display:flex;align-items:center}
   .pr-modelbl:focus,.pr-modelbl>summary:focus,.pr-more>summary:focus{outline:none}
+  .pr-modelbtn{margin:4px 0}
+  .pr-modelbtn>summary{list-style:none;display:inline-flex;align-items:center;gap:10px;min-height:48px;padding:8px 18px 8px 10px;border:2px solid var(--t-accent);border-radius:999px;background:var(--t-card);color:var(--t-accent);font-size:16px}
+  .pr-modelbtn>summary::-webkit-details-marker{display:none}
+  .pr-modelbtn[open]>summary{background:var(--t-accent-tint)}
+  .pr-mb-i{width:30px;height:30px;border-radius:50%;background:var(--t-accent-tint);display:grid;place-items:center}.pr-mb-i svg{width:17px;height:17px}
   .pr-modelbl>summary:focus-visible,.pr-more>summary:focus-visible{outline:3px solid var(--t-accent);outline-offset:2px;border-radius:6px}
   .pr-key h4{margin:6px 0 0;font-size:16px}
   .pr-key ul{margin:0;padding-left:20px;font-size:16px;line-height:1.55}
@@ -355,6 +360,7 @@
     const where = { quiz: "in a quiz", tutor: "with your tutor", written: "in a written answer", helped: "after improving your answer", memory: "in a memory check" }[String(prog.src[q.id] || "").split(":")[0]] || "";
     return prog.latest[q.id] === 0 ? `You didn't know this one yet${where ? " (" + where + ")" : ""}` : `Half right${where ? " " + where : ""}. Nearly there.`;
   }
+  const BOOK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h12v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5"/><path d="M9 8h6"/><path d="M9 12h6"/></svg>';
   const isPast = q => q.qtype === "exam" && !/^exam-style/i.test(q.source || "");
   // Read short feedback aloud with the device's own voice (tap again to stop)
   const SPEAK_SVG = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>`;
@@ -969,7 +975,7 @@
         if (entry.again) { const r = session.results.find(x => x.q === q); if (r) r.v = Math.max(r.v, v); save(q.id, v, source); }
         else if (!retry) { session.results.push({ q, v }); save(q.id, v, source); }
       };
-      const modelBlock = () => `<details class="pr-modelbl"><summary>${isExam ? "See the model answer and marking scheme" : "See a good answer"}</summary><div class="pr-fb" style="margin-top:8px"><span>${esc(q.model_answer||"")}</span>${q.marking_scheme?`<span class="pr-scheme"><strong>Marking scheme:</strong> ${esc(q.marking_scheme)}</span>`:""}</div></details>`;
+      const modelBlock = () => `<details class="pr-modelbl pr-modelbtn"><summary><span class="pr-mb-i" aria-hidden="true">${BOOK_SVG}</span>${isExam ? "See the model answer and marking scheme" : "See a good answer"}</summary><div class="pr-fb" style="margin-top:8px"><span>${esc(q.model_answer||"")}</span>${q.marking_scheme?`<span class="pr-scheme"><strong>Marking scheme:</strong> ${esc(q.marking_scheme)}</span>`:""}</div></details>`;
 
       fbBtn.onclick = async () => {
         stopMic();
@@ -998,21 +1004,15 @@
               ${fix1 ? `<p class="pr-k"><b>For more marks:</b> ${esc(fix1)}</p>` : ""}` : `${f.went_well.length ? `<h4>What you got right</h4>${list(f.went_well)}` : ""}
               ${f.to_improve.length ? `<h4>Where you can add more marks</h4>${list(f.to_improve)}` : ""}`}
             </div>
-            ${isExam ? `<details class="pr-more"><summary>See the full marking</summary>
-              ${f.summary ? `<p style="margin:8px 0 0">${esc(f.summary)}</p>` : ""}
-              ${f.went_well.length ? `<h4>What you got right</h4>${list(f.went_well)}` : ""}
-              ${f.to_improve.length ? `<h4>${isExam ? "How to get more marks" : "To make it better"}</h4>${list(f.to_improve)}` : ""}
-              ${f.example ? `<h4>For example</h4><span>${esc(f.example)}</span>` : ""}
-              ${shown ? `<details class="pr-mine"><summary>Your answer, as it was marked</summary><span>${esc(shown)}</span></details>` : ""}
-            </details>` : ""}
+
           </div>`);
           card.append(fbEl);
+          fbEl.querySelector(".pr-key").after(h(modelBlock()));
           const hb = fbEl.querySelector("[data-hear]");
           if (hb) hb.onclick = () => speakOut(hb, (isExam
             ? [`${f.marks_awarded} out of ${f.marks_available}.`, upTxt, good1 ? "Good: " + good1 : "", fix1 ? "For more marks: " + fix1 : ""]
             : [v === 1 ? "Got it." : v ? "Nearly." : "Not yet.", upTxt, f.went_well.length ? "What you got right. " + f.went_well.join(" ") : "", f.to_improve.length ? "Where you can add more marks. " + f.to_improve.join(" ") : ""]).filter(Boolean).join(" "));
           if (f.to_improve.length && (isExam || v < 1) && (!f.marks_available || f.marks_awarded < f.marks_available)) improveRow(fbEl, q, text || f.transcription || "", f, entry);
-          card.append(h(modelBlock()));
           nextBtn(card);
         } catch (e) {
           err.textContent = e.message + " You can still check it yourself with Just show the answer."; err.hidden = false;
