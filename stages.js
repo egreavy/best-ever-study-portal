@@ -1290,5 +1290,5 @@
     });
   }
 
-  window.Stages = { ago, leftOff, nextUp, sessionNext, ringSvg, DAILY_GOAL, loadOverview, buildModel, renderHome, renderSubject, chapterStage, statusLine, examBox, markClassDone, startFresh, parseDate, fmtDate, untilText, REFRESH_DAYS, PRACTICE_TITLES, addCss };
+  window.Stages = { topicStatus, ago, leftOff, nextUp, sessionNext, ringSvg, DAILY_GOAL, loadOverview, buildModel, renderHome, renderSubject, chapterStage, statusLine, examBox, markClassDone, startFresh, parseDate, fmtDate, untilText, REFRESH_DAYS, PRACTICE_TITLES, addCss };
 })();

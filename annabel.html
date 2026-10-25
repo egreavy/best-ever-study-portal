@@ -454,7 +454,7 @@
   <div id="view"><div class="loading">Loading…</div></div>
 </div>
 
-<script src="stages.js?v=20261025d"></script>
+<script src="stages.js?v=20261025e"></script>
 <script src="practice.js?v=20261025c"></script>
 <script src="tutor.js?v=20261025c"></script>
 <script src="notes.js?v=20261025c"></script>
@@ -740,7 +740,9 @@ async function renderChapter(){
   function paintTabs(){
     const info = stageInfo();
     const cs = document.getElementById("cvStatus");
-    if (cs) { const line = info.tested ? "Tested \u2713" : Stages.statusLine(info); cs.textContent = line; cs.className = "cv-status" + (info.stage === "test" || info.stage === "refresh" || info.tested ? " on" : ""); }
+    // same status as the subject page's topic list (from the overview), so the two never disagree
+    const mt = state.model && state.model.topics && state.model.topics[state.topicId];
+    if (cs) { const [k, line] = mt ? Stages.topicStatus(mt) : ["", Stages.statusLine(info)]; cs.textContent = line; cs.className = "cv-status" + (k === "ok" || k === "now" ? " on" : ""); }
     const set = (k, icon, sub, now) => {
       const b = document.getElementById("tabbtn-" + k); if (!b) return;
       b.querySelector(".cv-tab-i").innerHTML = icon === "tick" ? `<span class="cv-tick" aria-hidden="true">&#10003;</span>` : icon === "now" ? `<span class="cv-now" aria-hidden="true"></span>` : "";
