@@ -1,0 +1,877 @@
+[
+ {
+  "id": "geo-pp2019-opt-q21",
+  "field": "model_answer",
+  "find": "2024 Dublin riots",
+  "replace": "November 2023 Dublin riots",
+  "why": "Dublin riots were in November 2023, not 2024"
+ },
+ {
+  "id": "geo-pp2021-elec-q10-c",
+  "field": "model_answer",
+  "find": "2024 Dublin riots",
+  "replace": "November 2023 Dublin riots",
+  "why": "Dublin riots were in November 2023, not 2024"
+ },
+ {
+  "id": "geo-pp2022-elec-q10-b",
+  "field": "model_answer",
+  "find": "2024 Dublin riots",
+  "replace": "November 2023 Dublin riots",
+  "why": "Dublin riots were in November 2023, not 2024"
+ },
+ {
+  "id": "geo-pp2024-elec-q12-b",
+  "field": "model_answer",
+  "find": "2024 Dublin riots",
+  "replace": "November 2023 Dublin riots",
+  "why": "Dublin riots were in November 2023, not 2024"
+ },
+ {
+  "id": "geo-pp2025-elec-q10-c",
+  "field": "model_answer",
+  "find": "2024 Dublin riots",
+  "replace": "November 2023 Dublin riots",
+  "why": "Dublin riots were in November 2023, not 2024"
+ },
+ {
+  "id": "geo-pp2025-opt-q13",
+  "field": "model_answer",
+  "find": "2024 Dublin riots",
+  "replace": "November 2023 Dublin riots",
+  "why": "Dublin riots were in November 2023, not 2024"
+ },
+ {
+  "id": "geo-pp2025-opt-q20",
+  "field": "model_answer",
+  "find": "2024 Dublin riots",
+  "replace": "November 2023 Dublin riots",
+  "why": "Dublin riots were in November 2023, not 2024"
+ },
+ {
+  "id": "geo-pp2025-reg-q4-c",
+  "field": "model_answer",
+  "find": "the violent 2024 Dublin riots",
+  "replace": "the violent Dublin riots of November 2023",
+  "why": "Dublin riots were in November 2023, not 2024"
+ },
+ {
+  "id": "geo-pp2023-opt-q15",
+  "field": "model_answer",
+  "find": "anti-immigration riots in Dublin in 2024",
+  "replace": "anti-immigration riots in Dublin in November 2023",
+  "why": "Dublin riots were in November 2023, not 2024"
+ },
+ {
+  "id": "geo-pp2023-elec-q9-c",
+  "field": "model_answer",
+  "find": "In 2026 the closure of the Strait of Hormuz sent oil prices up sharply. ",
+  "replace": "",
+  "why": "Unverified claim that the Strait of Hormuz was closed in 2026"
+ },
+ {
+  "id": "geo-c25-e03",
+  "field": "model_answer",
+  "find": "the Strait of Hormuz, closed by Iran in 2026, can disrupt",
+  "replace": "the Strait of Hormuz can be closed by conflict, which would disrupt",
+  "why": "Unverified claim that the Strait of Hormuz was closed in 2026"
+ },
+ {
+  "id": "geo-c25-18",
+  "field": "explanation",
+  "find": "so its closure in 2026 raised oil prices",
+  "replace": "so closing it would push up oil prices",
+  "why": "Unverified claim that the Strait of Hormuz was closed in 2026"
+ },
+ {
+  "id": "geo-c25-11",
+  "field": "options",
+  "find": "The 2026 closure of Hormuz",
+  "replace": "The 1973 oil crisis",
+  "why": "Unverified claim that the Strait of Hormuz was closed in 2026 (distractor replaced)"
+ },
+ {
+  "id": "geo-pp2022-phys-q1-c",
+  "field": "model_answer",
+  "find": "Geothermal energy supplies electricity to 90% of Icelandic homes, plus greenhouses",
+  "replace": "Geothermal energy heats about 90% of Icelandic homes and makes about a quarter of its electricity, and also supplies greenhouses",
+  "why": "Geothermal heats about 90% of Icelandic homes and makes about a quarter of its electricity (not electricity for 90% of homes)"
+ },
+ {
+  "id": "geo-pp2023-phys-q3-c",
+  "field": "model_answer",
+  "find": "Geothermal energy supplies electricity to 90% of Icelandic homes, as well as greenhouses",
+  "replace": "Geothermal energy heats about 90% of Icelandic homes and makes about a quarter of its electricity, and also supplies greenhouses",
+  "why": "Geothermal heats about 90% of Icelandic homes and makes about a quarter of its electricity (not electricity for 90% of homes)"
+ },
+ {
+  "id": "geo-pp2025-phys-q3-b",
+  "field": "model_answer",
+  "find": "Geothermal energy supplies electricity to about 90% of Icelandic homes, as well as greenhouses",
+  "replace": "Geothermal energy heats about 90% of Icelandic homes and makes about a quarter of its electricity, and also supplies greenhouses",
+  "why": "Geothermal heats about 90% of Icelandic homes and makes about a quarter of its electricity (not electricity for 90% of homes)"
+ },
+ {
+  "id": "geo-pp2025-elec-q9-c",
+  "field": "model_answer",
+  "find": "cheap, affordable electricity and heating, supplying electricity to about 90% of Icelandic homes.",
+  "replace": "cheap, affordable electricity and heating: it heats about 90% of Icelandic homes and makes about a quarter of its electricity.",
+  "why": "Geothermal heats about 90% of Icelandic homes and makes about a quarter of its electricity (not electricity for 90% of homes)"
+ },
+ {
+  "id": "geo-pp2024-phys-q3-a-v",
+  "field": "model_answer",
+  "find": "gives clean, renewable, cheap electricity and heating to 90% of homes.",
+  "replace": "gives clean, renewable, cheap heating to about 90% of homes and about a quarter of its electricity.",
+  "why": "Geothermal heats about 90% of Icelandic homes and makes about a quarter of its electricity (not electricity for 90% of homes)"
+ },
+ {
+  "id": "geo-pp2024-opt-q13",
+  "field": "model_answer",
+  "find": "gives cheap, clean power to 90% of homes and cut CO2 emissions by up to 37%,",
+  "replace": "cheaply and cleanly heats about 90% of homes and makes about a quarter of its electricity, cutting fuel imports and emissions,",
+  "why": "Geothermal heats about 90% of Icelandic homes and makes about a quarter of its electricity (not electricity for 90% of homes); unverified 37% CO2 figure removed"
+ },
+ {
+  "id": "geo-pp2025-opt-q15",
+  "field": "model_answer",
+  "find": "geothermal energy gives cheap electricity to about 90% of homes,",
+  "replace": "geothermal energy heats about 90% of homes and makes about a quarter of its electricity,",
+  "why": "Geothermal heats about 90% of Icelandic homes and makes about a quarter of its electricity (not electricity for 90% of homes)"
+ },
+ {
+  "id": "geo-pp2025-opt-q15",
+  "field": "model_answer",
+  "find": "while lowering CO2 emissions by up to 37%.",
+  "replace": "while lowering CO2 emissions.",
+  "why": "Unverified 37% CO2 cut removed"
+ },
+ {
+  "id": "geo-c06-e03",
+  "field": "model_answer",
+  "find": "supplying electricity to 90% of homes.",
+  "replace": "heating about 90% of homes and making about a quarter of its electricity.",
+  "why": "Geothermal heats about 90% of Icelandic homes and makes about a quarter of its electricity (not electricity for 90% of homes)"
+ },
+ {
+  "id": "geo-c06-e03",
+  "field": "model_answer",
+  "find": "cut carbon dioxide emissions by up to 37%,",
+  "replace": "cut carbon dioxide emissions,",
+  "why": "Unverified 37% CO2 cut removed"
+ },
+ {
+  "id": "geo-c06-e03",
+  "field": "marking_scheme",
+  "find": "geothermal 90% homes",
+  "replace": "geothermal heats about 90% of homes",
+  "why": "Geothermal heats about 90% of Icelandic homes and makes about a quarter of its electricity (not electricity for 90% of homes)"
+ },
+ {
+  "id": "geo-c06-e03",
+  "field": "marking_scheme",
+  "find": "37% CO2 cut, cleaner air",
+  "replace": "lower CO2, cleaner air",
+  "why": "Unverified 37% CO2 cut removed"
+ },
+ {
+  "id": "geo-c06-29",
+  "field": "prompt",
+  "find": "What share of Icelandic homes get electricity from geothermal power?",
+  "replace": "About what share of Icelandic homes are heated by geothermal energy?",
+  "why": "Geothermal heats about 90% of Icelandic homes and makes about a quarter of its electricity (not electricity for 90% of homes)"
+ },
+ {
+  "id": "geo-c06-29",
+  "field": "explanation",
+  "find": "Geothermal power supplies electricity to 90% of Icelandic homes.",
+  "replace": "Geothermal energy heats about 90% of Icelandic homes (and makes about a quarter of its electricity).",
+  "why": "Geothermal heats about 90% of Icelandic homes and makes about a quarter of its electricity (not electricity for 90% of homes)"
+ },
+ {
+  "id": "geo-pp2022-phys-q1-c",
+  "field": "model_answer",
+  "find": "CO2 emissions by up to 37%",
+  "replace": "CO2 emissions",
+  "why": "Unverified \"up to 37%\" CO2 cut removed"
+ },
+ {
+  "id": "geo-pp2023-phys-q3-c",
+  "field": "model_answer",
+  "find": "CO2 emissions by up to 37%",
+  "replace": "CO2 emissions",
+  "why": "Unverified \"up to 37%\" CO2 cut removed"
+ },
+ {
+  "id": "geo-pp2025-elec-q9-c",
+  "field": "model_answer",
+  "find": "carbon dioxide emissions by up to 37%",
+  "replace": "carbon dioxide emissions",
+  "why": "Unverified \"up to 37%\" CO2 cut removed"
+ },
+ {
+  "id": "geo-pp2025-phys-q3-b",
+  "field": "model_answer",
+  "find": "carbon dioxide emissions by up to 37%",
+  "replace": "carbon dioxide emissions",
+  "why": "Unverified \"up to 37%\" CO2 cut removed"
+ },
+ {
+  "id": "geo-c26-26",
+  "field": "explanation",
+  "find": "ranked 11th in the world",
+  "replace": "among the highest in the world",
+  "why": "Exact HDI ranking softened (rank varies by report year)"
+ },
+ {
+  "id": "geo-pp2019-econ-q9-c",
+  "field": "model_answer",
+  "find": "ranked 11th in the world",
+  "replace": "among the highest in the world",
+  "why": "Exact HDI ranking softened (rank varies by report year)"
+ },
+ {
+  "id": "geo-pp2022-opt-q14",
+  "field": "model_answer",
+  "find": "(0.462, rank 182)",
+  "replace": "(0.462)",
+  "why": "Exact HDI ranking softened (rank varies by report year)"
+ },
+ {
+  "id": "geo-pp2023-opt-q14",
+  "field": "model_answer",
+  "find": "0.949, ranked 11th, while Afghanistan's is 0.462, ranked 182nd.",
+  "replace": "0.949, among the highest in the world, while Afghanistan's is 0.462, among the lowest.",
+  "why": "Exact HDI ranking softened (rank varies by report year)"
+ },
+ {
+  "id": "geo-pp2024-elec-q7-b",
+  "field": "model_answer",
+  "find": "0.949 (rank 11)",
+  "replace": "0.949 (among the highest in the world)",
+  "why": "Exact HDI ranking softened (rank varies by report year)"
+ },
+ {
+  "id": "geo-pp2024-elec-q7-b",
+  "field": "model_answer",
+  "find": "0.462 (rank 182)",
+  "replace": "0.462 (among the lowest in the world)",
+  "why": "Exact HDI ranking softened (rank varies by report year)"
+ },
+ {
+  "id": "geo-pp2022-opt-q23",
+  "field": "model_answer",
+  "find": ", when temperatures fell as low as -18 degrees C",
+  "replace": ", which brought heavy snow and freezing temperatures",
+  "why": "Unverified -18 degrees C figure for the Beast from the East removed"
+ },
+ {
+  "id": "geo-pp2025-opt-q22",
+  "field": "model_answer",
+  "find": "snow and temperatures as low as -18 degrees C",
+  "replace": "heavy snow and freezing temperatures",
+  "why": "Unverified -18 degrees C figure for the Beast from the East removed"
+ },
+ {
+  "id": "geo-c13-e02",
+  "field": "model_answer",
+  "find": ", when temperatures fell to -18 degrees C",
+  "replace": "",
+  "why": "Unverified -18 degrees C figure for the Beast from the East removed"
+ },
+ {
+  "id": "geo-c13-e02",
+  "field": "marking_scheme",
+  "find": "Beast from the East -18C",
+  "replace": "Beast from the East 2018",
+  "why": "Unverified -18 degrees C figure for the Beast from the East removed"
+ },
+ {
+  "id": "geo-c13-r08",
+  "field": "model_answer",
+  "find": " when temperatures fell to -18 degrees C",
+  "replace": "",
+  "why": "Unverified -18 degrees C figure for the Beast from the East removed"
+ },
+ {
+  "id": "geo-pp2025-opt-q14",
+  "field": "model_answer",
+  "find": "Training nurses and midwives raised births with a midwife present from 18% to 28% between 2020 and 2025, and infant mortality fell.",
+  "replace": "Training nurses and midwives has helped cut infant deaths.",
+  "why": "Unverified midwife-attended births 18%->28% statistic removed"
+ },
+ {
+  "id": "geo-pp2019-opt-q14",
+  "field": "model_answer",
+  "find": "local nurses and midwives: births with a midwife present rose from 18% to 28% between 2020 and 2025, and infant mortality fell.",
+  "replace": "local nurses and midwives, which has helped cut infant deaths.",
+  "why": "Unverified midwife-attended births 18%->28% statistic removed"
+ },
+ {
+  "id": "geo-pp2023-opt-q13",
+  "field": "model_answer",
+  "find": "between 2020 and 2025, births with a midwife present rose from 18% to 28%, and infant mortality fell.",
+  "replace": "training nurses and midwives has helped cut infant deaths.",
+  "why": "Unverified midwife-attended births 18%->28% statistic removed"
+ },
+ {
+  "id": "geo-c27-e02",
+  "field": "model_answer",
+  "find": "training nurses and midwives raised births with a midwife from 18% to 28% between 2020 and 2025, and infant mortality fell;",
+  "replace": "training nurses and midwives has helped cut infant deaths;",
+  "why": "Unverified midwife-attended births 18%->28% statistic removed"
+ },
+ {
+  "id": "geo-c27-30",
+  "field": "prompt",
+  "find": "Between 2020 and 2025, births with a midwife present in Ethiopia rose from:",
+  "replace": "Which Irish Aid health programme in Ethiopia has helped cut infant deaths?",
+  "why": "Unverified midwife-attended births 18%->28% statistic removed (question rewritten)"
+ },
+ {
+  "id": "geo-c27-30",
+  "field": "options",
+  "find": "\"8% to 18%\", \"18% to 48%\", \"28% to 38%\", \"18% to 28%\"",
+  "replace": "\"Building motorways\", \"Closing rural clinics\", \"Selling medicines at full price\", \"Training local nurses and midwives\"",
+  "why": "Unverified midwife-attended births 18%->28% statistic removed (options rewritten; answer_index 3 still correct)"
+ },
+ {
+  "id": "geo-c27-30",
+  "field": "explanation",
+  "find": "Training nurses and midwives raised births with a midwife from 18% to 28%.",
+  "replace": "Irish Aid trains local nurses and midwives, which has helped cut infant deaths.",
+  "why": "Unverified midwife-attended births 18%->28% statistic removed"
+ },
+ {
+  "id": "geo-pp2019-econ-q9-c",
+  "field": "model_answer",
+  "find": "huge debt: 117% of GDP in 2012.",
+  "replace": "huge debt: about 120% of GDP in 2012.",
+  "why": "Irish debt peaked at about 120% of GDP in 2012; unverified 117%/34.9% figures softened"
+ },
+ {
+  "id": "geo-pp2019-econ-q9-c",
+  "field": "model_answer",
+  "find": "Careful management cut debt to 34.9% of GDP by 2025.",
+  "replace": "Careful management has since cut debt sharply.",
+  "why": "Irish debt peaked at about 120% of GDP in 2012; unverified 117%/34.9% figures softened"
+ },
+ {
+  "id": "geo-pp2025-opt-q14",
+  "field": "model_answer",
+  "find": "Ireland's debt reached 117% of GDP in 2012. Careful management cut it to 34.9% of GDP by 2025.",
+  "replace": "Ireland's debt reached about 120% of GDP in 2012. Careful management has since cut it sharply.",
+  "why": "Irish debt peaked at about 120% of GDP in 2012; unverified 117%/34.9% figures softened"
+ },
+ {
+  "id": "geo-c26-e03",
+  "field": "model_answer",
+  "find": "Ireland cut its debt from 117% of GDP in 2012 to 34.9% in 2025,",
+  "replace": "Ireland's debt, about 120% of GDP in 2012, has since been cut sharply,",
+  "why": "Irish debt peaked at about 120% of GDP in 2012; unverified 117%/34.9% figures softened"
+ },
+ {
+  "id": "geo-c26-27",
+  "field": "prompt",
+  "find": "Ireland's national debt fell from 117% of GDP in 2012 to what in 2025?",
+  "replace": "After the 2008 crash, Ireland's national debt peaked at about what share of GDP (2012)?",
+  "why": "Irish debt peaked at about 120% of GDP in 2012; unverified 117%/34.9% figures softened (question rewritten)"
+ },
+ {
+  "id": "geo-c26-27",
+  "field": "options",
+  "find": "\"20%\", \"54.9%\", \"34.9%\", \"75%\"",
+  "replace": "\"About 20%\", \"About 60%\", \"About 120%\", \"About 250%\"",
+  "why": "Irish debt peaked at about 120% of GDP in 2012; unverified 117%/34.9% figures softened (options rewritten; answer_index 2 still correct)"
+ },
+ {
+  "id": "geo-c26-27",
+  "field": "explanation",
+  "find": "Careful management cut the debt to 34.9% of GDP, freeing money for services.",
+  "replace": "Ireland's debt reached about 120% of GDP in 2012; careful management has since cut it sharply, freeing money for services.",
+  "why": "Irish debt peaked at about 120% of GDP in 2012; unverified 117%/34.9% figures softened"
+ },
+ {
+  "id": "geo-c06-26",
+  "field": "options",
+  "find": "\"65 million years ago\"",
+  "replace": "\"60 million years ago\"",
+  "why": "Antrim Plateau / Giant's Causeway basalts formed about 60 million years ago"
+ },
+ {
+  "id": "geo-c06-26",
+  "field": "explanation",
+  "find": "about 65 million years ago",
+  "replace": "about 60 million years ago",
+  "why": "Antrim Plateau / Giant's Causeway basalts formed about 60 million years ago"
+ },
+ {
+  "id": "geo-c06-e04",
+  "field": "model_answer",
+  "find": "formed about 65 million years ago",
+  "replace": "formed about 60 million years ago",
+  "why": "Antrim Plateau / Giant's Causeway basalts formed about 60 million years ago"
+ },
+ {
+  "id": "geo-c06-e04",
+  "field": "marking_scheme",
+  "find": "divergent boundary 65 million years",
+  "replace": "divergent boundary 60 million years",
+  "why": "Antrim Plateau / Giant's Causeway basalts formed about 60 million years ago"
+ },
+ {
+  "id": "geo-pp2022-phys-q1-b",
+  "field": "model_answer",
+  "find": "About 65 million years ago",
+  "replace": "About 60 million years ago",
+  "why": "Antrim Plateau / Giant's Causeway basalts formed about 60 million years ago"
+ },
+ {
+  "id": "geo-pp2024-phys-q2-c",
+  "field": "model_answer",
+  "find": "About 65 million years ago",
+  "replace": "About 60 million years ago",
+  "why": "Antrim Plateau / Giant's Causeway basalts formed about 60 million years ago"
+ },
+ {
+  "id": "geo-pp2025-phys-q1-b",
+  "field": "model_answer",
+  "find": "About 65 million years ago",
+  "replace": "About 60 million years ago",
+  "why": "Antrim Plateau / Giant's Causeway basalts formed about 60 million years ago"
+ },
+ {
+  "id": "geo-pp2023-phys-q1-b",
+  "field": "model_answer",
+  "find": "About 60-65 million years ago",
+  "replace": "About 60 million years ago",
+  "why": "Antrim Plateau / Giant's Causeway basalts formed about 60 million years ago"
+ },
+ {
+  "id": "geo-c05-16",
+  "field": "options",
+  "find": "\"4 cm per year\"",
+  "replace": "\"2.5 cm per year\"",
+  "why": "The Atlantic widens by about 2.5 cm a year (consistent figure)"
+ },
+ {
+  "id": "geo-c05-16",
+  "field": "explanation",
+  "find": "about 4 cm a year",
+  "replace": "about 2.5 cm a year",
+  "why": "The Atlantic widens by about 2.5 cm a year (consistent figure)"
+ },
+ {
+  "id": "geo-c05-e01",
+  "field": "model_answer",
+  "find": "widens by about 4 cm per year",
+  "replace": "widens by about 2.5 cm per year",
+  "why": "The Atlantic widens by about 2.5 cm a year (consistent figure)"
+ },
+ {
+  "id": "geo-pp2019-phys-q3-c",
+  "field": "model_answer",
+  "find": "widens by about 4 cm a year",
+  "replace": "widens by about 2.5 cm a year",
+  "why": "The Atlantic widens by about 2.5 cm a year (consistent figure)"
+ },
+ {
+  "id": "geo-pp2025-phys-q3-c",
+  "field": "model_answer",
+  "find": "are still rising by about 5 cm a year.",
+  "replace": "are still rising.",
+  "why": "The Indian Plate moves about 5 cm a year; the Himalayas themselves are not rising 5 cm a year"
+ },
+ {
+  "id": "geo-c25-e01",
+  "field": "model_answer",
+  "find": "and 70% of all goods produced in the EU are exported to another EU country.",
+  "replace": "and about 60% of member states' goods exports go to other EU countries.",
+  "why": "About 60% of EU member states' goods exports go to other EU countries (not 70% of all goods produced)"
+ },
+ {
+  "id": "geo-pp2024-elec-q9-b",
+  "field": "model_answer",
+  "find": "About 70% of all goods produced in the EU are exported to another EU country.",
+  "replace": "About 60% of member states' goods exports go to other EU countries.",
+  "why": "About 60% of EU member states' goods exports go to other EU countries (not 70% of all goods produced)"
+ },
+ {
+  "id": "geo-c25-24",
+  "field": "prompt",
+  "find": "What percentage of goods produced in the EU are exported to another EU country?",
+  "replace": "About what share of EU member states' goods exports go to other EU countries?",
+  "why": "About 60% of EU member states' goods exports go to other EU countries (not 70% of all goods produced)"
+ },
+ {
+  "id": "geo-c25-24",
+  "field": "options",
+  "find": "\"70%\", \"50%\", \"60%\", \"30%\"",
+  "replace": "\"About 60%\", \"About 50%\", \"About 80%\", \"About 30%\"",
+  "why": "About 60% of EU member states' goods exports go to other EU countries (not 70% of all goods produced) (options rewritten; answer_index 0 now points to About 60%)"
+ },
+ {
+  "id": "geo-c25-24",
+  "field": "explanation",
+  "find": "The chapter says 70% of all goods produced in the EU are exported to another EU country.",
+  "replace": "About 60% of EU member states' goods exports go to other EU countries.",
+  "why": "About 60% of EU member states' goods exports go to other EU countries (not 70% of all goods produced)"
+ },
+ {
+  "id": "geo-pp2019-econ-q8-b",
+  "field": "model_answer",
+  "find": "in 40 countries on six continents",
+  "replace": "around the world",
+  "why": "Unverified \"plants in 40 countries\" claim removed"
+ },
+ {
+  "id": "geo-pp2019-opt-q13",
+  "field": "model_answer",
+  "find": "in 40 countries on six continents",
+  "replace": "around the world",
+  "why": "Unverified \"plants in 40 countries\" claim removed"
+ },
+ {
+  "id": "geo-pp2021-elec-q7-b",
+  "field": "model_answer",
+  "find": "in 40 countries on six continents",
+  "replace": "around the world",
+  "why": "Unverified \"plants in 40 countries\" claim removed"
+ },
+ {
+  "id": "geo-pp2022-elec-q7-b",
+  "field": "model_answer",
+  "find": "in 40 countries on six continents",
+  "replace": "around the world",
+  "why": "Unverified \"plants in 40 countries\" claim removed"
+ },
+ {
+  "id": "geo-pp2023-elec-q7-b",
+  "field": "model_answer",
+  "find": "in 40 countries on six continents",
+  "replace": "around the world",
+  "why": "Unverified \"plants in 40 countries\" claim removed"
+ },
+ {
+  "id": "geo-pp2025-elec-q7-b",
+  "field": "model_answer",
+  "find": "in 40 countries on six continents",
+  "replace": "around the world",
+  "why": "Unverified \"plants in 40 countries\" claim removed"
+ },
+ {
+  "id": "geo-pp2024-elec-q9-c",
+  "field": "model_answer",
+  "find": "branch plants in 40 countries.",
+  "replace": "branch plants around the world.",
+  "why": "Unverified \"plants in 40 countries\" claim removed"
+ },
+ {
+  "id": "geo-pp2024-elec-q9-c",
+  "field": "model_answer",
+  "find": "with plants in 40 countries.",
+  "replace": "with its plants around the world.",
+  "why": "Unverified \"plants in 40 countries\" claim removed"
+ },
+ {
+  "id": "geo-pp2024-reg-q4-c",
+  "field": "model_answer",
+  "find": "plants in 40 countries",
+  "replace": "plants around the world",
+  "why": "Unverified \"plants in 40 countries\" claim removed"
+ },
+ {
+  "id": "geo-c25-e04",
+  "field": "model_answer",
+  "find": "US management and 40 other countries easier",
+  "replace": "US management and sites in other countries easier",
+  "why": "Unverified \"plants in 40 countries\" claim removed"
+ },
+ {
+  "id": "geo-c25-e05",
+  "field": "model_answer",
+  "find": "tariffs and customs checks raised costs, costing the EU about €12 billion a year.",
+  "replace": "tariffs and customs checks raised costs for businesses and consumers.",
+  "why": "Unverified \"EUR 12 billion a year\" Brexit cost removed"
+ },
+ {
+  "id": "geo-pp2021-reg-q4-c",
+  "field": "model_answer",
+  "find": " Experts estimate Brexit costs the EU EUR 12 billion a year in lost trade.",
+  "replace": "",
+  "why": "Unverified \"EUR 12 billion a year\" Brexit cost removed"
+ },
+ {
+  "id": "geo-pp2023-reg-q5-c",
+  "field": "model_answer",
+  "find": " Experts estimate Brexit costs the EU EUR 12 billion a year in lost trade.",
+  "replace": "",
+  "why": "Unverified \"EUR 12 billion a year\" Brexit cost removed"
+ },
+ {
+  "id": "geo-pp2023-elec-q8-a",
+  "field": "model_answer",
+  "find": "raise the cost of trade, and experts estimate Brexit costs the EU EUR 12 billion a year in lost trade.",
+  "replace": "raise the cost of trade for businesses and consumers.",
+  "why": "Unverified \"EUR 12 billion a year\" Brexit cost removed"
+ },
+ {
+  "id": "geo-pp2024-elec-q9-b",
+  "field": "model_answer",
+  "find": "with Britain, costing the EU an estimated EUR 12 billion a year in lost trade.",
+  "replace": "with Britain and reduced trade.",
+  "why": "Unverified \"EUR 12 billion a year\" Brexit cost removed"
+ },
+ {
+  "id": "geo-pp2024-reg-q5-a-iv",
+  "field": "model_answer",
+  "find": "consumers, costing the EU an estimated EUR 12 billion a year in lost trade.",
+  "replace": "consumers and reduced trade.",
+  "why": "Unverified \"EUR 12 billion a year\" Brexit cost removed"
+ },
+ {
+  "id": "geo-pp2025-reg-q4-c",
+  "field": "model_answer",
+  "find": ", and experts estimate Brexit costs the EU 12 billion euro a year in lost trade.",
+  "replace": ".",
+  "why": "Unverified \"EUR 12 billion a year\" Brexit cost removed"
+ },
+ {
+  "id": "geo-c25-28",
+  "field": "prompt",
+  "find": "How much is Brexit estimated to cost the EU each year in lost trade?",
+  "replace": "On what date did the UK leave the EU?",
+  "why": "Unverified \"EUR 12 billion a year\" Brexit cost removed (question rewritten)"
+ },
+ {
+  "id": "geo-c25-28",
+  "field": "options",
+  "find": "\"€2 billion\", \"€75 billion\", \"€13 billion\", \"€12 billion\"",
+  "replace": "\"23 June 2016\", \"1 January 1973\", \"29 March 2019\", \"31 January 2020\"",
+  "why": "Unverified \"EUR 12 billion a year\" Brexit cost removed (options rewritten; answer_index 3 = 31 January 2020)"
+ },
+ {
+  "id": "geo-c25-28",
+  "field": "explanation",
+  "find": "Experts estimate Brexit has cost the EU €12 billion per year in lost trade.",
+  "replace": "The UK voted to leave in June 2016 and left the EU on 31 January 2020.",
+  "why": "Unverified \"EUR 12 billion a year\" Brexit cost removed"
+ },
+ {
+  "id": "geo-pp2024-opt-q14",
+  "field": "model_answer",
+  "find": "under Donald Trump withdrew in 2025",
+  "replace": "under Donald Trump announced its withdrawal in 2025",
+  "why": "The US announced its withdrawal from the Paris Agreement in January 2025 (it took effect a year later)"
+ },
+ {
+  "id": "geo-pp2022-opt-q15",
+  "field": "model_answer",
+  "find": "the US withdrew from the Paris Agreement in January 2025",
+  "replace": "the US announced its withdrawal from the Paris Agreement in January 2025",
+  "why": "The US announced its withdrawal from the Paris Agreement in January 2025 (it took effect a year later)"
+ },
+ {
+  "id": "geo-pp2025-opt-q15",
+  "field": "model_answer",
+  "find": "the US withdrew from the Paris Agreement in January 2025",
+  "replace": "the US announced its withdrawal from the Paris Agreement in January 2025",
+  "why": "The US announced its withdrawal from the Paris Agreement in January 2025 (it took effect a year later)"
+ },
+ {
+  "id": "geo-pp2019-opt-q20",
+  "field": "model_answer",
+  "find": "in Manipur in 2024, 70 people were killed and 60,000 fled, many to refugee camps or to Delhi.",
+  "replace": "in Manipur, ethnic violence since 2023 has killed many people and forced tens of thousands from their homes.",
+  "why": "Manipur figures unverified (violence began May 2023); softened"
+ },
+ {
+  "id": "geo-pp2021-opt-q19",
+  "field": "model_answer",
+  "find": "In Manipur in 2024, 70 people were killed and 60,000 left the region, many to refugee camps or Delhi.",
+  "replace": "In Manipur, ethnic violence since 2023 has killed many people and forced tens of thousands from their homes.",
+  "why": "Manipur figures unverified (violence began May 2023); softened"
+ },
+ {
+  "id": "geo-pp2024-opt-q19",
+  "field": "model_answer",
+  "find": "in Manipur in 2024, 70 people were killed and 60,000 fled.",
+  "replace": "in Manipur, violence since 2023 has killed many people and forced tens of thousands from their homes.",
+  "why": "Manipur figures unverified (violence began May 2023); softened"
+ },
+ {
+  "id": "geo-pp2025-opt-q20",
+  "field": "model_answer",
+  "find": "in Manipur in 2024, 70 people were killed and 60,000 left their homes.",
+  "replace": "in Manipur, violence since 2023 has killed many people and forced tens of thousands from their homes.",
+  "why": "Manipur figures unverified (violence began May 2023); softened"
+ },
+ {
+  "id": "geo-c19-e04",
+  "field": "model_answer",
+  "find": "In Manipur in 2024, 70 were killed and 60,000 left, many to camps or Delhi,",
+  "replace": "In Manipur, ethnic violence since 2023 has forced tens of thousands from their homes,",
+  "why": "Manipur figures unverified (violence began May 2023); softened"
+ },
+ {
+  "id": "geo-c19-r09",
+  "field": "model_answer",
+  "find": "In Manipur in 2024, 70 were killed and 60,000 left.",
+  "replace": "In Manipur, ethnic violence since 2023 has forced tens of thousands from their homes.",
+  "why": "Manipur figures unverified (violence began May 2023); softened"
+ },
+ {
+  "id": "geo-pp2019-econ-q8-b",
+  "field": "model_answer",
+  "find": "(15% since 2021)",
+  "replace": "(15% for very large multinationals since 2024)",
+  "why": "15% applies only to very large multinationals (revenue EUR 750m+) since 2024; headline rate is still 12.5%"
+ },
+ {
+  "id": "geo-pp2019-opt-q13",
+  "field": "model_answer",
+  "find": "15% since 2021)",
+  "replace": "15% for very large multinationals since 2024)",
+  "why": "15% applies only to very large multinationals (revenue EUR 750m+) since 2024; headline rate is still 12.5%"
+ },
+ {
+  "id": "geo-pp2023-elec-q7-b",
+  "field": "model_answer",
+  "find": "12.5% from 1997 and now 15%,",
+  "replace": "12.5% from 1997 (15% for very large multinationals since 2024),",
+  "why": "15% applies only to very large multinationals (revenue EUR 750m+) since 2024; headline rate is still 12.5%"
+ },
+ {
+  "id": "geo-pp2024-reg-q4-c",
+  "field": "model_answer",
+  "find": "it is now 15% after the 2021 OECD agreement.",
+  "replace": "since 2024, very large multinationals pay 15% under the 2021 OECD agreement.",
+  "why": "15% applies only to very large multinationals (revenue EUR 750m+) since 2024; headline rate is still 12.5%"
+ },
+ {
+  "id": "geo-pp2021-reg-q4-c",
+  "field": "model_answer",
+  "find": "attracted by its 15% corporation tax.",
+  "replace": "attracted by its low corporation tax (12.5%, or 15% for very large multinationals since 2024).",
+  "why": "15% applies only to very large multinationals (revenue EUR 750m+) since 2024; headline rate is still 12.5%"
+ },
+ {
+  "id": "geo-pp2023-reg-q5-c",
+  "field": "model_answer",
+  "find": "attracted by a 15% corporation tax.",
+  "replace": "attracted by a low corporation tax (12.5%, or 15% for very large multinationals since 2024).",
+  "why": "15% applies only to very large multinationals (revenue EUR 750m+) since 2024; headline rate is still 12.5%"
+ },
+ {
+  "id": "geo-c25-e01",
+  "field": "model_answer",
+  "find": "drawn by 15% corporation tax,",
+  "replace": "drawn by low corporation tax (12.5%, or 15% for very large multinationals since 2024),",
+  "why": "15% applies only to very large multinationals (revenue EUR 750m+) since 2024; headline rate is still 12.5%"
+ },
+ {
+  "id": "geo-c25-e04",
+  "field": "model_answer",
+  "find": "corporation tax of 15% is one of the lowest in the world",
+  "replace": "corporation tax of 12.5% (15% for very large multinationals since 2024) is one of the lowest in the world",
+  "why": "15% applies only to very large multinationals (revenue EUR 750m+) since 2024; headline rate is still 12.5%"
+ },
+ {
+  "id": "geo-c25-e02",
+  "field": "marking_scheme",
+  "find": "15% after 2021 OECD deal",
+  "replace": "15% for very large firms since 2024 (2021 OECD deal)",
+  "why": "15% applies only to very large multinationals (revenue EUR 750m+) since 2024; headline rate is still 12.5%"
+ },
+ {
+  "id": "eco-pp2021-b-q13-biii",
+  "field": "model_answer",
+  "find": "Ryanair was prevented from taking over Aer Lingus,",
+  "replace": "The European Commission also blocked Ryanair's takeover of Aer Lingus,",
+  "why": "The Ryanair/Aer Lingus takeover was blocked by the European Commission, not the CCPC"
+ },
+ {
+  "id": "eco-c05-04",
+  "field": "options",
+  "find": "EV grants of up to 10,000 euro",
+  "replace": "SEAI grants for electric vehicles",
+  "why": "EV grant \"up to EUR 10,000\" outdated; now SEAI grants for EVs"
+ },
+ {
+  "id": "eco-c05-e01",
+  "field": "model_answer",
+  "find": "EV supports of up to 10,000 euro are big enough",
+  "replace": "SEAI grants for EVs are big enough",
+  "why": "EV grant \"up to EUR 10,000\" outdated; now SEAI grants for EVs"
+ },
+ {
+  "id": "eco-pp2022-b-q13-bi",
+  "field": "model_answer",
+  "find": "The government gives up to €10,000 in grants and tax rebates towards buying an electric vehicle,",
+  "replace": "The government gives SEAI grants (and VRT relief) towards buying an electric vehicle,",
+  "why": "EV grant \"up to EUR 10,000\" outdated; now SEAI grants for EVs"
+ },
+ {
+  "id": "eco-pp2022-b-q16-bii",
+  "field": "model_answer",
+  "find": "give grants of up to €10,000 for EVs and SEAI grants for insulation and solar panels.",
+  "replace": "give SEAI grants for EVs, insulation and solar panels.",
+  "why": "EV grant \"up to EUR 10,000\" outdated; now SEAI grants for EVs"
+ },
+ {
+  "id": "eco-pp2024-b-q11-bi",
+  "field": "model_answer",
+  "find": "1 / 0.92 = 1.087, about 1.08.",
+  "replace": "1 / 0.92 = 1.087, about 1.09.",
+  "why": "1/0.92 = 1.087 (about 1.09), not 1.08"
+ },
+ {
+  "id": "eco-pp2024-b-q11-bi",
+  "field": "model_answer",
+  "find": "increases national income by about €1.08.",
+  "replace": "increases national income by about €1.09.",
+  "why": "1/0.92 = 1.087 (about 1.09), not 1.08"
+ },
+ {
+  "id": "eco-pp2024-b-q11-bi",
+  "field": "marking_scheme",
+  "find": "answer = 1.08.",
+  "replace": "answer = 1.087 (about 1.09; the published scheme prints 1.08).",
+  "why": "1/0.92 = 1.087 (about 1.09), not 1.08"
+ },
+ {
+  "id": "eco-pp2024-b-q11-bi",
+  "field": "marking_scheme",
+  "find": "= 1 / 0.92 = 1.08. Explanation",
+  "replace": "= 1 / 0.92 = 1.087. Explanation",
+  "why": "1/0.92 = 1.087 (about 1.09), not 1.08"
+ },
+ {
+  "id": "eco-pp2024-b-q11-bi",
+  "field": "marking_scheme",
+  "find": "will increase by 1.08 times",
+  "replace": "will increase by about 1.09 times",
+  "why": "1/0.92 = 1.087 (about 1.09), not 1.08"
+ },
+ {
+  "id": "eco-pp2024-b-q11-bi",
+  "field": "marking_scheme",
+  "find": "income by 1.08 times",
+  "replace": "income by about 1.09 times",
+  "why": "1/0.92 = 1.087 (about 1.09), not 1.08"
+ },
+ {
+  "id": "eco-pp2025-b-q15-bi",
+  "field": "marking_scheme",
+  "find": "Answer: 36.48%.",
+  "replace": "Answer: 36.49% (the published scheme prints 36.48%).",
+  "why": "2.7 / 7.4 x 100 = 36.49%"
+ },
+ {
+  "id": "geo-c08-e01",
+  "field": "marking_scheme",
+  "find": "still rising 5 cm/yr",
+  "replace": "Indian Plate still moving north about 5 cm/yr, mountains still rising",
+  "why": "It is the Indian Plate that moves about 5 cm a year; the Himalayas are not rising 5 cm a year"
+ }
+]
