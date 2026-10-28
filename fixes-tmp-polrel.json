@@ -1,0 +1,1220 @@
+[
+ {
+  "id": "rel1-c37-e04",
+  "field": "model_answer",
+  "find": "as the Remmelink Report (20,000 cases) suggests happened in the Netherlands.",
+  "replace": "as the Remmelink Report (1991) suggests happened in the Netherlands, where it found cases of life being ended without the patient's explicit request.",
+  "why": "Remmelink Report: the '20,000 cases' figure is unreliable; it found cases of life being ended without the patient's explicit request"
+ },
+ {
+  "id": "rel1-c37-30",
+  "field": "options",
+  "find": "Euthanasia in 20,000 cases, including coma patients",
+  "replace": "Cases where life was ended without the patient's explicit request",
+  "why": "Remmelink Report: the '20,000 cases' figure is unreliable; it found cases of life being ended without the patient's explicit request"
+ },
+ {
+  "id": "rel1-c37-30",
+  "field": "explanation",
+  "find": "It found euthanasia in 20,000 cases, with evidence of killing patients in comas and with severe dementia.",
+  "replace": "It found cases in the Netherlands where doctors ended patients' lives without their explicit request.",
+  "why": "Remmelink Report: the '20,000 cases' figure is unreliable; it found cases of life being ended without the patient's explicit request"
+ },
+ {
+  "id": "rel1-c24-e01",
+  "field": "model_answer",
+  "find": "Peace efforts such as Camp David and the Oslo Agreement led to Israeli withdrawal from Gaza and the West Bank and a Palestinian government under Yassar Arafat, yet violence continued.",
+  "replace": "Peace efforts included Camp David and the Oslo Agreement, which created the Palestinian Authority under Yasser Arafat with limited self-rule in parts of Gaza and the West Bank, yet violence continued.",
+  "why": "Oslo did not bring Israeli withdrawal from Gaza and the West Bank; it created the Palestinian Authority under Yasser Arafat with limited self-rule"
+ },
+ {
+  "id": "rel1-c24-e01",
+  "field": "marking_scheme",
+  "find": "(Camp David, Oslo, Gaza/West Bank, Arafat)",
+  "replace": "(Camp David, Oslo, Palestinian Authority under Arafat)",
+  "why": "Oslo did not bring Israeli withdrawal from Gaza and the West Bank; it created the Palestinian Authority under Yasser Arafat with limited self-rule"
+ },
+ {
+  "id": "rel1-c24-31",
+  "field": "options",
+  "find": "Yassar Arafat",
+  "replace": "Yasser Arafat",
+  "why": "Spelling of Yasser Arafat"
+ },
+ {
+  "id": "rel-pp2023-c-q1-c",
+  "field": "model_answer",
+  "find": "according to the Qur'an, Muhammad ascended",
+  "replace": "according to Muslim tradition, Muhammad ascended",
+  "why": "The ascension from Jerusalem comes from Muslim tradition, not the text of the Qur'an"
+ },
+ {
+  "id": "rel1-c24-e01",
+  "field": "model_answer",
+  "find": "according to the Qur'an, Muhammad ascended",
+  "replace": "according to Muslim tradition, Muhammad ascended",
+  "why": "The ascension from Jerusalem comes from Muslim tradition, not the text of the Qur'an"
+ },
+ {
+  "id": "rel1-c24-22",
+  "field": "explanation",
+  "find": "According to the Qur'an, Muhammad ascended",
+  "replace": "According to Muslim tradition, Muhammad ascended",
+  "why": "The ascension from Jerusalem comes from Muslim tradition, not the text of the Qur'an"
+ },
+ {
+  "id": "rel1-c26-e03",
+  "field": "model_answer",
+  "find": "Omagh on 16 August 1998",
+  "replace": "Omagh on 15 August 1998",
+  "why": "The Omagh bombing was on 15 August 1998"
+ },
+ {
+  "id": "rel1-c26-08",
+  "field": "options",
+  "find": "16 August 1998",
+  "replace": "15 August 1998",
+  "why": "The Omagh bombing was on 15 August 1998"
+ },
+ {
+  "id": "rel1-c26-08",
+  "field": "explanation",
+  "find": "The chapter names 'Omagh on 16 August 1998' as another 'pity beyond all telling'.",
+  "replace": "The Omagh bombing took place on 15 August 1998; the chapter names it as another 'pity beyond all telling'.",
+  "why": "The Omagh bombing was on 15 August 1998"
+ },
+ {
+  "id": "rel1-c18-r06",
+  "field": "model_answer",
+  "find": "generally 2.5 per cent of income",
+  "replace": "generally 2.5 per cent of savings (wealth held for a year)",
+  "why": "Zakat is 2.5% of savings/wealth held for a year, not of income"
+ },
+ {
+  "id": "rel1-c18-e01",
+  "field": "model_answer",
+  "find": "generally 2.5 per cent of income",
+  "replace": "generally 2.5 per cent of savings (wealth held for a year)",
+  "why": "Zakat is 2.5% of savings/wealth held for a year, not of income"
+ },
+ {
+  "id": "rel-pp2019-c-q1-aii",
+  "field": "model_answer",
+  "find": "(generally 2.5 per cent of income)",
+  "replace": "(generally 2.5 per cent of savings held for a year)",
+  "why": "Zakat is 2.5% of savings/wealth held for a year, not of income"
+ },
+ {
+  "id": "rel1-c18-24",
+  "field": "prompt",
+  "find": "Zakat is generally set at what share of income?",
+  "replace": "Zakat is generally set at what share of a Muslim's savings (wealth held for a year)?",
+  "why": "Zakat is 2.5% of savings/wealth held for a year, not of income"
+ },
+ {
+  "id": "rel1-c18-24",
+  "field": "explanation",
+  "find": "Zakat is generally set at 2.5 per cent of income.",
+  "replace": "Zakat is generally set at 2.5 per cent of savings (wealth held for a year above the nisab), not of income.",
+  "why": "Zakat is 2.5% of savings/wealth held for a year, not of income"
+ },
+ {
+  "id": "rel1-c22-r02",
+  "field": "model_answer",
+  "find": "leader until 1957; he set up the House of Justice.",
+  "replace": "leader until 1957. The Universal House of Justice was first elected in 1963, after his death.",
+  "why": "The Universal House of Justice was first elected in 1963, after Shoghi Effendi's death; he did not set it up"
+ },
+ {
+  "id": "rel1-c22-e01",
+  "field": "model_answer",
+  "find": "who led until 1957 and established the House of Justice, the supreme legislative body of the faith.",
+  "replace": "who led until 1957 and built up its administration. In 1963, after his death, the Universal House of Justice, the supreme legislative body of the faith, was first elected.",
+  "why": "The Universal House of Justice was first elected in 1963, after Shoghi Effendi's death; he did not set it up"
+ },
+ {
+  "id": "rel1-c22-12",
+  "field": "prompt",
+  "find": "Who established the House of Justice?",
+  "replace": "Who led the Baha'i faith as 'the Guardian' from 1921 until 1957?",
+  "why": "The Universal House of Justice was first elected in 1963, after Shoghi Effendi's death; he did not set it up (question rewritten so the answer stays Shoghi Effendi)"
+ },
+ {
+  "id": "rel1-c22-12",
+  "field": "explanation",
+  "find": "Shoghi Effendi established the House of Justice, the supreme legislative body of international Baha'i administration.",
+  "replace": "Shoghi Effendi, grandson of Abdul Baha, led the faith from 1921 until his death in 1957. The Universal House of Justice was first elected later, in 1963.",
+  "why": "The Universal House of Justice was first elected in 1963, after Shoghi Effendi's death; he did not set it up"
+ },
+ {
+  "id": "rel1-c21-04",
+  "field": "prompt",
+  "find": "after his vision at about age 38?",
+  "replace": "after his vision?",
+  "why": "Guru Nanak's age at his vision is given inconsistently (about 30 / about 38); age removed"
+ },
+ {
+  "id": "rel1-c21-r01",
+  "field": "model_answer",
+  "find": "When he was about thirty-eight, Guru Nanak had a vision",
+  "replace": "Guru Nanak had a vision",
+  "why": "Guru Nanak's age at his vision is given inconsistently (about 30 / about 38); age removed"
+ },
+ {
+  "id": "rel1-c21-e01",
+  "field": "model_answer",
+  "find": "At about thirty-eight he had a vision",
+  "replace": "Later he had a vision",
+  "why": "Guru Nanak's age at his vision is given inconsistently (about 30 / about 38); age removed"
+ },
+ {
+  "id": "rel-pp2026-c-q1-a",
+  "field": "model_answer",
+  "find": "Around 1499, while bathing in the river Bein",
+  "replace": "While bathing in the river Bein",
+  "why": "Guru Nanak's age at his vision is given inconsistently (about 30 / about 38); age removed"
+ },
+ {
+  "id": "pol-c08-r04",
+  "field": "prompt",
+  "find": "Housing for All plan (2022)",
+  "replace": "Housing for All plan (2021)",
+  "why": "Housing for All was published in 2021"
+ },
+ {
+  "id": "pol-pp2021-c-q3",
+  "field": "model_answer",
+  "find": "Housing for All (2022)",
+  "replace": "Housing for All (2021)",
+  "why": "Housing for All was published in 2021"
+ },
+ {
+  "id": "pol-pp2019-a-q1-l",
+  "field": "model_answer",
+  "find": "there are 705 MEPs in total.",
+  "replace": "there are 720 MEPs in total (since 2024).",
+  "why": "The European Parliament has 720 MEPs since the 2024 election"
+ },
+ {
+  "id": "pol-pp2021-c-q3",
+  "field": "model_answer",
+  "find": "Over 11,000 people were homeless in 2023, more than 3,000 of them children. Homelessness rose by 178%, and a joint",
+  "replace": "Homelessness is at record levels: in 2025 more than 15,000 people, including over 4,500 children, were in emergency accommodation, and a joint",
+  "why": "Homelessness figures out of date (and '178%' unverifiable): over 15,000 people incl. over 4,500 children in emergency accommodation in 2025"
+ },
+ {
+  "id": "pol-pp2018-c-q3",
+  "field": "model_answer",
+  "find": "Focus Ireland reported over 11,000 people homeless in January 2023, and the Children's Rights Alliance recorded 3,442 homeless children in December 2022, up from 2,327 in 2020. Homelessness has risen by 178%.",
+  "replace": "Department of Housing figures show that in 2025 more than 15,000 people, including over 4,500 children, were in emergency accommodation, a record. The Children's Rights Alliance recorded homeless children rising from 2,327 in 2020 to 3,442 in December 2022, and the numbers kept rising after that.",
+  "why": "Homelessness figures out of date (and '178%' unverifiable): over 15,000 people incl. over 4,500 children in emergency accommodation in 2025"
+ },
+ {
+  "id": "pol-pp2022-c-q5",
+  "field": "model_answer",
+  "find": "Homelessness has risen by 178%, and the official figures",
+  "replace": "By 2025 more than 15,000 people, including over 4,500 children, were in emergency accommodation, and the official figures",
+  "why": "Homelessness figures out of date (and '178%' unverifiable): over 15,000 people incl. over 4,500 children in emergency accommodation in 2025"
+ },
+ {
+  "id": "pol-pp2023-c-q4-a",
+  "field": "model_answer",
+  "find": "Focus Ireland reported over 11,000 people homeless in January 2023, more than 3,000 of them children. There has been a 178% increase in homelessness, and monthly figures",
+  "replace": "Department of Housing figures show that in 2025 more than 15,000 people, including over 4,500 children, were in emergency accommodation, a record, and monthly figures",
+  "why": "Homelessness figures out of date (and '178%' unverifiable): over 15,000 people incl. over 4,500 children in emergency accommodation in 2025"
+ },
+ {
+  "id": "pol-pp2025-c-q3-a",
+  "field": "model_answer",
+  "find": "Over 11,000 people were homeless in 2023, over 3,000 of them children, while the average Dublin house cost over €430,000.",
+  "replace": "Over 15,000 people were in emergency accommodation in 2025, thousands of them children, while house prices and rents hit record highs.",
+  "why": "Homelessness figures out of date (and '178%' unverifiable): over 15,000 people incl. over 4,500 children in emergency accommodation in 2025"
+ },
+ {
+  "id": "pol-pp2023-c-q3",
+  "field": "model_answer",
+  "find": "Yet over 11,000 people were homeless in 2023, more than 3,000 of them children.",
+  "replace": "Yet homelessness kept rising, to over 15,000 people in emergency accommodation in 2025.",
+  "why": "Homelessness figures out of date (and '178%' unverifiable): over 15,000 people incl. over 4,500 children in emergency accommodation in 2025"
+ },
+ {
+  "id": "pol-pp2024-a-q1-n",
+  "field": "model_answer",
+  "find": "Over 11,000 people were homeless in 2023.",
+  "replace": "Homelessness is at record levels: over 15,000 people were in emergency accommodation in 2025.",
+  "why": "Homelessness figures out of date (and '178%' unverifiable): over 15,000 people incl. over 4,500 children in emergency accommodation in 2025"
+ },
+ {
+  "id": "pol-pp2025-a-q1-g",
+  "field": "model_answer",
+  "find": "over 11,000 people were homeless in 2023.",
+  "replace": "over 15,000 people were in emergency accommodation in 2025.",
+  "why": "Homelessness figures out of date (and '178%' unverifiable): over 15,000 people incl. over 4,500 children in emergency accommodation in 2025"
+ },
+ {
+  "id": "pol-pp2024-c-q3-a",
+  "field": "model_answer",
+  "find": "In 2023 Ireland housed about 74,000 asylum applicants, compared with 7,500 in 2021.",
+  "replace": "Applications for international protection rose from about 2,600 in 2021 to over 13,000 in both 2022 and 2023, while over 100,000 Ukrainians arrived after Russia's 2022 invasion.",
+  "why": "'74,000 asylum applicants' mixes in Ukrainian refugees: applications rose from about 2,600 (2021) to over 18,000 (2024); over 70,000 people incl. Ukrainians were in state accommodation"
+ },
+ {
+  "id": "pol-pp2024-c-q3-b",
+  "field": "model_answer",
+  "find": "but asylum numbers rose from 7,500 in 2021 to about 74,000 in 2023 during a housing crisis.",
+  "replace": "but asylum applications rose from about 2,600 in 2021 to over 18,000 in 2024, during a housing crisis, alongside over 100,000 Ukrainians.",
+  "why": "'74,000 asylum applicants' mixes in Ukrainian refugees: applications rose from about 2,600 (2021) to over 18,000 (2024); over 70,000 people incl. Ukrainians were in state accommodation"
+ },
+ {
+  "id": "pol-pp2022-c-q3-a",
+  "field": "model_answer",
+  "find": "A 2023 Virgin Media poll found 56% believed Ireland had accepted too many refugees, at a time when Ireland housed about 74,000 asylum applicants compared to 7,500 in 2021.",
+  "replace": "An opinion poll in early 2023 found a majority (about 56%) felt Ireland had accepted too many refugees, at a time when the state was accommodating over 70,000 people seeking protection and Ukrainian refugees, compared with about 7,500 in 2021.",
+  "why": "'74,000 asylum applicants' mixes in Ukrainian refugees: applications rose from about 2,600 (2021) to over 18,000 (2024); over 70,000 people incl. Ukrainians were in state accommodation; poll attribution unverified"
+ },
+ {
+  "id": "pol-c21-e04",
+  "field": "model_answer",
+  "find": "a 2023 Virgin Media poll found 56% thought Ireland had accepted too many refugees, as numbers rose from 7,500 (2021) to about 74,000 (2023).",
+  "replace": "an opinion poll in early 2023 found about 56% thought Ireland had accepted too many refugees, as the number of people seeking protection and Ukrainian refugees in state accommodation rose from about 7,500 (2021) to over 70,000 (2023).",
+  "why": "'74,000 asylum applicants' mixes in Ukrainian refugees: applications rose from about 2,600 (2021) to over 18,000 (2024); over 70,000 people incl. Ukrainians were in state accommodation; poll attribution unverified"
+ },
+ {
+  "id": "pol-c13-e04",
+  "field": "model_answer",
+  "find": "In 2023 Ireland housed about 74,000 asylum applicants, up from 7,500, and 56% in an Irish Times poll said Ireland had taken too many refugees.",
+  "replace": "In 2023 the state was accommodating over 70,000 people seeking protection and Ukrainian refugees, up from about 7,500 in 2021, and about 56% in an opinion poll in early 2023 said Ireland had taken too many refugees.",
+  "why": "'74,000 asylum applicants' mixes in Ukrainian refugees: applications rose from about 2,600 (2021) to over 18,000 (2024); over 70,000 people incl. Ukrainians were in state accommodation; poll attribution unverified"
+ },
+ {
+  "id": "pol-c13-e04",
+  "field": "marking_scheme",
+  "find": "Irish Times poll, asylum figures",
+  "replace": "2023 opinion poll, asylum and accommodation figures",
+  "why": "Poll attribution unverified"
+ },
+ {
+  "id": "pol-c13-e01",
+  "field": "prompt",
+  "find": "'Irish Times poll, February 2023 - Has Ireland",
+  "replace": "'Opinion poll, early 2023 - Has Ireland",
+  "why": "Poll attribution unverified (our own practice text)"
+ },
+ {
+  "id": "pol-c13-e01",
+  "field": "prompt",
+  "find": "In 2023 Ireland housed about 74,000 asylum applicants, 49,227 of whom were Ukrainian. The previous year the number was 7,500.'",
+  "replace": "In 2023 the state was accommodating over 70,000 people seeking protection, about two-thirds of them Ukrainian refugees. In 2021 the number was about 7,500.'",
+  "why": "'74,000 asylum applicants' mixes in Ukrainian refugees: applications rose from about 2,600 (2021) to over 18,000 (2024); over 70,000 people incl. Ukrainians were in state accommodation (our own practice text)"
+ },
+ {
+  "id": "pol-c13-e01",
+  "field": "model_answer",
+  "find": "At the same time asylum numbers rose sharply, from 7,500 to about 74,000, with about two-thirds (49,227) from Ukraine.",
+  "replace": "At the same time the number of people the state was accommodating rose sharply, from about 7,500 to over 70,000, with about two-thirds of them Ukrainian refugees.",
+  "why": "'74,000 asylum applicants' mixes in Ukrainian refugees: applications rose from about 2,600 (2021) to over 18,000 (2024); over 70,000 people incl. Ukrainians were in state accommodation"
+ },
+ {
+  "id": "pol-c21-e01",
+  "field": "prompt",
+  "find": "'A 2023 poll by Virgin Media found that",
+  "replace": "'An opinion poll in early 2023 found that",
+  "why": "Poll attribution unverified (our own practice text)"
+ },
+ {
+  "id": "pol-c21-e01",
+  "field": "prompt",
+  "find": "In 2023 Ireland was housing about 74,000 asylum applicants, 49,227 of whom are Ukrainians. In 2021, the total number was 7,500.'",
+  "replace": "In 2023 the state was accommodating over 70,000 people seeking protection, about two-thirds of them Ukrainian refugees. In 2021, the total number was about 7,500.'",
+  "why": "'74,000 asylum applicants' mixes in Ukrainian refugees: applications rose from about 2,600 (2021) to over 18,000 (2024); over 70,000 people incl. Ukrainians were in state accommodation (our own practice text)"
+ },
+ {
+  "id": "pol-c21-e01",
+  "field": "prompt",
+  "find": "the change in the number of asylum applicants housed",
+  "replace": "the change in the number of people housed",
+  "why": "'74,000 asylum applicants' mixes in Ukrainian refugees: applications rose from about 2,600 (2021) to over 18,000 (2024); over 70,000 people incl. Ukrainians were in state accommodation (our own practice text)"
+ },
+ {
+  "id": "pol-c21-e01",
+  "field": "model_answer",
+  "find": "(a) The number housed rose sharply, from 7,500 in 2021 to about 74,000 in 2023, nearly ten times as many. Two-thirds of these (49,227) were Ukrainians.",
+  "replace": "(a) The number housed rose sharply, from about 7,500 in 2021 to over 70,000 in 2023, nearly ten times as many. About two-thirds of these were Ukrainian refugees.",
+  "why": "'74,000 asylum applicants' mixes in Ukrainian refugees: applications rose from about 2,600 (2021) to over 18,000 (2024); over 70,000 people incl. Ukrainians were in state accommodation"
+ },
+ {
+  "id": "pol-c13-27",
+  "field": "prompt",
+  "find": "About how many asylum applicants did Ireland house in 2023?",
+  "replace": "About how many people seeking protection (including Ukrainian refugees) was the state accommodating in 2023?",
+  "why": "'74,000 asylum applicants' mixes in Ukrainian refugees: applications rose from about 2,600 (2021) to over 18,000 (2024); over 70,000 people incl. Ukrainians were in state accommodation"
+ },
+ {
+  "id": "pol-c13-27",
+  "field": "explanation",
+  "find": "Ireland housed about 74,000 applicants in 2023, 49,227 of them Ukrainian.",
+  "replace": "The state was accommodating over 70,000 people in 2023, about two-thirds of them Ukrainian refugees rather than asylum applicants.",
+  "why": "'74,000 asylum applicants' mixes in Ukrainian refugees: applications rose from about 2,600 (2021) to over 18,000 (2024); over 70,000 people incl. Ukrainians were in state accommodation"
+ },
+ {
+  "id": "pol-c21-29",
+  "field": "prompt",
+  "find": "Roughly how many asylum applicants was Ireland housing in 2023?",
+  "replace": "Roughly how many people seeking protection (including Ukrainian refugees) was the state accommodating in 2023?",
+  "why": "'74,000 asylum applicants' mixes in Ukrainian refugees: applications rose from about 2,600 (2021) to over 18,000 (2024); over 70,000 people incl. Ukrainians were in state accommodation"
+ },
+ {
+  "id": "pol-c21-29",
+  "field": "explanation",
+  "find": "Ireland was housing about 74,000 asylum applicants in 2023, 49,227 of them Ukrainian.",
+  "replace": "The state was accommodating over 70,000 people in 2023, about two-thirds of them Ukrainian refugees rather than asylum applicants.",
+  "why": "'74,000 asylum applicants' mixes in Ukrainian refugees: applications rose from about 2,600 (2021) to over 18,000 (2024); over 70,000 people incl. Ukrainians were in state accommodation"
+ },
+ {
+  "id": "pol-pp2019-c-q6-a",
+  "field": "model_answer",
+  "find": "an Irish Times poll in February 2023 found 56% of people felt",
+  "replace": "an opinion poll in early 2023 found about 56% of people felt",
+  "why": "Poll attribution (Virgin Media / Irish Times) unverified: an opinion poll in early 2023, about 56%"
+ },
+ {
+  "id": "pol-c13-26",
+  "field": "prompt",
+  "find": "In the Irish Times poll of February 2023, what share said Ireland had taken in too many refugees?",
+  "replace": "In an opinion poll in early 2023, about what share said Ireland had taken in too many refugees?",
+  "why": "Poll attribution (Virgin Media / Irish Times) unverified: an opinion poll in early 2023, about 56%"
+ },
+ {
+  "id": "pol-c21-28",
+  "field": "prompt",
+  "find": "in a 2023 Virgin Media poll felt",
+  "replace": "in an opinion poll in early 2023 felt",
+  "why": "Poll attribution (Virgin Media / Irish Times) unverified: an opinion poll in early 2023, about 56%"
+ },
+ {
+  "id": "pol-c17-26",
+  "field": "prompt",
+  "find": "How does Eriksen describe identity?",
+  "replace": "How does Appiah sum up cosmopolitanism?",
+  "why": "'Universality plus difference' is Appiah's summary of cosmopolitanism, not Eriksen's"
+ },
+ {
+  "id": "pol-c17-26",
+  "field": "explanation",
+  "find": "For Eriksen identity is 'universality plus difference' and is dynamic, not fixed.",
+  "replace": "Appiah sums up cosmopolitanism as 'universality plus difference': shared humanity, with differences respected.",
+  "why": "'Universality plus difference' is Appiah's summary of cosmopolitanism, not Eriksen's"
+ },
+ {
+  "id": "pol-c17-e04",
+  "field": "model_answer",
+  "find": "Eriksen argues identity is created 'both from the inside and the outside' and is 'universality plus difference', always changing.",
+  "replace": "Eriksen argues identity is created 'both from the inside and the outside' and is always changing.",
+  "why": "'Universality plus difference' is Appiah's summary of cosmopolitanism, not Eriksen's"
+ },
+ {
+  "id": "pol-c17-e05",
+  "field": "model_answer",
+  "find": "and Eriksen says identity is 'universality plus difference', meaning cultures can grow by respecting difference.",
+  "replace": "and Appiah's idea of 'universality plus difference' suggests cultures can grow by respecting difference.",
+  "why": "'Universality plus difference' is Appiah's summary of cosmopolitanism, not Eriksen's"
+ },
+ {
+  "id": "pol-pp2024-c-q3-a",
+  "field": "model_answer",
+  "find": "He says identity is 'universality plus difference' and can evolve through respectful exchange.",
+  "replace": "He says identity is dynamic and can evolve through respectful exchange, close to Appiah's idea of 'universality plus difference'.",
+  "why": "'Universality plus difference' is Appiah's summary of cosmopolitanism, not Eriksen's"
+ },
+ {
+  "id": "pol-pp2019-c-q6-a",
+  "field": "model_answer",
+  "find": "Eriksen himself says cultures can evolve through exchange if differences are respected - identity is 'universality plus difference', dynamic rather than fixed.",
+  "replace": "Eriksen himself says cultures can evolve through exchange if differences are respected, and Appiah sums up cosmopolitanism as 'universality plus difference': shared humanity, with differences respected.",
+  "why": "'Universality plus difference' is Appiah's summary of cosmopolitanism, not Eriksen's"
+ },
+ {
+  "id": "pol-pp2023-c-q7",
+  "field": "model_answer",
+  "find": "After Ebola in 2014, the IMF gave Sierra Leone an aid package of about 100 million US dollars.",
+  "replace": "After the 2014 Ebola outbreak, the IMF gave Sierra Leone extra loans and debt relief.",
+  "why": "Unverifiable Sierra Leone IMF loan figures/conditions and exact Christian Aid figure: softened"
+ },
+ {
+  "id": "pol-pp2023-c-q7",
+  "field": "model_answer",
+  "find": "In 2017 the IMF approved a loan of over 220 million US dollars to Sierra Leone, but on condition that it cut public spending on health and education - while it was still recovering from Ebola.",
+  "replace": "Critics argued that IMF conditions after Ebola pushed Sierra Leone to restrain public spending while its health and education systems were still recovering.",
+  "why": "Unverifiable Sierra Leone IMF loan figures/conditions and exact Christian Aid figure: softened"
+ },
+ {
+  "id": "pol-pp2018-c-q6",
+  "field": "model_answer",
+  "find": "After Ebola, Sierra Leone's 2017 IMF loan required cuts to health and education spending.",
+  "replace": "After Ebola, Sierra Leone's IMF programme was criticised for squeezing health and education spending.",
+  "why": "Unverifiable Sierra Leone IMF loan figures/conditions and exact Christian Aid figure: softened"
+ },
+ {
+  "id": "pol-pp2018-c-q6",
+  "field": "model_answer",
+  "find": "Christian Aid estimated Sierra Leone lost about 131 million dollars in 2014-2016 through tax breaks for five mining companies.",
+  "replace": "Christian Aid found Sierra Leone lost large sums through tax breaks for mining companies.",
+  "why": "Unverifiable Sierra Leone IMF loan figures/conditions and exact Christian Aid figure: softened"
+ },
+ {
+  "id": "pol-pp2025-c-q3-a",
+  "field": "model_answer",
+  "find": "for example when IMF loans to Sierra Leone required cuts to health and education.",
+  "replace": "for example when IMF loan conditions in Sierra Leone after Ebola were criticised for squeezing health and education spending.",
+  "why": "Unverifiable Sierra Leone IMF loan figures/conditions and exact Christian Aid figure: softened"
+ },
+ {
+  "id": "pol-pp2021-c-q4b",
+  "field": "model_answer",
+  "find": "Conditional loans can make this worse: in Sierra Leone, IMF conditions required cuts to health spending while the country was still dealing with the effects of Ebola.",
+  "replace": "Conditional loans can make this worse: critics argue that IMF loan conditions limited health spending in Sierra Leone while the country was still dealing with the effects of Ebola.",
+  "why": "Unverifiable Sierra Leone IMF loan figures/conditions and exact Christian Aid figure: softened"
+ },
+ {
+  "id": "pol-c24-e04",
+  "field": "model_answer",
+  "find": "as in Sierra Leone, where austerity cut health and education spending",
+  "replace": "as in Sierra Leone, where critics say loan conditions squeezed health and education spending",
+  "why": "Unverifiable Sierra Leone IMF loan figures/conditions and exact Christian Aid figure: softened"
+ },
+ {
+  "id": "pol-c22-e04",
+  "field": "model_answer",
+  "find": "mining firms in Sierra Leone paid little tax, costing about 131 million US dollars.",
+  "replace": "mining firms in Sierra Leone paid little tax, costing the country large sums in lost revenue.",
+  "why": "Unverifiable Sierra Leone IMF loan figures/conditions and exact Christian Aid figure: softened"
+ },
+ {
+  "id": "pol-c22-r01",
+  "field": "model_answer",
+  "find": "For example, Sierra Leone's 2017 IMF loan of over 220 million US dollars required it to cut spending on health and education and raise taxes, even while recovering from Ebola.",
+  "replace": "For example, critics say IMF loan conditions after Ebola pushed Sierra Leone to restrain spending, squeezing health and education while it was still recovering.",
+  "why": "Unverifiable Sierra Leone IMF loan figures/conditions and exact Christian Aid figure: softened"
+ },
+ {
+  "id": "pol-c22-r08",
+  "field": "model_answer",
+  "find": "Christian Aid estimated 131 million US dollars was lost to tax incentives in 2014-2016.",
+  "replace": "Christian Aid found large sums were lost through tax incentives for mining companies.",
+  "why": "Unverifiable Sierra Leone IMF loan figures/conditions and exact Christian Aid figure: softened"
+ },
+ {
+  "id": "pol-c22-30",
+  "field": "prompt",
+  "find": "What conditions came with the 2017 IMF loan to Sierra Leone?",
+  "replace": "What were IMF loan conditions in Sierra Leone after Ebola criticised for?",
+  "why": "Unverifiable Sierra Leone IMF loan figures/conditions and exact Christian Aid figure: softened"
+ },
+ {
+  "id": "pol-c22-30",
+  "field": "options",
+  "find": "Cutting health and education spending and raising taxes",
+  "replace": "Squeezing health and education spending",
+  "why": "Unverifiable Sierra Leone IMF loan figures/conditions and exact Christian Aid figure: softened"
+ },
+ {
+  "id": "pol-c22-30",
+  "field": "explanation",
+  "find": "Sierra Leone had to cut public spending on health and education and raise revenue through tax.",
+  "replace": "Critics argued IMF conditions pushed Sierra Leone to restrain public spending while its health and education systems were still recovering from Ebola.",
+  "why": "Unverifiable Sierra Leone IMF loan figures/conditions and exact Christian Aid figure: softened"
+ },
+ {
+  "id": "pol-c22-31",
+  "field": "prompt",
+  "find": "According to Christian Aid, how much revenue did Sierra Leone lose in 2014-2016 from tax incentives to five mining firms?",
+  "replace": "According to Christian Aid, how did Sierra Leone lose large sums of revenue?",
+  "why": "Unverifiable Sierra Leone IMF loan figures/conditions and exact Christian Aid figure: softened"
+ },
+ {
+  "id": "pol-c22-31",
+  "field": "options",
+  "find": "100 million US dollars",
+  "replace": "Through EU aid cuts",
+  "why": "Unverifiable Sierra Leone IMF loan figures/conditions and exact Christian Aid figure: softened"
+ },
+ {
+  "id": "pol-c22-31",
+  "field": "options",
+  "find": "220 million US dollars",
+  "replace": "Through IMF loan repayments",
+  "why": "Unverifiable Sierra Leone IMF loan figures/conditions and exact Christian Aid figure: softened"
+ },
+ {
+  "id": "pol-c22-31",
+  "field": "options",
+  "find": "131 million US dollars",
+  "replace": "Through tax breaks for mining companies",
+  "why": "Unverifiable Sierra Leone IMF loan figures/conditions and exact Christian Aid figure: softened"
+ },
+ {
+  "id": "pol-c22-31",
+  "field": "options",
+  "find": "50 million US dollars",
+  "replace": "Through falling tourism",
+  "why": "Unverifiable Sierra Leone IMF loan figures/conditions and exact Christian Aid figure: softened"
+ },
+ {
+  "id": "pol-c22-31",
+  "field": "explanation",
+  "find": "Christian Aid estimated a loss of 131 million US dollars.",
+  "replace": "Christian Aid found Sierra Leone lost large sums through tax incentives given to mining companies.",
+  "why": "Unverifiable Sierra Leone IMF loan figures/conditions and exact Christian Aid figure: softened"
+ },
+ {
+  "id": "pol-c08-27",
+  "field": "prompt",
+  "find": "In 2020, how much less did women in Ireland earn than men on average?",
+  "replace": "On average, about how much less per hour do women in the EU earn than men?",
+  "why": "'Ireland 14.4% in 2020' is not a reliable figure: about 13-14% is the EU average (per hour)"
+ },
+ {
+  "id": "pol-c08-27",
+  "field": "options",
+  "find": "14.4%",
+  "replace": "About 13-14%",
+  "why": "'Ireland 14.4% in 2020' is not a reliable figure: about 13-14% is the EU average (per hour)"
+ },
+ {
+  "id": "pol-c08-27",
+  "field": "explanation",
+  "find": "Eurostat and the CSO found women earned 14.4% less than men in 2020.",
+  "replace": "Across the EU, women earn about 13-14% less per hour than men on average (Eurostat).",
+  "why": "'Ireland 14.4% in 2020' is not a reliable figure: about 13-14% is the EU average (per hour)"
+ },
+ {
+  "id": "pol-c08-e02",
+  "field": "prompt",
+  "find": "'Women in Ireland earned 14.4% less than men in 2020.",
+  "replace": "'Women in the EU earn about 13-14% less per hour than men.",
+  "why": "'Ireland 14.4% in 2020' is not a reliable figure: about 13-14% is the EU average (per hour) (our own practice text)"
+ },
+ {
+  "id": "pol-c08-e02",
+  "field": "model_answer",
+  "find": "the gender pay gap of 14.4% is linked",
+  "replace": "the gender pay gap of about 13-14% is linked",
+  "why": "'Ireland 14.4% in 2020' is not a reliable figure: about 13-14% is the EU average (per hour)"
+ },
+ {
+  "id": "pol-c08-e02",
+  "field": "marking_scheme",
+  "find": "overall gap 14.4%",
+  "replace": "overall gap of about 13-14%",
+  "why": "'Ireland 14.4% in 2020' is not a reliable figure: about 13-14% is the EU average (per hour)"
+ },
+ {
+  "id": "pol-pp2019-b-q2-g",
+  "field": "model_answer",
+  "find": "In Ireland, women earned 14.4% less than men in 2020.",
+  "replace": "Across the EU, women earn about 13-14% less per hour than men.",
+  "why": "'Ireland 14.4% in 2020' is not a reliable figure: about 13-14% is the EU average (per hour)"
+ },
+ {
+  "id": "pol-pp2021-c-q7",
+  "field": "model_answer",
+  "find": "; in Ireland the gap was 14.4% in 2020.",
+  "replace": ".",
+  "why": "'Ireland 14.4% in 2020' is not a reliable figure: about 13-14% is the EU average (per hour)"
+ },
+ {
+  "id": "pol-pp2022-c-q6",
+  "field": "model_answer",
+  "find": "Irish women earned 14.4% less than men on average in 2020, with a bigger gap in higher-paid jobs.",
+  "replace": "Women in the EU earn about 13-14% less per hour than men, and large Irish employers have had to publish their gender pay gaps since 2022.",
+  "why": "'Ireland 14.4% in 2020' is not a reliable figure: about 13-14% is the EU average (per hour)"
+ },
+ {
+  "id": "pol-pp2018-c-q4-a",
+  "field": "model_answer",
+  "find": "Women earned 14.4% less than men on average in 2020, and the gap is larger in higher-paid jobs.",
+  "replace": "Women in the EU earn about 13-14% less per hour than men, and the gap is larger in higher-paid jobs.",
+  "why": "'Ireland 14.4% in 2020' is not a reliable figure: about 13-14% is the EU average (per hour)"
+ },
+ {
+  "id": "pol-pp2023-a-q1-j",
+  "field": "model_answer",
+  "find": "women earned 14.4% less than men in 2020, and only about 22% of TDs are women.",
+  "replace": "women in the EU earn about 13-14% less per hour than men, and only about a quarter of TDs are women.",
+  "why": "'Ireland 14.4% in 2020' is not a reliable figure: about 13-14% is the EU average (per hour); TD share updated after 2024 election"
+ },
+ {
+  "id": "pol-c08-e04",
+  "field": "model_answer",
+  "find": "Women in Ireland earned 14.4% less than men in 2020.",
+  "replace": "Women in the EU earn about 13-14% less per hour than men.",
+  "why": "'Ireland 14.4% in 2020' is not a reliable figure: about 13-14% is the EU average (per hour)"
+ },
+ {
+  "id": "pol-c08-e04",
+  "field": "marking_scheme",
+  "find": "14.4% pay gap",
+  "replace": "pay gap (about 13-14% in the EU)",
+  "why": "'Ireland 14.4% in 2020' is not a reliable figure: about 13-14% is the EU average (per hour)"
+ },
+ {
+  "id": "pol-pp2021-c-q7",
+  "field": "model_answer",
+  "find": "Claudia Goldin of Harvard found that women often seek flexibility, which leads to part-time, lower-paid jobs, while men reach higher corporate positions.",
+  "replace": "Women often seek flexibility, which leads to part-time, lower-paid jobs, while men reach higher corporate positions.",
+  "why": "Claudia Goldin's research shows a structural cause ('greedy jobs'), not that the gap is 'just choice'"
+ },
+ {
+  "id": "pol-pp2021-c-q7",
+  "field": "model_answer",
+  "find": "This counter-argument actually supports the view that the issue is complex.",
+  "replace": "This counter-argument actually supports the view that the issue is complex. Claudia Goldin (Nobel Prize in Economics, 2023) found that most of today's gap is not unequal pay for the same job but 'greedy jobs' that pay extra for long, inflexible hours; when children arrive, it is usually women who step back.",
+  "why": "Claudia Goldin's research shows a structural cause ('greedy jobs'), not that the gap is 'just choice'"
+ },
+ {
+  "id": "pol-pp2022-c-q6",
+  "field": "model_answer",
+  "find": "Some, like Claudia Goldin, argue the pay gap reflects choices such as part-time work rather than discrimination.",
+  "replace": "Some argue the pay gap reflects choices such as part-time work rather than discrimination.",
+  "why": "Claudia Goldin's research shows a structural cause ('greedy jobs'), not that the gap is 'just choice'"
+ },
+ {
+  "id": "pol-pp2022-c-q6",
+  "field": "model_answer",
+  "find": "However, Walby would answer that these 'choices'",
+  "replace": "However, Claudia Goldin (Nobel Prize in Economics, 2023) found the gap is driven by 'greedy jobs' that reward long, inflexible hours, and Walby would answer that these 'choices'",
+  "why": "Claudia Goldin's research shows a structural cause ('greedy jobs'), not that the gap is 'just choice'"
+ },
+ {
+  "id": "pol-pp2018-c-q4-a",
+  "field": "model_answer",
+  "find": "Some, such as Claudia Goldin, argue the pay gap reflects women choosing flexibility rather than discrimination.",
+  "replace": "Some argue the pay gap reflects women choosing flexibility rather than discrimination, but Claudia Goldin's research shows these 'choices' are shaped by 'greedy jobs' that reward long, inflexible hours.",
+  "why": "Claudia Goldin's research shows a structural cause ('greedy jobs'), not that the gap is 'just choice'"
+ },
+ {
+  "id": "pol-c08-e04",
+  "field": "model_answer",
+  "find": "Some argue the pay gap reflects choices or a 'motherhood pay gap', as Claudia Goldin suggests.",
+  "replace": "Some argue the pay gap reflects choices or a 'motherhood pay gap', though Claudia Goldin's research on 'greedy jobs' shows these 'choices' are shaped by how work is organised.",
+  "why": "Claudia Goldin's research shows a structural cause ('greedy jobs'), not that the gap is 'just choice'"
+ },
+ {
+  "id": "pol-pp2024-c-q6",
+  "field": "model_answer",
+  "find": " Trust in news is high, with 74% of Irish consumers trusting 'most news', mainly RTÉ.",
+  "replace": "",
+  "why": "'74% of Irish people trust most news' (Reuters 2022) is not supported; removed"
+ },
+ {
+  "id": "pol-c09-e04",
+  "field": "model_answer",
+  "find": "Trust in public service media remains high: 74% of Irish people trusted most news in 2022, mainly RTÉ.",
+  "replace": "Public service media such as RTÉ remain an important trusted source.",
+  "why": "'74% of Irish people trust most news' (Reuters 2022) is not supported; removed"
+ },
+ {
+  "id": "pol-pp2023-c-q5",
+  "field": "model_answer",
+  "find": "Trust in traditional news is still fairly high - 74% of Irish people trusted 'most news' in 2022, mainly RTÉ - and Facebook",
+  "replace": "Traditional news sources such as RTÉ are still widely used, and Facebook",
+  "why": "'74% of Irish people trust most news' (Reuters 2022) is not supported; removed"
+ },
+ {
+  "id": "pol-pp2025-c-q5",
+  "field": "model_answer",
+  "find": ", while 74% still trusted 'most news', mainly RTÉ (2022). This suggests people turn back to trusted traditional media.",
+  "replace": ". This suggests some people turn back to traditional media.",
+  "why": "'74% of Irish people trust most news' (Reuters 2022) is not supported; removed"
+ },
+ {
+  "id": "pol-c09-e02",
+  "field": "prompt",
+  "find": "'Reuters Digital News Report: In 2022, 74% of Irish consumers trusted most news, mainly RTÉ. In 2019,",
+  "replace": "'Reuters Digital News Report: In 2019,",
+  "why": "'74% of Irish people trust most news' (Reuters 2022) is not supported; removed (our own practice text)"
+ },
+ {
+  "id": "pol-c09-e02",
+  "field": "model_answer",
+  "find": "First, trust in traditional media is high: 74% of Irish people trust most news, mainly from RTÉ, a public broadcaster. Second, there",
+  "replace": "First, there",
+  "why": "'74% of Irish people trust most news' (Reuters 2022) is not supported; removed"
+ },
+ {
+  "id": "pol-c09-e02",
+  "field": "model_answer",
+  "find": "Third, social media is still",
+  "replace": "Second, social media is still",
+  "why": "'74% of Irish people trust most news' (Reuters 2022) is not supported; removed (renumbering)"
+ },
+ {
+  "id": "pol-c09-e02",
+  "field": "model_answer",
+  "find": "Overall, Irish people rely on social media but still place their trust in traditional sources.",
+  "replace": "Overall, Irish people rely on social media but are wary of what they see there.",
+  "why": "'74% of Irish people trust most news' (Reuters 2022) is not supported; removed"
+ },
+ {
+  "id": "pol-c09-e02",
+  "field": "marking_scheme",
+  "find": "high trust (74%, RTÉ); concern",
+  "replace": "concern",
+  "why": "'74% of Irish people trust most news' (Reuters 2022) is not supported; removed"
+ },
+ {
+  "id": "pol-c09-24",
+  "field": "prompt",
+  "find": "According to Reuters 2022, what share of Irish consumers trust 'most news'?",
+  "replace": "According to the Reuters Digital News Report 2019, what share of Irish people were very or extremely worried about made-up news stories?",
+  "why": "'74% of Irish people trust most news' (Reuters 2022) is not supported; removed (question rewritten to a figure the chapter keeps)"
+ },
+ {
+  "id": "pol-c09-24",
+  "field": "options",
+  "find": "61%",
+  "replace": "About 3 in 10",
+  "why": "'74% of Irish people trust most news' (Reuters 2022) is not supported; removed"
+ },
+ {
+  "id": "pol-c09-24",
+  "field": "options",
+  "find": "17%",
+  "replace": "About 1 in 10",
+  "why": "'74% of Irish people trust most news' (Reuters 2022) is not supported; removed"
+ },
+ {
+  "id": "pol-c09-24",
+  "field": "options",
+  "find": "74%",
+  "replace": "About 6 in 10",
+  "why": "'74% of Irish people trust most news' (Reuters 2022) is not supported; removed"
+ },
+ {
+  "id": "pol-c09-24",
+  "field": "options",
+  "find": "63%",
+  "replace": "About 9 in 10",
+  "why": "'74% of Irish people trust most news' (Reuters 2022) is not supported; removed"
+ },
+ {
+  "id": "pol-c09-24",
+  "field": "explanation",
+  "find": "74% trusted most news, mainly RTÉ.",
+  "replace": "About 6 in 10 (61%) were very or extremely worried about stories made up for political or commercial reasons, but only 17% recalled seeing such disinformation.",
+  "why": "'74% of Irish people trust most news' (Reuters 2022) is not supported; removed"
+ },
+ {
+  "id": "pol-pp2023-c-q6",
+  "field": "model_answer",
+  "find": "over 160 million children are still in child labour",
+  "replace": "about 138 million children were still in child labour in 2024",
+  "why": "ILO/UNICEF (2025 report): about 138 million children in child labour in 2024 (160 million was the 2020 figure)"
+ },
+ {
+  "id": "pol-pp2022-c-q7",
+  "field": "model_answer",
+  "find": "over 160 million children are still in child labour",
+  "replace": "about 138 million children were still in child labour in 2024",
+  "why": "ILO/UNICEF (2025 report): about 138 million children in child labour in 2024 (160 million was the 2020 figure)"
+ },
+ {
+  "id": "pol-pp2024-c-q5",
+  "field": "model_answer",
+  "find": "over 160 million children are still in child labour",
+  "replace": "about 138 million children were still in child labour in 2024",
+  "why": "ILO/UNICEF (2025 report): about 138 million children in child labour in 2024 (160 million was the 2020 figure)"
+ },
+ {
+  "id": "pol-pp2019-b-q2-g",
+  "field": "model_answer",
+  "find": "Only 22.5% of TDs were women in 2020, ranking Ireland 98th in the world.",
+  "replace": "Only 22.5% of TDs were women in 2020.",
+  "why": "Ireland's '98th in the world' ranking for women in parliament is unverifiable; removed/softened"
+ },
+ {
+  "id": "pol-pp2018-c-q4-a",
+  "field": "model_answer",
+  "find": "but only 22.5% in 2020, leaving Ireland 98th in the world for women in parliament.",
+  "replace": "but only 22.5% in 2020, still far below half.",
+  "why": "Ireland's '98th in the world' ranking for women in parliament is unverifiable; removed/softened"
+ },
+ {
+  "id": "pol-pp2025-c-q3-a",
+  "field": "model_answer",
+  "find": "Women, too, remain under-represented: only 22.5% of TDs in 2020, leaving Ireland 98th in the world.",
+  "replace": "Women, too, remain under-represented: they are still only about a quarter of TDs.",
+  "why": "Ireland's '98th in the world' ranking for women in parliament is unverifiable; removed/softened"
+ },
+ {
+  "id": "pol-pp2024-c-q6",
+  "field": "model_answer",
+  "find": "Women made up only 22.5% of TDs after 2020, and Ireland ranked 98th in the world for women in parliament.",
+  "replace": "Women made up only 22.5% of TDs after 2020, and still only about a quarter after 2024.",
+  "why": "Ireland's '98th in the world' ranking for women in parliament is unverifiable; removed/softened"
+ },
+ {
+  "id": "pol-pp2019-c-q3-a",
+  "field": "model_answer",
+  "find": "But by 2020 the figure was only 22.5%, and Ireland ranked 98th in the world for women in national parliaments.",
+  "replace": "But by 2020 the figure was only 22.5%, still far below half.",
+  "why": "Ireland's '98th in the world' ranking for women in parliament is unverifiable; removed/softened"
+ },
+ {
+  "id": "pol-c07-e04",
+  "field": "model_answer",
+  "find": "In 2020 only 22.5% of TDs were women and Ireland was 98th in the world, behind Iraq and China.",
+  "replace": "In 2020 only 22.5% of TDs were women, still far below half.",
+  "why": "Ireland's '98th in the world' ranking for women in parliament is unverifiable; removed/softened"
+ },
+ {
+  "id": "pol-c07-e02",
+  "field": "prompt",
+  "find": "By 2020 it was 22.5%, placing Ireland 98th in the world for women's representation in national parliaments.'",
+  "replace": "By 2020 it was 22.5%.'",
+  "why": "Ireland's '98th in the world' ranking for women in parliament is unverifiable; removed/softened (our own practice text)"
+ },
+ {
+  "id": "pol-c07-e02",
+  "field": "model_answer",
+  "find": ", and Ireland ranked only 98th in the world, behind Iraq and China.",
+  "replace": ".",
+  "why": "Ireland's '98th in the world' ranking for women in parliament is unverifiable; removed/softened"
+ },
+ {
+  "id": "pol-c07-e02",
+  "field": "marking_scheme",
+  "find": "still below 30%; 98th in world, behind Iraq and China.",
+  "replace": "still below 30%; still far below half.",
+  "why": "Ireland's '98th in the world' ranking for women in parliament is unverifiable; removed/softened"
+ },
+ {
+  "id": "pol-c07-27",
+  "field": "prompt",
+  "find": "In 2020, where did Ireland rank in the world for women in national parliaments?",
+  "replace": "After the 2020 general election, roughly what share of TDs were women?",
+  "why": "Ireland's '98th in the world' ranking for women in parliament is unverifiable; removed/softened (question rewritten)"
+ },
+ {
+  "id": "pol-c07-27",
+  "field": "options",
+  "find": "22nd",
+  "replace": "About 50%",
+  "why": "Ireland's '98th in the world' ranking for women in parliament is unverifiable; removed/softened"
+ },
+ {
+  "id": "pol-c07-27",
+  "field": "options",
+  "find": "35th",
+  "replace": "About 35%",
+  "why": "Ireland's '98th in the world' ranking for women in parliament is unverifiable; removed/softened"
+ },
+ {
+  "id": "pol-c07-27",
+  "field": "options",
+  "find": "160th",
+  "replace": "About 10%",
+  "why": "Ireland's '98th in the world' ranking for women in parliament is unverifiable; removed/softened"
+ },
+ {
+  "id": "pol-c07-27",
+  "field": "options",
+  "find": "98th",
+  "replace": "About 22.5%",
+  "why": "Ireland's '98th in the world' ranking for women in parliament is unverifiable; removed/softened"
+ },
+ {
+  "id": "pol-c07-27",
+  "field": "explanation",
+  "find": "At 22.5% women, Ireland was 98th, behind Iraq and China.",
+  "replace": "Women were 22.5% of TDs after the 2020 election, still far below half.",
+  "why": "Ireland's '98th in the world' ranking for women in parliament is unverifiable; removed/softened"
+ },
+ {
+  "id": "pol-c15-e04",
+  "field": "model_answer",
+  "find": "and it ranked 185 out of 189 on the HDI in 2021.",
+  "replace": "and it is near the bottom of the Human Development Index.",
+  "why": "Exact HDI rank for South Sudan unreliable (it is near/at the bottom); softened"
+ },
+ {
+  "id": "pol-pp2019-c-q5",
+  "field": "model_answer",
+  "find": "and the country ranked 185th of 189 on the Human Development Index in 2021.",
+  "replace": "and the country is near the bottom of the Human Development Index.",
+  "why": "Exact HDI rank for South Sudan unreliable (it is near/at the bottom); softened"
+ },
+ {
+  "id": "pol-c15-07",
+  "field": "prompt",
+  "find": "Where did South Sudan rank on the Human Development Index in 2021?",
+  "replace": "Where does South Sudan rank on the Human Development Index?",
+  "why": "Exact HDI rank for South Sudan unreliable (it is near/at the bottom); softened"
+ },
+ {
+  "id": "pol-c15-07",
+  "field": "options",
+  "find": "1 out of 189",
+  "replace": "Near the top",
+  "why": "Exact HDI rank for South Sudan unreliable (it is near/at the bottom); softened"
+ },
+ {
+  "id": "pol-c15-07",
+  "field": "options",
+  "find": "98 out of 189",
+  "replace": "In the middle",
+  "why": "Exact HDI rank for South Sudan unreliable (it is near/at the bottom); softened"
+ },
+ {
+  "id": "pol-c15-07",
+  "field": "options",
+  "find": "185 out of 189",
+  "replace": "Near the bottom",
+  "why": "Exact HDI rank for South Sudan unreliable (it is near/at the bottom); softened"
+ },
+ {
+  "id": "pol-c15-07",
+  "field": "options",
+  "find": "189 out of 189",
+  "replace": "In the top 50",
+  "why": "Exact HDI rank for South Sudan unreliable (it is near/at the bottom); softened"
+ },
+ {
+  "id": "pol-c15-07",
+  "field": "explanation",
+  "find": "South Sudan ranked 185 out of 189 in 2021.",
+  "replace": "South Sudan is near the bottom of the Human Development Index, among the least developed countries in the world.",
+  "why": "Exact HDI rank for South Sudan unreliable (it is near/at the bottom); softened"
+ },
+ {
+  "id": "pol-pp2024-c-q5",
+  "field": "model_answer",
+  "find": "world hunger was cut in half, extreme poverty fell by nearly half,",
+  "replace": "extreme poverty was more than halved, the share of hungry people almost halved,",
+  "why": "MDG results were swapped: extreme poverty was more than halved and the share of hungry people almost halved"
+ },
+ {
+  "id": "pol-pp2024-c-q7",
+  "field": "model_answer",
+  "find": "world hunger had been cut in half, extreme poverty had fallen by nearly half,",
+  "replace": "extreme poverty had been more than halved, the share of hungry people had almost halved,",
+  "why": "MDG results were swapped: extreme poverty was more than halved and the share of hungry people almost halved"
+ },
+ {
+  "id": "pol-pp2021-c-q4a",
+  "field": "model_answer",
+  "find": "world hunger was cut in half and extreme poverty fell by nearly half.",
+  "replace": "extreme poverty more than halved and the share of hungry people almost halved.",
+  "why": "MDG results were swapped: extreme poverty was more than halved and the share of hungry people almost halved"
+ },
+ {
+  "id": "pol-pp2023-c-q7",
+  "field": "model_answer",
+  "find": "The UN's Millennium Development Goals helped cut world hunger in half and reduce extreme poverty by nearly half between 2000 and 2015.",
+  "replace": "Under the UN's Millennium Development Goals, extreme poverty was more than halved and the share of hungry people almost halved by 2015.",
+  "why": "MDG results were swapped: extreme poverty was more than halved and the share of hungry people almost halved"
+ },
+ {
+  "id": "pol-pp2019-c-q4",
+  "field": "model_answer",
+  "find": ", and that the 2015 Indonesian fires released almost as much greenhouse gas as Indonesia emits in a whole year.",
+  "replace": ".",
+  "why": "'2015 Indonesian fires equalled a year of Indonesia's emissions' is unverifiable; removed"
+ },
+ {
+  "id": "pol-pp2021-c-q4a",
+  "field": "model_answer",
+  "find": "the 2015 Indonesian fires caused by clearing land for palm oil released greenhouse gases almost equal to Indonesia's emissions for a whole year.",
+  "replace": "the 2015 Indonesian fires were linked to clearing rainforest for palm oil plantations.",
+  "why": "'2015 Indonesian fires equalled a year of Indonesia's emissions' is unverifiable; removed"
+ },
+ {
+  "id": "pol-c23-30",
+  "field": "prompt",
+  "find": "What did the 2015 Indonesian fires show about palm oil?",
+  "replace": "What were the 2015 Indonesian fires linked to?",
+  "why": "'2015 Indonesian fires equalled a year of Indonesia's emissions' is unverifiable; removed"
+ },
+ {
+  "id": "pol-c23-30",
+  "field": "options",
+  "find": "Emissions nearly equalled Indonesia's yearly total",
+  "replace": "Clearing land for palm oil plantations",
+  "why": "'2015 Indonesian fires equalled a year of Indonesia's emissions' is unverifiable; removed"
+ },
+ {
+  "id": "pol-c23-30",
+  "field": "explanation",
+  "find": "Greenhouse gases from the 2015 fires were almost equal to Indonesia's emissions for the whole year.",
+  "replace": "The 2015 fires were largely linked to clearing rainforest and peatland for palm oil plantations.",
+  "why": "'2015 Indonesian fires equalled a year of Indonesia's emissions' is unverifiable; removed"
+ },
+ {
+  "id": "pol-c23-r05",
+  "field": "model_answer",
+  "find": "The Renovation Wave plans to overhaul 220 million buildings by 2050 to improve",
+  "replace": "The Renovation Wave plans to renovate millions of buildings to improve",
+  "why": "Green Deal '220 million buildings' figure is wrong/unverifiable; removed"
+ },
+ {
+  "id": "pol-c23-e03",
+  "field": "model_answer",
+  "find": "the Renovation Wave will upgrade 220 million buildings by 2050;",
+  "replace": "the Renovation Wave will upgrade millions of buildings;",
+  "why": "Green Deal '220 million buildings' figure is wrong/unverifiable; removed"
+ },
+ {
+  "id": "pol-pp2024-c-q7",
+  "field": "model_answer",
+  "find": "such as renovating 220 million buildings by 2050 and cutting",
+  "replace": "such as a Renovation Wave for buildings and cutting",
+  "why": "Green Deal '220 million buildings' figure is wrong/unverifiable; removed"
+ },
+ {
+  "id": "pol-c23-18",
+  "field": "options",
+  "find": "Renovating 220 million buildings",
+  "replace": "Renovating every building by 2030",
+  "why": "Remove the '220 million buildings' figure (distractor)"
+ },
+ {
+  "id": "pol-pp2019-c-q4",
+  "field": "model_answer",
+  "find": "Irish climate activists point out that just 100 corporations are responsible for 70% of global carbon emissions.",
+  "replace": "Irish climate activists point to the Carbon Majors Report (2017), which found that just 100 fossil fuel producers were linked to about 71% of global industrial emissions since 1988.",
+  "why": "'100 corporations 70%': Carbon Majors Report (2017) - 100 fossil fuel producers linked to about 71% of global industrial emissions since 1988"
+ },
+ {
+  "id": "pol-c23-e04",
+  "field": "model_answer",
+  "find": "100 corporations are responsible for 70% of global carbon emissions, as Irish FFF protesters noted.",
+  "replace": "The Carbon Majors Report (2017) found that 100 fossil fuel producers were linked to about 71% of global industrial emissions since 1988, as Irish FFF protesters noted.",
+  "why": "'100 corporations 70%': Carbon Majors Report (2017) - 100 fossil fuel producers linked to about 71% of global industrial emissions since 1988"
+ },
+ {
+  "id": "pol-c23-r04",
+  "field": "model_answer",
+  "find": "penalising the 100 corporations responsible for 70% of emissions.",
+  "replace": "penalising the 100 fossil fuel producers linked to about 71% of industrial emissions since 1988.",
+  "why": "'100 corporations 70%': Carbon Majors Report (2017) - 100 fossil fuel producers linked to about 71% of global industrial emissions since 1988"
+ },
+ {
+  "id": "pol-c03-e03",
+  "field": "model_answer",
+  "find": "the UN Committee in 2022 noted",
+  "replace": "the UN Committee in 2023 noted",
+  "why": "The UN Committee on the Rights of the Child's concluding observations on Ireland were in 2023, not 2022"
+ },
+ {
+  "id": "pol-c03-e03",
+  "field": "marking_scheme",
+  "find": "UN Committee 2022)",
+  "replace": "UN Committee 2023)",
+  "why": "The UN Committee on the Rights of the Child's concluding observations on Ireland were in 2023, not 2022"
+ },
+ {
+  "id": "pol-c11-e01",
+  "field": "model_answer",
+  "find": "the UN Committee on the Rights of the Child (2022) welcomed",
+  "replace": "the UN Committee on the Rights of the Child (2023) welcomed",
+  "why": "The UN Committee on the Rights of the Child's concluding observations on Ireland were in 2023, not 2022"
+ },
+ {
+  "id": "pol-c11-e04",
+  "field": "model_answer",
+  "find": "(first in 1998, again in 2016 and 2022). In 2022 it welcomed",
+  "replace": "(first in 1998, most recently in 2016 and 2023). In 2023 it welcomed",
+  "why": "The UN Committee on the Rights of the Child's concluding observations on Ireland were in 2023, not 2022"
+ },
+ {
+  "id": "pol-c11-e04",
+  "field": "marking_scheme",
+  "find": "UN Committee 2022 observations",
+  "replace": "UN Committee 2023 observations",
+  "why": "The UN Committee on the Rights of the Child's concluding observations on Ireland were in 2023, not 2022"
+ },
+ {
+  "id": "pol-pp2023-c-q4-b",
+  "field": "model_answer",
+  "find": "The UN Committee on the Rights of the Child (2022) was concerned",
+  "replace": "The UN Committee on the Rights of the Child (2023) was concerned",
+  "why": "The UN Committee on the Rights of the Child's concluding observations on Ireland were in 2023, not 2022"
+ },
+ {
+  "id": "pol-pp2018-c-q4-b",
+  "field": "model_answer",
+  "find": "The UN Committee on the Rights of the Child (2022) noted",
+  "replace": "The UN Committee on the Rights of the Child (2023) noted",
+  "why": "The UN Committee on the Rights of the Child's concluding observations on Ireland were in 2023, not 2022"
+ },
+ {
+  "id": "pol-pp2024-c-q4",
+  "field": "model_answer",
+  "find": "Ireland's hate speech laws are being updated to target incitement to violence or hatred.",
+  "replace": "Ireland's own debate shows the care needed: when the hate offences law was passed in 2024, the section on incitement to hatred was dropped after concerns that it could restrict free speech.",
+  "why": "Hate speech: the Hate Offences Act 2024 was passed without its incitement-to-hatred section (the 1989 Act still applies)"
+ },
+ {
+  "id": "pol-pp2019-c-q3-b",
+  "field": "model_answer",
+  "find": "Irish law on hate speech, now being updated by the Criminal Justice (Incitement to Violence or Hatred and Hate Offences) Bill, reflects this limit.",
+  "replace": "Irish law on hate speech (the Prohibition of Incitement to Hatred Act 1989) and the Hate Offences Act 2024, which made hate an aggravating factor in crimes, reflect this limit.",
+  "why": "Hate speech: the Hate Offences Act 2024 was passed without its incitement-to-hatred section (the 1989 Act still applies)"
+ },
+ {
+  "id": "pol-pp2019-c-q3-b",
+  "field": "model_answer",
+  "find": "Critics of Ireland's new hate offences law also warn that it may go too far and stifle free speech.",
+  "replace": "Critics of Ireland's planned incitement to hatred law also warned that it could go too far and stifle free speech, and that section was dropped in 2024.",
+  "why": "Hate speech: the Hate Offences Act 2024 was passed without its incitement-to-hatred section (the 1989 Act still applies)"
+ },
+ {
+  "id": "pol-pp2021-c-q6",
+  "field": "model_answer",
+  "find": "Critics say the Bill goes too far and could censor politically incorrect views.",
+  "replace": "Critics said the Bill went too far and could censor politically incorrect views, and the incitement to hatred section was dropped: the Hate Offences Act 2024 only made hate a factor that increases sentences for existing crimes.",
+  "why": "Hate speech: the Hate Offences Act 2024 was passed without its incitement-to-hatred section (the 1989 Act still applies)"
+ },
+ {
+  "id": "pol-pp2023-a-q1-d",
+  "field": "model_answer",
+  "find": "Critics say the Bill could limit free speech, so it must balance free speech with protecting others.",
+  "replace": "Critics warned the Bill could limit free speech, so it had to balance free speech with protecting others; in the end the incitement section was dropped and the Hate Offences Act 2024 became law.",
+  "why": "Hate speech: the Hate Offences Act 2024 was passed without its incitement-to-hatred section (the 1989 Act still applies)"
+ },
+ {
+  "id": "pol-c13-e04",
+  "field": "model_answer",
+  "find": "Critics of the Criminal Justice (Incitement to Violence or Hatred and Hate Offences) Bill fear it will stifle free speech and censor politically incorrect views.",
+  "replace": "Critics of the Criminal Justice (Incitement to Violence or Hatred and Hate Offences) Bill feared it would stifle free speech and censor politically incorrect views, and the incitement to hatred section was dropped before the Hate Offences Act 2024 was passed.",
+  "why": "Hate speech: the Hate Offences Act 2024 was passed without its incitement-to-hatred section (the 1989 Act still applies)"
+ },
+ {
+  "id": "pol-c13-r06",
+  "field": "model_answer",
+  "find": "The new Criminal Justice Bill defines hate crime as an offence motivated by prejudice based on grounds like race, religion or sexual orientation, though critics fear it may stifle free speech.",
+  "replace": "The Hate Offences Act 2024 treats prejudice on grounds like race, religion or sexual orientation as a factor that increases sentences for crimes, but its incitement to hatred section was dropped after critics feared it would stifle free speech.",
+  "why": "Hate speech: the Hate Offences Act 2024 was passed without its incitement-to-hatred section (the 1989 Act still applies)"
+ },
+ {
+  "id": "pol-c13-25",
+  "field": "explanation",
+  "find": "Critics fear it goes too far and could censor politically incorrect views.",
+  "replace": "Critics feared it went too far and could censor politically incorrect views; its incitement to hatred section was dropped before it became the Hate Offences Act 2024.",
+  "why": "Hate speech: the Hate Offences Act 2024 was passed without its incitement-to-hatred section (the 1989 Act still applies)"
+ },
+ {
+  "id": "pol-c13-23",
+  "field": "prompt",
+  "find": "What was the name of Ireland's previous law on hate speech?",
+  "replace": "Which older Irish law on hate speech did IHREC and ECRI criticise as ineffective?",
+  "why": "Hate speech: the Hate Offences Act 2024 was passed without its incitement-to-hatred section (the 1989 Act still applies) (the 1989 Act was not replaced)"
+ },
+ {
+  "id": "pol-c13-23",
+  "field": "explanation",
+  "find": "The 1989 Act was criticised by IHREC in 2019 and by ECRI.",
+  "replace": "The 1989 Act was criticised by IHREC in 2019 and by ECRI. It is still in force, because the incitement section was dropped from the Hate Offences Act 2024.",
+  "why": "Hate speech: the Hate Offences Act 2024 was passed without its incitement-to-hatred section (the 1989 Act still applies)"
+ }
+]
