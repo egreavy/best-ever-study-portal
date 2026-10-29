@@ -454,7 +454,7 @@
   <div id="view"><div class="loading">Loading…</div></div>
 </div>
 
-<script src="stages.js?v=20261025h"></script>
+<script src="stages.js?v=20261029a"></script>
 <script src="practice.js?v=20261025f"></script>
 <script src="tutor.js?v=20261025c"></script>
 <script src="notes.js?v=20261025c"></script>
@@ -657,8 +657,8 @@ async function renderChapter(){
   progressRows.forEach(r => { doneMap[r.step_order] = { done: !!r.done, resourceUrl: r.resource_url || "", duration: r.duration_min || null }; });
   const confidenceRating = confidenceRows[0] ? parseInt(confidenceRows[0].rating, 10) : null;
 
-  const NAMES = { "Revision Guide": "Revision guide", "Video Overview": "Video", "In-Depth Slide Deck": "Slides", "Audio Recap": "Audio recap", "Mind Map": "Mind map", "Flashcards Review": "Flashcards", "Quiz Yourself": "NotebookLM quiz", "Exam Practice": "Past Papers - Analysis & Answers" };
-  const NOTES = { "Revision Guide": "5 minute read", "Video Overview": "Watch the key ideas", "In-Depth Slide Deck": "Like a full class lesson", "Audio Recap": "Listen anywhere", "Mind Map": "See how it all connects", "Flashcards Review": "Quick recall, little and often", "Quiz Yourself": "A NotebookLM quiz on this chapter", "Exam Practice": "Past paper questions with model answers" };
+  const NAMES = { "Revision Guide": "Revision guide", "Video Overview": "Video", "In-Depth Slide Deck": "Slides", "Audio Recap": "Audio recap", "Mind Map": "Mind map", "Flashcards Review": "Flashcards", "Quiz Yourself": "NotebookLM quiz", "Exam Practice": "Past papers guide" };
+  const NOTES = { "Revision Guide": "Key ideas, keywords and a quick check", "Video Overview": "Watch the key ideas", "In-Depth Slide Deck": "Like a full class lesson", "Audio Recap": "Listen anywhere", "Mind Map": "See how it all connects", "Flashcards Review": "Quick recall, little and often", "Quiz Yourself": "A NotebookLM quiz on this chapter", "Exam Practice": "How it comes up in the exam, what the examiner wants, model answers" };
   const VERB = { "Video Overview": "Watch", "Audio Recap": "Listen" };
   // Shown once he has opened it (opening counts; no checklist to tick)
   const DONEW = { "Video Overview": "Watched", "Revision Guide": "Read", "In-Depth Slide Deck": "Looked through", "Audio Recap": "Listened" };

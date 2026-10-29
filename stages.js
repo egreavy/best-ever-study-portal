@@ -304,7 +304,7 @@
   const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
   const DAY = 86400000;
   const PRACTICE_TITLES = ["Flashcards Review", "Quiz Yourself", "Exam Practice"];
-  const LEARN_MINUTES = { "Revision Guide": 5, "Video Overview": 8, "In-Depth Slide Deck": 15, "Audio Recap": 15, "Mind Map": 5 };
+  const LEARN_MINUTES = { "Revision Guide": 15, "Video Overview": 8, "In-Depth Slide Deck": 15, "Audio Recap": 15, "Mind Map": 5 };
   const REFRESH_DAYS = 21;
 
   function startOfDay(d){ const x = new Date(d); x.setHours(0,0,0,0); return x; }
@@ -1265,6 +1265,17 @@
     if (contiguous && nums.length === 1) return `Chapter ${nums[0]}`;
     return plural(chs.length, "chapter", "chapters");
   }
+  // Chapter numbers follow the textbook; say which textbook chapters aren't on the course so a gap doesn't look like a mistake
+  function gapNote(chs){
+    if (chs.some(c => c.book)) return "";
+    const nums = chs.map(c => c.order_num).filter(n => n != null);
+    if (!nums.length) return "";
+    const have = new Set(nums), max = Math.max(...nums), miss = [];
+    for (let n = 1; n < max; n++) if (!have.has(n)) miss.push(n);
+    if (!miss.length || miss.length > 6) return "";
+    const list = miss.length === 1 ? `Chapter ${miss[0]} isn't` : `Chapters ${miss.slice(0, -1).join(", ")} and ${miss[miss.length - 1]} aren't`;
+    return `<span class="sv-s" style="display:block;padding:0 18px 8px">${list} on your course, so ${miss.length === 1 ? "it's" : "they're"} not listed.</span>`;
+  }
   function topicStatus(c){
     const st = c.stats || {};
     if (c.tested) return ["ok", "Tested ✓"];
@@ -1311,7 +1322,7 @@
         <h1>${esc(s.title)}</h1>
         <span class="hs-sub" style="font-size:15px">${examLine ? examLine + " · " : ""}${started} of ${plural(chs.length, "topic", "topics")} started${tested ? `, ${tested} tested` : ""} · <button type="button" class="hs-link" data-exam style="font-size:15px">${examLine ? "Change exam date" : "Set exam date"}</button></span>
         <div id="hsExam"${state.examEdit === key ? "" : " hidden"}></div>
-        ${chs.length ? `<div class="sv-list"><span class="sv-lab" style="padding:14px 18px 6px">${state.examFocus ? "Exam questions by topic" : "Topics"}</span>${chs.filter(c => !state.examFocus || (c.exam && c.exam.n)).map(c => { const [cls, txt0] = topicStatus(c);
+        ${chs.length ? `<div class="sv-list"><span class="sv-lab" style="padding:14px 18px 6px">${state.examFocus ? "Exam questions by topic" : "Topics"}</span>${gapNote(chs)}${chs.filter(c => !state.examFocus || (c.exam && c.exam.n)).map(c => { const [cls, txt0] = topicStatus(c);
           const txt = state.examFocus ? `${plural(c.exam.n, "exam question", "exam questions")}${c.exam.tried ? ` · ${c.exam.tried} tried` : ""}` : txt0;
           return `<button type="button" class="sv-row" data-open="${c.id}"><span class="sv-n">${esc(String(c.order_num ?? ""))}</span><span class="sv-b"><span class="sv-t">${esc(shortTitle(c.title))}</span><span class="sv-s ${cls}">${c.book ? esc(c.book) + " · " : ""}${esc(txt)}</span></span><span class="hs-chev" aria-hidden="true">›</span></button>`; }).join("")}</div>` : `<div class="hs-empty">No topics yet.</div>`}
         ${years.length ? `<button type="button" class="sv-papers" data-mode="papers"><span class="sv-ico" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M8 13h8"/><path d="M8 17h5"/></svg></span><span class="sv-b"><span class="sv-t">Past papers</span><span class="sv-s">Real exam papers, ${years.length > 1 ? `${years[years.length - 1]}–${years[0]}` : years[0]}</span></span><span class="hs-chev" aria-hidden="true">›</span></button>` : ""}`;
