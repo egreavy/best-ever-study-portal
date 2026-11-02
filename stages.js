@@ -1146,13 +1146,11 @@
         <form class="qa-row"><div class="qa-box"><input type="text" name="t" autocomplete="off" aria-label="What you want to study today" placeholder='e.g. "test the consumer, revise ch 5 religion"'>${SR ? `<button type="button" class="qa-mic" aria-label="Speak" title="Speak">${QA_MIC}</button>` : ""}</div><button class="hs-btn" type="submit" style="min-height:48px;padding:10px 22px;font-size:16px">Set it up</button></form>
         <p class="ss-listen" hidden><i aria-hidden="true"></i><span>Listening… say what you'd like to study. Tap the microphone when you've finished.</span></p>
         <p class="qa-err" hidden></p>
-        <div class="ss-foot"><button type="button" class="hs-link" data-cancel>Back</button><button type="button" class="hs-link" data-school>Tell me about a class test or what you did in class</button></div>
-        <div class="qa" data-qa hidden style="padding:0"></div>`;
+        <div class="ss-foot"><button type="button" class="hs-link" data-cancel>Back</button></div>`;
       const listening = el.querySelector(".ss-listen");
       const form = el.querySelector("form"), input = form.querySelector("input[name=t]"), err = el.querySelector(".qa-err"), mic = el.querySelector(".qa-mic");
       if (value) input.value = value;
       el.querySelector("[data-cancel]").onclick = () => { stop(); paint(); };
-      el.querySelector("[data-school]").onclick = (e) => { stop(); e.currentTarget.hidden = true; const q = el.querySelector("[data-qa]"); q.hidden = false; if (sb) mountQuickAdd(q, m, { sb, profile, reload: reload || again, state }); };
       // Speech: words appear in the box as they're spoken, and the mic button clearly shows when it's listening.
       // "Say it" starts listening straight away; the mic button then shows it's on and stops it.
       let rec = null, heard = false;
