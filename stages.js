@@ -298,6 +298,27 @@
   .qa-mic.on{box-shadow:0 0 0 4px var(--t-accent-tint)}
   .ss-foot{display:flex;justify-content:center;gap:18px;flex-wrap:wrap}
   @media (max-width:520px){.ss-tag,.ss-check,.ss-start{margin-left:0}.ss-change .hs-btn{width:100%;justify-content:center}}
+  .sn-chips{display:flex;flex-wrap:wrap;gap:8px}
+  .sn-chip{min-height:46px;padding:8px 18px;border-radius:999px;border:2px solid var(--t-line);background:var(--t-card);color:var(--t-ink);font:inherit;font-size:16px;font-weight:700;cursor:pointer}
+  .sn-chip.on{background:var(--t-accent);border-color:var(--t-accent);color:var(--t-on-accent)}
+  .sn-q{font-size:17px;margin-top:4px}
+  .sn-subs{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+  .sn-sub{display:flex;flex-direction:column;gap:3px;text-align:left;padding:14px 16px;border-radius:14px;border:2px solid var(--t-line);background:var(--t-card);color:var(--t-ink);font:inherit;cursor:pointer}
+  .sn-sub b{font-size:16px}.sn-sub:hover,.sn-chip:hover{border-color:var(--t-accent)}
+  .sn-box{border:2px solid var(--t-accent);margin:4px 0 6px}
+  .sn-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+  .sn-item{width:100%;display:flex;gap:12px;align-items:flex-start;text-align:left;background:var(--t-soft);border:2px solid transparent;border-radius:12px;padding:12px 14px;font:inherit;color:var(--t-ink);cursor:pointer}
+  .sn-item.next{border-color:var(--t-accent);background:var(--t-accent-tint)}
+  .sn-item.done b{text-decoration:line-through;color:var(--t-muted)}
+  .sn-item.done .ss-num{background:var(--t-muted)}
+  .sn-b b{display:block;font-size:16px;line-height:1.3}.sn-b .s{display:block;font-size:14px;color:var(--t-muted);margin-top:2px}
+  .sn-chip:focus-visible,.sn-sub:focus-visible,.sn-item:focus-visible{outline:3px solid var(--t-accent);outline-offset:2px}
+  .sb{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--t-accent-tint);border:2px solid var(--t-accent);border-radius:14px;padding:10px 16px;margin:0 0 14px}
+  .sb[hidden]{display:none}
+  .hs-link.quiet{color:var(--t-muted);font-weight:400}
+  .sb-t{flex:1;min-width:0;font-size:15px;font-weight:600}
+  .sb-time{font-size:22px;font-weight:700;color:var(--t-accent);font-variant-numeric:tabular-nums}
+  .sb.up .sb-t b{color:var(--t-accent);margin-right:6px}
   `;
   function addCss(){ if (document.getElementById("hs-css")) return; const s = document.createElement("style"); s.id = "hs-css"; s.textContent = css; document.head.appendChild(s); }
   const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -970,17 +991,34 @@
     const n = m.memory && m.memory.next; if (!n || !m.topics[n.topic_id]) return null;
     return { topic_id: n.topic_id, kind: "memory", qid: n.qid, origin: n.origin, marks: n.marks, days: n.days, mins: Math.max(5, Math.min(25, Math.round((n.marks || 10) * 0.5))) };
   }
-  // Fill today's remaining minutes from today's plan: finish one chapter's questions before moving on
-  function suggestSession(m, need){
+  // The subject a chapter belongs to on screen (Religion 1 and 2 show as one subject)
+  const groupKey = (m, c) => (m.groupOf && m.groupOf[c.subject_id]) || c.subject_id;
+  // One subject's chapters in the order to work on them: questions to fix, chapters he's testing
+  // (most recent first), his revision list, then chapters he has started learning
+  function subjectPlan(m, key){
+    const chs = Object.values(m.topics).filter(c => groupKey(m, c) === key && c.stats && c.stats.quickLeft > 0);
+    const fixes = chs.filter(c => c.stats.quickFix).sort((a, b) => b.stats.quickFix - a.stats.quickFix);
+    const testing = chs.filter(c => c.stats.lastAt && !c.stats.quickFix).sort((a, b) => b.stats.lastAt - a.stats.lastAt);
+    const listed = revisionList(m).filter(c => groupKey(m, c) === key && c.stats && c.stats.quickLeft > 0 && c.stage !== "none");
+    const learning = chs.filter(c => c.stage === "learn").sort((a, b) => (a.order_num || 0) - (b.order_num || 0));
+    const out = [], seen = new Set();
+    fixes.concat(testing, listed, learning).forEach(c => { if (!seen.has(c.id)) { seen.add(c.id); out.push({ c }); } });
+    return out;
+  }
+  // Fill the session's minutes: finish one chapter's questions before moving on.
+  // With a subject key, everything comes from that subject only.
+  function suggestSession(m, need, key){
+    const inSubj = c => !key || groupKey(m, c) === key;
     const items = []; let total = 0;
-    const mem = memoryItem(m); if (mem) { items.push(mem); total += mem.mins; }
+    let mem = memoryItem(m); if (mem && !inSubj(m.topics[mem.topic_id])) mem = null;
+    if (mem) { items.push(mem); total += mem.mins; }
     // Exam questions from topics he has tested, biggest marks still to win first (rotating by day so it isn't always the same one)
     const day = Math.floor(Date.now() / DAY);
-    const examPool = Object.values(m.topics).filter(c => (c.stage === "test" || c.stage === "refresh" || c.tested) && c.exam && c.exam.open && (!mem || c.id !== mem.topic_id))
+    const examPool = Object.values(m.topics).filter(c => inSubj(c) && (c.stage === "test" || c.stage === "refresh" || c.tested) && c.exam && c.exam.open && (!mem || c.id !== mem.topic_id))
       .sort((a, b) => b.exam.openMarks - a.exam.openMarks);
     if (m.focus && m.focus.on) {
-      // Exam focus: today is exam questions only
-      const pool = examPool.length ? examPool : Object.values(m.topics).filter(c => c.stage !== "none" && c.exam && c.exam.open).sort((a, b) => b.exam.openMarks - a.exam.openMarks);
+      // Exam focus: the session is exam questions only
+      const pool = examPool.length ? examPool : Object.values(m.topics).filter(c => inSubj(c) && c.stage !== "none" && c.exam && c.exam.open).sort((a, b) => b.exam.openMarks - a.exam.openMarks);
       for (let i = 0; i < pool.length && total < need; i++) { const c = pool[(i + day) % pool.length]; if (items.some(x => x.topic_id === c.id)) continue; items.push({ topic_id: c.id, kind: "exam", mins: 12 }); total += 12; }
       if (items.length) return items;
     }
@@ -990,14 +1028,29 @@
       const ec = examPool[Math.floor(day / 2) % Math.min(3, examPool.length)];
       items.push({ topic_id: ec.id, kind: "exam", mins: 12 }); total += 12;
     }
-    for (const p of todayPlan(m)) {
+    for (const p of (key ? subjectPlan(m, key) : todayPlan(m))) {
       if (total >= need) break;
       if (mem && p.c.id === mem.topic_id) continue;
       const st = p.c.stats || {}, left = st.quickLeft || st.quickTotal || 0;
       const maxRounds = Math.max(1, Math.min(3, Math.ceil(left / 10)));
       let rounds = 1, it = testItem(p.c, rounds); if (!it) continue;
       while (rounds < maxRounds && total + it.mins < need) { const more = testItem(p.c, rounds + 1); if (!more || total + more.mins > need + 3) break; rounds++; it = more; }
+      // A chosen session length: trim the last round so the plan fits the time
+      if (key && items.length && total + it.mins > need + 3) {
+        const room = need - total, q = Math.floor(it.q * room / it.mins);
+        if (q < 4) break;
+        it = { ...it, rounds: 1, q, mins: Math.max(2, room) };
+      }
       items.push(it); total += it.mins;
+    }
+    // A subject with time left over (or nothing to test yet): learn the next chapters he hasn't started
+    if (key && total < need) {
+      const fresh = Object.values(m.topics).filter(c => groupKey(m, c) === key && c.stage === "none" && !items.some(x => x.topic_id === c.id))
+        .sort((a, b) => (a.bookIdx || 0) - (b.bookIdx || 0) || (a.order_num || 0) - (b.order_num || 0));
+      for (const c of fresh) {
+        if (total >= need || items.length >= 6 || (items.length && need - total < 6)) break;
+        const mins = Math.min(15, Math.max(6, need - total)); items.push({ topic_id: c.id, kind: "learn", mins }); total += mins;
+      }
     }
     return items;
   }
@@ -1038,7 +1091,71 @@
       title: `Next in today's session: ${d.subj} · ${d.name}`, note: `${d.what} · ${d.detail}.` };
   }
 
-  function mountSession(el, m, { profile, openChapter, state, again, sb, reload, setFocus }){
+  // ---- Study now: choose how long, then a subject; the subject page suggests what fills that time ----
+  const MINUTE_CHOICES = [15, 30, 45, 60];
+  const minLabel = n => n === 60 ? "1 hour" : n > 60 ? `${n / 60} hours` : `${n} min`;
+  function lastMinutes(p){ try { const v = parseInt(localStorage.getItem(`sp-mins:${p.id}`), 10); return MINUTE_CHOICES.includes(v) ? v : 30; } catch (e) { return 30; } }
+  function setLastMinutes(p, n){ try { localStorage.setItem(`sp-mins:${p.id}`, String(n)); } catch (e) {} }
+  // A study session for one subject, with a countdown (not ended; may be past its time)
+  function subjectSession(profile){ const s = loadSession(profile); return s && s.subject && s.endsAt && !s.ended ? s : null; }
+  function startSubjectSession(m, profile, key, minutes){
+    const now = Date.now(), sj = m.bySubject[key] || {};
+    const s = { source: "suggested", subject: key, title: sj.title || "", minutes, startedAt: now, endsAt: now + minutes * 60000, items: suggestSession(m, minutes, key) };
+    saveSession(profile, s, m); setLastMinutes(profile, minutes);
+    return s;
+  }
+  // One short line under each subject on the home page, so a student who doesn't mind which subject can see where work is waiting
+  function subjectHint(m, sj){
+    const chs = sj.chapters || [];
+    const mem = m.memory && m.memory.next && m.topics[m.memory.next.topic_id];
+    if (mem && groupKey(m, mem) === sj.id) return ["now", "Memory check due"];
+    const fx = chs.reduce((n, c) => n + ((c.stats && c.stats.quickFix) || 0), 0);
+    if (fx) return ["now", `${plural(fx, "question", "questions")} to fix`];
+    const onGo = chs.filter(c => (c.stage === "test" || c.stage === "learn") && !c.done).length;
+    if (onGo) return ["", `${plural(onGo, "chapter", "chapters")} on the go`];
+    if (!chs.some(c => c.stage !== "none")) return ["dim", chs.length ? "Not started yet" : "No topics yet"];
+    return ["ok", "Up to date"];
+  }
+  const chipsHTML = sel => `<div class="sn-chips" role="radiogroup" aria-label="How long">${MINUTE_CHOICES.map(n => `<button type="button" class="sn-chip${n === sel ? " on" : ""}" role="radio" aria-checked="${n === sel}" data-min="${n}">${minLabel(n)}</button>`).join("")}</div>`;
+  function bindChips(el, onPick){
+    el.querySelectorAll("[data-min]").forEach(b => b.onclick = () => {
+      el.querySelectorAll("[data-min]").forEach(x => { const on = x === b; x.classList.toggle("on", on); x.setAttribute("aria-checked", String(on)); });
+      onPick(parseInt(b.dataset.min, 10));
+    });
+  }
+
+  // The countdown bar along the top of every page while a session runs
+  function mountTimer(el, profile, { goHome, refresh } = {}){
+    if (!el) return;
+    addCss();
+    let shown = "";
+    const end = (s, then) => { s.ended = true; saveSession(profile, s); tick(); if (then) then(); };
+    function tick(){
+      const s = subjectSession(profile);
+      if (!s) { if (shown) { el.hidden = true; el.innerHTML = ""; shown = ""; } return; }
+      const left = s.endsAt - Date.now();
+      if (left > 0) {
+        if (shown !== "run" + s.startedAt) {
+          el.hidden = false; el.className = "sb";
+          el.innerHTML = `<span class="sb-t">${esc(s.title)} · ${minLabel(s.minutes)} session</span><span class="sb-time" role="timer" aria-label="Time left"></span><button type="button" class="hs-link quiet" data-end>End</button>`;
+          el.querySelector("[data-end]").onclick = () => end(s, refresh);
+          shown = "run" + s.startedAt;
+        }
+        const sec = Math.ceil(left / 1000);
+        el.querySelector(".sb-time").textContent = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
+      } else if (shown !== "up" + s.startedAt) {
+        // Time's up: a gentle finish, never a cut-off mid-answer
+        el.hidden = false; el.className = "sb up";
+        el.innerHTML = `<span class="sb-t"><b>Time's up, nice work &#10003;</b> Finish the question you're on.</span><button type="button" class="hs-btn" data-done>Done</button>`;
+        el.querySelector("[data-done]").onclick = () => end(s, goHome);
+        shown = "up" + s.startedAt;
+      }
+    }
+    tick();
+    setInterval(tick, 1000);
+  }
+
+  function mountSession(el, m, { profile, openChapter, openSubject, state, again, sb, reload, setFocus, subject }){
     const goalMin = m.goal ? m.goal.minutes : DAILY_GOAL, todayMin = m.goal ? m.goal.today : 0;
     const need = todayMin >= goalMin ? 10 : goalMin - todayMin;
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -1052,8 +1169,6 @@
       else openChapter(c.id, c.subject_id, "learn");
     };
 
-    // Today starts itself from the suggestion; "Change" lets him say what he'd rather do
-    function paintAsk(){ saveSession(profile, null); paintToday(); }
 
     // 2. Say (or type) what they want instead
     function paintSay(value){
@@ -1069,7 +1184,7 @@
       const listening = el.querySelector(".ss-listen");
       const form = el.querySelector("form"), input = form.querySelector("input[name=t]"), err = el.querySelector(".qa-err"), mic = el.querySelector(".qa-mic");
       if (value) input.value = value;
-      el.querySelector("[data-cancel]").onclick = () => { stop(); paintToday(); };
+      el.querySelector("[data-cancel]").onclick = () => { stop(); paint(); };
       el.querySelector("[data-school]").onclick = (e) => { stop(); e.currentTarget.hidden = true; const q = el.querySelector("[data-qa]"); q.hidden = false; if (sb) mountQuickAdd(q, m, { sb, profile, reload: reload || again, state }); };
       // Speech: words appear in the box as they're spoken, and the mic button clearly shows when it's listening.
       // "Say it" starts listening straight away; the mic button then shows it's on and stops it.
@@ -1119,13 +1234,19 @@
           const r = await fetch("/api/plan-session", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
             text,
             subjects: (m.realSubjects || m.subjects).map(s => ({ id: s.id, title: s.fullTitle || s.title })),
-            chapters: Object.values(m.topics).map(c => ({ id: c.id, subject: subjTitle(c.subject_id) + (c.book ? " " + c.book : ""), num: c.order_num, title: shortTitle(c.title), state: stateWord(c) }))
+            chapters: Object.values(m.topics).filter(c => !subject || groupKey(m, c) === subject).map(c => ({ id: c.id, subject: subjTitle(c.subject_id) + (c.book ? " " + c.book : ""), num: c.order_num, title: shortTitle(c.title), state: stateWord(c) }))
           }) });
           const data = await r.json().catch(() => ({}));
           if (!r.ok || !Array.isArray(data.items)) throw new Error(data.error || "Couldn't read that just now.");
           const s = buildFromSaid(data.items);
           if (!s.items.length) throw new Error(s.unclear.length ? `Couldn't match "${s.unclear[0].said}" to a chapter. Try the subject and chapter number.` : "Couldn't find a chapter in that. Try naming the subject and chapter.");
-          saveSession(profile, s, m); paintSession();
+          if (subject) {
+            // keep the countdown that's already running for this subject, or start one
+            const cur = subjectSession(profile), base = cur && cur.subject === subject && Date.now() < cur.endsAt ? cur : null;
+            const now = Date.now(), mins = base ? base.minutes : lastMinutes(profile);
+            Object.assign(s, { subject, title: (m.bySubject[subject] || {}).title || "", minutes: mins, startedAt: base ? base.startedAt : now, endsAt: base ? base.endsAt : now + mins * 60000 });
+          }
+          saveSession(profile, s, m); paint();
         } catch (x) { err.textContent = x.message; err.hidden = false; btn.disabled = false; btn.textContent = "Set it up"; }
       };
     }
@@ -1152,7 +1273,7 @@
       });
       // Something due they didn't mention: questions they got wrong in a chapter they've been testing
       if (items.length) {
-        const due = Object.values(m.topics).filter(c => !seen.has(c.id) && c.stats && c.stats.quickFix && c.stats.lastAt)
+        const due = Object.values(m.topics).filter(c => !seen.has(c.id) && (!subject || groupKey(m, c) === subject) && c.stats && c.stats.quickFix && c.stats.lastAt)
           .sort((a, b) => (b.stats.quickFix || 0) - (a.stats.quickFix || 0))[0];
         const coversFixes = items.some(it => { const c = m.topics[it.topic_id]; return c && c.stats && c.stats.quickFix && it.kind !== "learn"; });
         if (due && !coversFixes) {
@@ -1161,73 +1282,90 @@
         }
       }
       const mem = memoryItem(m);
-      if (items.length && mem && !items.some(it => it.topic_id === mem.topic_id && it.kind === "memory")) items.push({ ...mem, added: true });
+      if (items.length && mem && (!subject || groupKey(m, m.topics[mem.topic_id] || {}) === subject) && !items.some(it => it.topic_id === mem.topic_id && it.kind === "memory")) items.push({ ...mem, added: true });
       return { source: "mine", startedAt: Date.now(), items, unclear };
     }
 
-    // 3. The Today card: what to do now, one button, and what comes next
-    function paintToday(){
-      let s = loadSession(profile);
-      if (!s) { const sug = suggestSession(m, need); if (sug.length) { s = { source: "suggested", startedAt: Date.now(), items: sug }; saveSession(profile, s, m); } }
-      el.className = "pl td";
+    const rowsOf = s => s.items.map((it, i) => ({ it, i, d: describe(m, it), st: itemStatus(m.topics[it.topic_id], it, s.startedAt, m) })).filter(r => r.d);
+    function topBar(){
       const pct = Math.min(100, Math.round(todayMin / goalMin * 100));
       const fx = m.focus || {}, x = m.nextExam;
       const offer = !fx.on && x && x.days <= REFRESH_DAYS && fx.dismissed !== x.iso
         ? `<div class="td-offer"><span>${esc(x.label || "Exams")} ${x.days === 0 ? "start today" : x.days === 1 ? "start tomorrow" : `in ${x.days} days`}. Switch on exam focus?</span><span class="td-offer-b"><button type="button" class="hs-link" data-fx-yes>Switch on</button><button type="button" class="hs-link quiet" data-fx-no>Not now</button></span></div>` : "";
-      const top = `${offer}<div class="td-top"><span class="ss-k">Today${fx.on ? " · exam focus" : ""}</span><span class="td-min">${todayMin >= goalMin ? `${goalMin} min done &#10003;` : `${todayMin} of ${goalMin} min done`}</span></div><div class="td-bar" aria-hidden="true"><i style="width:${pct}%"></i></div>`;
-      if (!s) {
-        el.innerHTML = `${top}<div class="td-t">What would you like to study today?</div><button type="button" class="hs-btn ss-go" data-change>Choose</button>`;
-        el.querySelector("[data-change]").onclick = () => paintSay();
-        bindOffer();
-        return;
-      }
-      const rows = s.items.map((it, i) => ({ it, i, d: describe(m, it), st: itemStatus(m.topics[it.topic_id], it, s.startedAt, m) })).filter(r => r.d);
-      const left = rows.filter(r => !r.st.done), now = left[0], then = left[1];
-      if (!now) {
-        el.innerHTML = `${top}<div class="td-t">All done for today &#10003;</div><span class="hs-sub" style="font-size:15px">${todayMin >= goalMin ? "Anything more is a bonus." : `${goalMin - todayMin} more minutes would hit today's goal.`}</span>
-          <button type="button" class="hs-btn ss-go" data-more>Another round</button>
-          <div class="td-then"><span></span><button type="button" class="hs-link" data-change>Change</button></div>`;
-        el.querySelector("[data-more]").onclick = () => { const sug = suggestSession(m, 10); if (sug.length) { saveSession(profile, { source: "suggested", startedAt: Date.now(), items: sug }, m); open(sug[0]); } };
-        el.querySelector("[data-change]").onclick = () => paintSay();
-        bindOffer();
-        return;
-      }
-      const it = now.it, d = now.d;
-      const chapterPick = () => {
-        const c = m.topics[it.topic_id], chs = (m.bySubject[c.subject_id] || { chapters: [] }).chapters.slice().sort((a, b) => (a.order_num || 0) - (b.order_num || 0));
-        return `<div class="ss-check" style="margin:0"><span>Is this the right chapter?</span><select data-pick aria-label="Which chapter">${chs.map(x => `<option value="${x.id}"${x.id === c.id ? " selected" : ""}>Ch ${x.order_num ?? ""}: ${esc(shortTitle(x.title))}</option>`).join("")}</select></div>`;
-      };
-      const started = (it.kind === "test" || it.kind === "revise") && now.st.n;
-      const detail = it.kind === "memory" ? `A ${it.marks ? it.marks + "-mark " : ""}exam question from memory · about ${it.mins} min`
-        : it.kind === "exam" ? `Write one and get it marked · about ${it.mins} min`
-        : it.kind === "learn" ? `Video or revision guide · about ${it.mins} min`
-        : it.kind === "revise" ? `Revision guide, then a quick round · about ${it.mins} min`
-        : (() => { const per = Math.max(1, Math.round((it.q || 10) / (it.rounds || 1))), mins = Math.max(2, Math.round((it.mins || 7) / (it.rounds || 1)));
-            return `${per} questions · about ${mins} min${it.rounds > 1 ? ` · round ${Math.min(it.rounds, Math.floor((now.st.n || 0) / per) + 1)} of ${it.rounds}` : ""}`; })();
-      const thenLine = then ? `Then: ${then.d.what.charAt(0).toLowerCase() + then.d.what.slice(1)} on ${esc(then.d.short)}` : rows.length > 1 ? `${rows.length - left.length} of ${rows.length} done today` : "";
-      el.innerHTML = `${top}
-        <div class="td-now"><span class="pl-k">Now · ${esc(d.subj)}</span><span class="td-t">${esc(d.what)}: ${esc(d.short)}</span><span class="hs-sub" style="font-size:15px">${detail}</span></div>
-        ${it.unsure ? chapterPick() : ""}
-        <button type="button" class="hs-btn ss-go" data-go>${started ? "Continue" : "Start"}</button>
-        <div class="td-then"><span>${thenLine}</span><button type="button" class="hs-link" data-change>Change</button></div>`;
-      el.querySelector("[data-go]").onclick = () => open(it);
-      bindOffer();
-      el.querySelector("[data-change]").onclick = () => paintSay();
-      const pk = el.querySelector("[data-pick]"); if (pk) pk.onchange = () => {
-        const c = m.topics[pk.value]; if (!c) return;
-        const fresh = it.kind === "learn" || it.kind === "exam" || !(c.stats && c.stats.quickTotal) ? { topic_id: c.id, kind: it.kind === "exam" ? "exam" : "learn", mins: it.kind === "exam" ? 12 : 8 } : testItem(c, 1, it.kind);
-        if (fresh && it.kind === "revise") fresh.mins += 5;
-        s.items[now.i] = fresh || it; saveSession(profile, s, m); paintToday();
-      };
+      return `${offer}<div class="td-top"><span class="ss-k">Study now${fx.on ? " · exam focus" : ""}</span><span class="td-min">${todayMin >= goalMin ? `Today's ${goalMin} min done &#10003;` : `${todayMin} of ${goalMin} min today`}</span></div><div class="td-bar" aria-hidden="true"><i style="width:${pct}%"></i></div>`;
     }
+
+    // Home: how long, then which subject. A session already running offers to carry on.
+    let picking = false;
+    function paintHome(){
+      el.className = "pl td";
+      const s = subjectSession(profile);
+      if (s && Date.now() < s.endsAt && !picking) {
+        const left = rowsOf(s).filter(r => !r.st.done), next = left[0];
+        const minsLeft = Math.max(1, Math.ceil((s.endsAt - Date.now()) / 60000));
+        el.innerHTML = `${topBar()}
+          <div class="td-now"><span class="pl-k">Your ${esc(s.title)} session</span><span class="td-t">${minsLeft} min left</span><span class="hs-sub" style="font-size:15px">${next ? `Next: ${esc(next.d.what)} · ${esc(next.d.name)}` : "Everything on the plan is done &#10003;"}</span></div>
+          <button type="button" class="hs-btn ss-go" data-go>Carry on</button>
+          <div class="td-then"><span></span><button type="button" class="hs-link" data-new>Start a different session</button></div>`;
+        el.querySelector("[data-go]").onclick = () => openSubject && openSubject(s.subject);
+        el.querySelector("[data-new]").onclick = () => { picking = true; paintHome(); };
+        bindOffer();
+        return;
+      }
+      let mins = lastMinutes(profile);
+      el.innerHTML = `${topBar()}
+        <div class="td-t">How long do you want to study?</div>
+        ${chipsHTML(mins)}
+        <div class="td-t sn-q">Which subject?</div>
+        <div class="sn-subs">${m.subjects.map(sj => { const [k, t] = subjectHint(m, sj); return `<button type="button" class="sn-sub" data-sub="${sj.id}"><b>${esc(sj.title)}</b><span class="sv-s ${k}">${esc(t)}</span></button>`; }).join("")}</div>
+        ${picking ? `<div class="td-then"><span></span><button type="button" class="hs-link quiet" data-keep>Keep my current session</button></div>` : ""}`;
+      bindChips(el, n => { mins = n; });
+      el.querySelectorAll("[data-sub]").forEach(b => b.onclick = () => { startSubjectSession(m, profile, b.dataset.sub, mins); if (openSubject) openSubject(b.dataset.sub); });
+      const k = el.querySelector("[data-keep]"); if (k) k.onclick = () => { picking = false; paintHome(); };
+      bindOffer();
+    }
+
+    // Subject page: the suggested plan for this session, or a quick way to start one here
+    function paintSubject(){
+      el.className = "pl td sn-box";
+      const sj = m.bySubject[subject] || {};
+      const s = subjectSession(profile), mine = s && s.subject === subject ? s : null;
+      if (!mine || Date.now() >= mine.endsAt) {
+        let mins = lastMinutes(profile);
+        const finished = mine && Date.now() >= mine.endsAt;
+        el.innerHTML = `<span class="ss-k">${finished ? "Session finished &#10003;" : "Study now"}</span>
+          <div class="td-t">${finished ? "Nice work. Want to keep going?" : `How long do you want to study ${esc(sj.title || "")}?`}</div>
+          ${chipsHTML(mins)}
+          <button type="button" class="hs-btn ss-go" data-start>Start</button>`;
+        bindChips(el, n => { mins = n; });
+        el.querySelector("[data-start]").onclick = () => { if (finished) { mine.ended = true; saveSession(profile, mine); } startSubjectSession(m, profile, subject, mins); paint(); };
+        return;
+      }
+      const rows = rowsOf(mine), left = rows.filter(r => !r.st.done), next = left[0];
+      const begun = rows.some(r => r.st.done || r.st.n);
+      el.innerHTML = `<span class="ss-k">Suggested for these ${minLabel(mine.minutes)}</span>
+        ${rows.length ? `<ol class="sn-list">${rows.map((r, n) => `<li><button type="button" class="sn-item${r.st.done ? " done" : ""}${r === next ? " next" : ""}" data-item="${r.i}"><span class="ss-num">${r.st.done ? "&#10003;" : n + 1}</span><span class="sn-b"><b>${esc(r.d.what)} · ${esc(r.d.name)}</b><span class="s">${esc(r.d.detail)}</span></span></button></li>`).join("")}</ol>` : `<span class="hs-sub" style="font-size:15px">Nothing to suggest here yet. Pick a topic below, or say what you'd like to do.</span>`}
+        ${next ? `<button type="button" class="hs-btn ss-go" data-go>${begun ? "Carry on" : "Let's go"}</button>` : rows.length ? `<div class="td-t">All done &#10003;</div><button type="button" class="hs-btn ss-go" data-more>Find me more</button>` : ""}
+        <div class="td-then"><button type="button" class="hs-link quiet" data-end>End session</button><button type="button" class="hs-link" data-change>Change it</button></div>`;
+      el.querySelectorAll("[data-item]").forEach(b => b.onclick = () => { const it = mine.items[+b.dataset.item]; if (it) open(it); });
+      const g = el.querySelector("[data-go]"); if (g) g.onclick = () => open(next.it);
+      const more = el.querySelector("[data-more]"); if (more) more.onclick = () => {
+        const mins = Math.max(10, Math.round((mine.endsAt - Date.now()) / 60000));
+        mine.items = suggestSession(m, mins, subject); mine.startedAt = Date.now(); saveSession(profile, mine, m);
+        if (mine.items.length) open(mine.items[0]); else paint();
+      };
+      el.querySelector("[data-end]").onclick = () => { mine.ended = true; saveSession(profile, mine); paint(); };
+      el.querySelector("[data-change]").onclick = () => paintSay();
+    }
+
     function bindOffer(){
       const y = el.querySelector("[data-fx-yes]"), n = el.querySelector("[data-fx-no]");
       if (y) y.onclick = () => setFocus && setFocus(true);
       if (n) n.onclick = () => { if (setFocus) setFocus(false, true); };
     }
-    const paintSession = paintToday;
+    function paint(){ if (subject) paintSubject(); else paintHome(); }
 
-    paintToday();
+    paint();
   }
 
   // ---- homepage: Today, then subjects. Nothing else. ----
@@ -1246,8 +1384,7 @@
     view.innerHTML = `<div class="hs hc">
       <div class="hc-top"><div class="hc-hello"><h2>${hello}, ${esc(profile.name)}</h2>${streak ? `<span>${streak}</span>` : ""}</div>
         <button type="button" class="fx-toggle${focusOn ? " on" : ""}" role="switch" aria-checked="${focusOn}" data-fx-toggle><span class="fx-track" aria-hidden="true"><i></i></span><span>Exam focus${focusOn ? " on" : ""}</span></button></div>
-      ${Object.keys(m.topics).length ? `<div id="todaySession"></div>` : ""}
-      <div class="sv-sec"><span class="sv-lab">My subjects</span>${m.subjects.length ? `<div class="sv-list">${subs}</div>` : `<div class="hs-empty">No subjects yet.</div>`}</div>
+      ${Object.keys(m.topics).length ? `<div id="todaySession"></div>` : `<div class="sv-sec"><span class="sv-lab">My subjects</span>${m.subjects.length ? `<div class="sv-list">${subs}</div>` : `<div class="hs-empty">No subjects yet.</div>`}</div>`}
     </div>`;
     const again = () => renderHome(view, m, { profile, openChapter, openSubject, state, sb, reload, openSettings });
     view.querySelectorAll("[data-subject]").forEach(b => b.onclick = () => openSubject(b.dataset.subject));
@@ -1262,7 +1399,7 @@
       again();
     };
     view.querySelector("[data-fx-toggle]").onclick = () => setFocus(!focusOn);
-    if (view.querySelector("#todaySession")) mountSession(view.querySelector("#todaySession"), m, { profile, openChapter, state, again, sb, reload, setFocus });
+    if (view.querySelector("#todaySession")) mountSession(view.querySelector("#todaySession"), m, { profile, openChapter, openSubject, state, again, sb, reload, setFocus });
   }
 
   // ---- subject page: a smart list that shows what matters now ----
@@ -1319,6 +1456,7 @@
     } else if (sv.mode === "papers") {
       body = `${m.focus && m.focus.on ? `<button type="button" class="hs-back" data-home>← Home</button>` : `<button type="button" class="hs-back" data-mode="">← ${esc(s.title)}</button>`}
         <h1>${esc(s.title)} past papers</h1>
+        <div id="subjSession"></div>
         ${m.focus && m.focus.on ? `<button type="button" class="hs-link" data-mode="" style="align-self:flex-start">Or choose a topic ›</button>` : ""}
         <div class="sv-list">${years.map(y => { const t = papers[y].filter(q => q.v !== undefined).length;
           return `<button type="button" class="sv-row" data-year="${y}"><span class="sv-b"><span class="sv-t">${y} paper</span><span class="sv-s">${plural(papers[y].length, "question", "questions")}${t ? ` · you've tried ${t}` : ""}</span></span><span class="hs-chev" aria-hidden="true">›</span></button>`; }).join("")}</div>`;
@@ -1330,6 +1468,7 @@
         <h1>${esc(s.title)}</h1>
         <span class="hs-sub" style="font-size:15px">${examLine ? examLine + " · " : ""}${started} of ${plural(chs.length, "topic", "topics")} started${tested ? `, ${tested} tested` : ""} · <button type="button" class="hs-link" data-exam style="font-size:15px">${examLine ? "Change exam date" : "Set exam date"}</button></span>
         <div id="hsExam"${state.examEdit === key ? "" : " hidden"}></div>
+        ${chs.length ? `<div id="subjSession"></div>` : ""}
         ${chs.length ? `<div class="sv-list"><span class="sv-lab" style="padding:14px 18px 6px">${state.examFocus ? "Exam questions by topic" : "Topics"}</span>${gapNote(chs)}${chs.filter(c => !state.examFocus || (c.exam && c.exam.n)).map(c => { const [cls, txt0] = topicStatus(c);
           const txt = state.examFocus ? `${plural(c.exam.n, "exam question", "exam questions")}${c.exam.tried ? ` · ${c.exam.tried} tried` : ""}` : txt0;
           return `<button type="button" class="sv-row" data-open="${c.id}"><span class="sv-n">${esc(String(c.order_num ?? ""))}</span><span class="sv-b"><span class="sv-t">${esc(shortTitle(c.title))}</span><span class="sv-s ${cls}">${c.book ? esc(c.book) + " · " : ""}${esc(txt)}</span></span><span class="hs-chev" aria-hidden="true">›</span></button>`; }).join("")}</div>` : `<div class="hs-empty">No topics yet.</div>`}
@@ -1337,6 +1476,8 @@
     }
     view.innerHTML = `<div class="hs sv">${body}</div>`;
     const hb = view.querySelector("[data-home]"); if (hb) hb.onclick = goHome;
+    const ss = view.querySelector("#subjSession");
+    if (ss) mountSession(ss, m, { profile, openChapter, state, again, sb, reload, subject: key });
     const eb = view.querySelector("#hsExam");
     if (eb) examBox(eb, { sb, profile, subjectId: (s.members || [s.id])[0], subjectIds: s.members || [s.id], exam: s.exam, onChange: () => { state.examEdit = null; reload(); } });
     const xb = view.querySelector("[data-exam]"); if (xb) xb.onclick = () => { state.examEdit = state.examEdit === key ? null : key; again(); };
@@ -1351,5 +1492,5 @@
     });
   }
 
-  window.Stages = { topicStatus, ago, leftOff, nextUp, sessionNext, ringSvg, DAILY_GOAL, loadOverview, buildModel, renderHome, renderSubject, chapterStage, statusLine, examBox, markClassDone, startFresh, restartChapter, parseDate, fmtDate, untilText, REFRESH_DAYS, PRACTICE_TITLES, addCss };
+  window.Stages = { topicStatus, ago, leftOff, nextUp, sessionNext, ringSvg, DAILY_GOAL, loadOverview, buildModel, renderHome, renderSubject, chapterStage, statusLine, examBox, markClassDone, startFresh, restartChapter, mountTimer, parseDate, fmtDate, untilText, REFRESH_DAYS, PRACTICE_TITLES, addCss };
 })();

@@ -459,10 +459,11 @@
       </div>
     </div>
   </div>
+  <div id="sessionBar" class="sb" hidden></div>
   <div id="view"><div class="loading">Loading…</div></div>
 </div>
 
-<script src="stages.js?v=20261102a"></script>
+<script src="stages.js?v=20261102b"></script>
 <script src="practice.js?v=20261025f"></script>
 <script src="tutor.js?v=20261025c"></script>
 <script src="notes.js?v=20261025c"></script>
@@ -1266,6 +1267,9 @@ function render(){
   if(state.view === "subject") { renderSubjectPage(); return; }
   renderDashboard();
 }
+
+// The study-session countdown along the top of every page
+Stages.mountTimer(document.getElementById("sessionBar"), PROFILE, { goHome, refresh: render });
 
 const settingsBtn = document.getElementById("settingsBtn");
 if (settingsBtn) {
