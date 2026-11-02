@@ -314,6 +314,9 @@
   .sn-b b{display:block;font-size:16px;line-height:1.3}.sn-b .s{display:block;font-size:14px;color:var(--t-muted);margin-top:2px}
   .sn-chip:focus-visible,.sn-sub:focus-visible,.sn-item:focus-visible{outline:3px solid var(--t-accent);outline-offset:2px}
   .hs-link.quiet{color:var(--t-muted);font-weight:400}
+  .sn-resume{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--t-accent-tint);border:2px solid var(--t-accent);border-radius:14px;padding:12px 16px;font:inherit;color:var(--t-ink);cursor:pointer}
+  .sn-resume .sn-b{flex:1;min-width:0}
+  .sn-resume:focus-visible{outline:3px solid var(--t-accent);outline-offset:2px}
   `;
   function addCss(){ if (document.getElementById("hs-css")) return; const s = document.createElement("style"); s.id = "hs-css"; s.textContent = css; document.head.appendChild(s); }
   const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -1260,31 +1263,32 @@
     }
 
     // Home: how long, then which subject. A session already running offers to carry on.
-    let picking = false;
+    // Home: always how long, then which subject. A session already on the go is a small
+    // "carry on" line at the top, never a screen of its own, so nobody feels locked in.
     function paintHome(){
       el.className = "pl td";
       const s = subjectSession(profile);
-      if (s && !picking) {
+      let resume = "", cur = null;
+      if (s) {
         const rows = rowsOf(s), left = rows.filter(r => !r.st.done), next = left[0];
-        el.innerHTML = `${topBar()}
-          <div class="td-now"><span class="pl-k">Your ${esc(s.title)} session</span><span class="td-t">${rows.length - left.length} of ${rows.length} done</span><span class="hs-sub" style="font-size:15px">${next ? `Next: ${esc(next.d.what)} · ${esc(next.d.name)}` : "Everything on the plan is done &#10003;"}</span></div>
-          <button type="button" class="hs-btn ss-go" data-go>Carry on</button>
-          <div class="td-then"><span></span><button type="button" class="hs-link" data-new>Start a different session</button></div>`;
-        el.querySelector("[data-go]").onclick = () => openSubject && openSubject(s.subject);
-        el.querySelector("[data-new]").onclick = () => { picking = true; paintHome(); };
-        bindOffer();
-        return;
+        cur = { key: s.subject, line: `${rows.length - left.length} of ${rows.length} done` };
+        resume = `<button type="button" class="sn-resume" data-go><span class="sn-b"><b>Carry on with ${esc(s.title)}</b><span class="s">${cur.line}${next ? ` · next: ${esc(next.d.what.charAt(0).toLowerCase() + next.d.what.slice(1))}, ${esc(next.d.name)}` : " · all done &#10003;"}</span></span><span class="hs-chev" aria-hidden="true">›</span></button>`;
       }
       let mins = lastMinutes(profile);
       el.innerHTML = `${topBar()}
-        <div class="td-t">How long do you want to study?</div>
+        ${resume}
+        <div class="td-t">${s ? "Or start something new. How long?" : "How long do you want to study?"}</div>
         ${chipsHTML(mins)}
         <div class="td-t sn-q">Which subject?</div>
-        <div class="sn-subs">${m.subjects.map(sj => { const [k, t] = subjectHint(m, sj); return `<button type="button" class="sn-sub" data-sub="${sj.id}"><b>${esc(sj.title)}</b><span class="sv-s ${k}">${esc(t)}</span></button>`; }).join("")}</div>
-        ${picking ? `<div class="td-then"><span></span><button type="button" class="hs-link quiet" data-keep>Keep my current session</button></div>` : ""}`;
+        <div class="sn-subs">${m.subjects.map(sj => { const [k, t] = cur && cur.key === sj.id ? ["now", `In progress · ${cur.line}`] : subjectHint(m, sj); return `<button type="button" class="sn-sub" data-sub="${sj.id}"><b>${esc(sj.title)}</b><span class="sv-s ${k}">${esc(t)}</span></button>`; }).join("")}</div>`;
       bindChips(el, n => { mins = n; });
-      el.querySelectorAll("[data-sub]").forEach(b => b.onclick = () => { startSubjectSession(m, profile, b.dataset.sub, mins); if (openSubject) openSubject(b.dataset.sub); });
-      const k = el.querySelector("[data-keep]"); if (k) k.onclick = () => { picking = false; paintHome(); };
+      const g = el.querySelector("[data-go]"); if (g) g.onclick = () => openSubject && openSubject(s.subject);
+      el.querySelectorAll("[data-sub]").forEach(b => b.onclick = () => {
+        const key = b.dataset.sub;
+        // the subject already on the go just reopens; a new choice starts a fresh plan
+        if (!(s && s.subject === key && s.minutes === mins)) startSubjectSession(m, profile, key, mins);
+        if (openSubject) openSubject(key);
+      });
       bindOffer();
     }
 
