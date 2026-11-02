@@ -313,12 +313,7 @@
   .sn-item.done .ss-num{background:var(--t-muted)}
   .sn-b b{display:block;font-size:16px;line-height:1.3}.sn-b .s{display:block;font-size:14px;color:var(--t-muted);margin-top:2px}
   .sn-chip:focus-visible,.sn-sub:focus-visible,.sn-item:focus-visible{outline:3px solid var(--t-accent);outline-offset:2px}
-  .sb{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--t-accent-tint);border:2px solid var(--t-accent);border-radius:14px;padding:10px 16px;margin:0 0 14px}
-  .sb[hidden]{display:none}
   .hs-link.quiet{color:var(--t-muted);font-weight:400}
-  .sb-t{flex:1;min-width:0;font-size:15px;font-weight:600}
-  .sb-time{font-size:22px;font-weight:700;color:var(--t-accent);font-variant-numeric:tabular-nums}
-  .sb.up .sb-t b{color:var(--t-accent);margin-right:6px}
   `;
   function addCss(){ if (document.getElementById("hs-css")) return; const s = document.createElement("style"); s.id = "hs-css"; s.textContent = css; document.head.appendChild(s); }
   const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -1096,11 +1091,11 @@
   const minLabel = n => n === 60 ? "1 hour" : n > 60 ? `${n / 60} hours` : `${n} min`;
   function lastMinutes(p){ try { const v = parseInt(localStorage.getItem(`sp-mins:${p.id}`), 10); return MINUTE_CHOICES.includes(v) ? v : 30; } catch (e) { return 30; } }
   function setLastMinutes(p, n){ try { localStorage.setItem(`sp-mins:${p.id}`, String(n)); } catch (e) {} }
-  // A study session for one subject, with a countdown (not ended; may be past its time)
-  function subjectSession(profile){ const s = loadSession(profile); return s && s.subject && s.endsAt && !s.ended ? s : null; }
+  // Today's study session for one subject (no clock: it lasts until the plan is done, they end it, or the day ends)
+  function subjectSession(profile){ const s = loadSession(profile); return s && s.subject && s.minutes && !s.ended ? s : null; }
   function startSubjectSession(m, profile, key, minutes){
     const now = Date.now(), sj = m.bySubject[key] || {};
-    const s = { source: "suggested", subject: key, title: sj.title || "", minutes, startedAt: now, endsAt: now + minutes * 60000, items: suggestSession(m, minutes, key) };
+    const s = { source: "suggested", subject: key, title: sj.title || "", minutes, startedAt: now, items: suggestSession(m, minutes, key) };
     saveSession(profile, s, m); setLastMinutes(profile, minutes);
     return s;
   }
@@ -1122,37 +1117,6 @@
       el.querySelectorAll("[data-min]").forEach(x => { const on = x === b; x.classList.toggle("on", on); x.setAttribute("aria-checked", String(on)); });
       onPick(parseInt(b.dataset.min, 10));
     });
-  }
-
-  // The countdown bar along the top of every page while a session runs
-  function mountTimer(el, profile, { goHome, refresh } = {}){
-    if (!el) return;
-    addCss();
-    let shown = "";
-    const end = (s, then) => { s.ended = true; saveSession(profile, s); tick(); if (then) then(); };
-    function tick(){
-      const s = subjectSession(profile);
-      if (!s) { if (shown) { el.hidden = true; el.innerHTML = ""; shown = ""; } return; }
-      const left = s.endsAt - Date.now();
-      if (left > 0) {
-        if (shown !== "run" + s.startedAt) {
-          el.hidden = false; el.className = "sb";
-          el.innerHTML = `<span class="sb-t">${esc(s.title)} · ${minLabel(s.minutes)} session</span><span class="sb-time" role="timer" aria-label="Time left"></span><button type="button" class="hs-link quiet" data-end>End</button>`;
-          el.querySelector("[data-end]").onclick = () => end(s, refresh);
-          shown = "run" + s.startedAt;
-        }
-        const sec = Math.ceil(left / 1000);
-        el.querySelector(".sb-time").textContent = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
-      } else if (shown !== "up" + s.startedAt) {
-        // Time's up: a gentle finish, never a cut-off mid-answer
-        el.hidden = false; el.className = "sb up";
-        el.innerHTML = `<span class="sb-t"><b>Time's up, nice work &#10003;</b> Finish the question you're on.</span><button type="button" class="hs-btn" data-done>Done</button>`;
-        el.querySelector("[data-done]").onclick = () => end(s, goHome);
-        shown = "up" + s.startedAt;
-      }
-    }
-    tick();
-    setInterval(tick, 1000);
   }
 
   function mountSession(el, m, { profile, openChapter, openSubject, state, again, sb, reload, setFocus, subject }){
@@ -1242,9 +1206,9 @@
           if (!s.items.length) throw new Error(s.unclear.length ? `Couldn't match "${s.unclear[0].said}" to a chapter. Try the subject and chapter number.` : "Couldn't find a chapter in that. Try naming the subject and chapter.");
           if (subject) {
             // keep the countdown that's already running for this subject, or start one
-            const cur = subjectSession(profile), base = cur && cur.subject === subject && Date.now() < cur.endsAt ? cur : null;
+            const cur = subjectSession(profile), base = cur && cur.subject === subject ? cur : null;
             const now = Date.now(), mins = base ? base.minutes : lastMinutes(profile);
-            Object.assign(s, { subject, title: (m.bySubject[subject] || {}).title || "", minutes: mins, startedAt: base ? base.startedAt : now, endsAt: base ? base.endsAt : now + mins * 60000 });
+            Object.assign(s, { subject, title: (m.bySubject[subject] || {}).title || "", minutes: mins, startedAt: base ? base.startedAt : now });
           }
           saveSession(profile, s, m); paint();
         } catch (x) { err.textContent = x.message; err.hidden = false; btn.disabled = false; btn.textContent = "Set it up"; }
@@ -1300,11 +1264,10 @@
     function paintHome(){
       el.className = "pl td";
       const s = subjectSession(profile);
-      if (s && Date.now() < s.endsAt && !picking) {
-        const left = rowsOf(s).filter(r => !r.st.done), next = left[0];
-        const minsLeft = Math.max(1, Math.ceil((s.endsAt - Date.now()) / 60000));
+      if (s && !picking) {
+        const rows = rowsOf(s), left = rows.filter(r => !r.st.done), next = left[0];
         el.innerHTML = `${topBar()}
-          <div class="td-now"><span class="pl-k">Your ${esc(s.title)} session</span><span class="td-t">${minsLeft} min left</span><span class="hs-sub" style="font-size:15px">${next ? `Next: ${esc(next.d.what)} · ${esc(next.d.name)}` : "Everything on the plan is done &#10003;"}</span></div>
+          <div class="td-now"><span class="pl-k">Your ${esc(s.title)} session</span><span class="td-t">${rows.length - left.length} of ${rows.length} done</span><span class="hs-sub" style="font-size:15px">${next ? `Next: ${esc(next.d.what)} · ${esc(next.d.name)}` : "Everything on the plan is done &#10003;"}</span></div>
           <button type="button" class="hs-btn ss-go" data-go>Carry on</button>
           <div class="td-then"><span></span><button type="button" class="hs-link" data-new>Start a different session</button></div>`;
         el.querySelector("[data-go]").onclick = () => openSubject && openSubject(s.subject);
@@ -1330,15 +1293,14 @@
       el.className = "pl td sn-box";
       const sj = m.bySubject[subject] || {};
       const s = subjectSession(profile), mine = s && s.subject === subject ? s : null;
-      if (!mine || Date.now() >= mine.endsAt) {
+      if (!mine) {
         let mins = lastMinutes(profile);
-        const finished = mine && Date.now() >= mine.endsAt;
-        el.innerHTML = `<span class="ss-k">${finished ? "Session finished &#10003;" : "Study now"}</span>
-          <div class="td-t">${finished ? "Nice work. Want to keep going?" : `How long do you want to study ${esc(sj.title || "")}?`}</div>
+        el.innerHTML = `<span class="ss-k">Study now</span>
+          <div class="td-t">How long do you want to study ${esc(sj.title || "")}?</div>
           ${chipsHTML(mins)}
           <button type="button" class="hs-btn ss-go" data-start>Start</button>`;
         bindChips(el, n => { mins = n; });
-        el.querySelector("[data-start]").onclick = () => { if (finished) { mine.ended = true; saveSession(profile, mine); } startSubjectSession(m, profile, subject, mins); paint(); };
+        el.querySelector("[data-start]").onclick = () => { startSubjectSession(m, profile, subject, mins); paint(); };
         return;
       }
       const rows = rowsOf(mine), left = rows.filter(r => !r.st.done), next = left[0];
@@ -1350,7 +1312,7 @@
       el.querySelectorAll("[data-item]").forEach(b => b.onclick = () => { const it = mine.items[+b.dataset.item]; if (it) open(it); });
       const g = el.querySelector("[data-go]"); if (g) g.onclick = () => open(next.it);
       const more = el.querySelector("[data-more]"); if (more) more.onclick = () => {
-        const mins = Math.max(10, Math.round((mine.endsAt - Date.now()) / 60000));
+        const mins = mine.minutes;
         mine.items = suggestSession(m, mins, subject); mine.startedAt = Date.now(); saveSession(profile, mine, m);
         if (mine.items.length) open(mine.items[0]); else paint();
       };
@@ -1492,5 +1454,5 @@
     });
   }
 
-  window.Stages = { topicStatus, ago, leftOff, nextUp, sessionNext, ringSvg, DAILY_GOAL, loadOverview, buildModel, renderHome, renderSubject, chapterStage, statusLine, examBox, markClassDone, startFresh, restartChapter, mountTimer, parseDate, fmtDate, untilText, REFRESH_DAYS, PRACTICE_TITLES, addCss };
+  window.Stages = { topicStatus, ago, leftOff, nextUp, sessionNext, ringSvg, DAILY_GOAL, loadOverview, buildModel, renderHome, renderSubject, chapterStage, statusLine, examBox, markClassDone, startFresh, restartChapter, parseDate, fmtDate, untilText, REFRESH_DAYS, PRACTICE_TITLES, addCss };
 })();
