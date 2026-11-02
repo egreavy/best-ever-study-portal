@@ -42,7 +42,9 @@
     flex-wrap:wrap;
     gap:10px;
   }
-  .brand{font-weight:800;font-size:18px;display:flex;align-items:center;gap:8px;}
+  .brand{font-weight:800;font-size:18px;display:flex;align-items:center;gap:8px;color:inherit;text-decoration:none;border-radius:8px;}
+  .brand:hover{opacity:.8}
+  .brand:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
   .brand .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);}
 
   .profile-pill{
@@ -450,7 +452,7 @@
 <body>
 <div class="wrap">
   <div class="topbar">
-    <div class="brand"><span class="dot"></span> Study Portal</div>
+    <a class="brand" href="#" id="brandHome" aria-label="Study Portal, go to home page"><span class="dot"></span> Study Portal</a>
     <div style="display:flex;align-items:center;gap:8px;">
       <button id="settingsBtn" class="settings-btn" title="Settings" aria-label="Settings">&#9881;</button>
       <div class="profile-pill">
@@ -1266,6 +1268,9 @@ function render(){
   if(state.view === "subject") { renderSubjectPage(); return; }
   renderDashboard();
 }
+
+// "Study Portal" in the top bar goes back to the home page from anywhere
+document.getElementById("brandHome").addEventListener("click", (e) => { e.preventDefault(); goHome(); });
 
 const settingsBtn = document.getElementById("settingsBtn");
 if (settingsBtn) {
