@@ -1138,13 +1138,25 @@
 
 
     // 2. Say (or type) what they want instead
+    // Wording for the say-or-type panel: inside a subject it names the subject and uses its own chapters as the example
+    function sayWords(){
+      const sj = subject && m.bySubject[subject];
+      if (!sj) return { k: "Today", lead: "What do you want to do today?", ex: "test the consumer, revise ch 5 religion", label: "What you want to study today", listen: "say what you'd like to study" };
+      const chs = (sj.chapters || []).slice().sort((a, b) => (a.bookIdx || 0) - (b.bookIdx || 0) || (a.order_num || 0) - (b.order_num || 0));
+      const name = c => shortTitle(c.title).split(/[:,(]/)[0].trim().replace(/[?!.]/g, "").split(/\s+/).slice(0, 4).join(" ").toLowerCase();
+      const a = chs.find(c => c.stage === "test" || c.stage === "refresh") || chs[0];
+      const b = chs.find(c => c !== a && (c.stage === "learn" || c.stage === "none")) || chs.find(c => c !== a);
+      const ex = a ? (b ? `test ${name(a)}, revise ch ${b.order_num}` : `test ${name(a)}`) : "test chapter 1";
+      return { k: sj.title, lead: `What would you like to do in ${sj.title}?`, ex, label: `What you want to do in ${sj.title}`, listen: `say what you'd like to do in ${sj.title}` };
+    }
     function paintSay(value){
       el.className = "pl td";
-      el.innerHTML = `<span class="ss-k">Today</span>
-        <div class="ss-lead">What do you want to do today?</div>
-        <span class="hs-sub" style="font-size:15px">Say or type chapters, like "revise evidence for Jesus, test the consumer".</span>
-        <form class="qa-row"><div class="qa-box"><input type="text" name="t" autocomplete="off" aria-label="What you want to study today" placeholder='e.g. "test the consumer, revise ch 5 religion"'>${SR ? `<button type="button" class="qa-mic" aria-label="Speak" title="Speak">${QA_MIC}</button>` : ""}</div><button class="hs-btn" type="submit" style="min-height:48px;padding:10px 22px;font-size:16px">Set it up</button></form>
-        <p class="ss-listen" hidden><i aria-hidden="true"></i><span>Listening… say what you'd like to study. Tap the microphone when you've finished.</span></p>
+      const w = sayWords();
+      el.innerHTML = `<span class="ss-k">${esc(w.k)}</span>
+        <div class="ss-lead">${esc(w.lead)}</div>
+        <span class="hs-sub" style="font-size:15px">Say or type it, like "${esc(w.ex)}".</span>
+        <form class="qa-row"><div class="qa-box"><input type="text" name="t" autocomplete="off" aria-label="${esc(w.label)}" placeholder="e.g. ${esc(w.ex)}">${SR ? `<button type="button" class="qa-mic" aria-label="Speak" title="Speak">${QA_MIC}</button>` : ""}</div><button class="hs-btn" type="submit" style="min-height:48px;padding:10px 22px;font-size:16px">Set it up</button></form>
+        <p class="ss-listen" hidden><i aria-hidden="true"></i><span>Listening… ${esc(w.listen)}. Tap the microphone when you've finished.</span></p>
         <p class="qa-err" hidden></p>
         <div class="ss-foot"><button type="button" class="hs-link" data-cancel>Back</button></div>`;
       const listening = el.querySelector(".ss-listen");
@@ -1160,7 +1172,7 @@
         mic.setAttribute("aria-label", on ? "Stop listening" : "Speak");
         mic.title = on ? "Stop listening" : "Speak";
         listening.hidden = !on;
-        input.placeholder = on ? "Listening…" : 'e.g. "test the consumer, revise ch 5 religion"';
+        input.placeholder = on ? "Listening…" : `e.g. ${w.ex}`;
       }
       function stop(){ if (rec) { try { rec.stop(); } catch (e) {} } }
       function listen(){
