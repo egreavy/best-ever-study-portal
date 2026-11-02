@@ -344,7 +344,8 @@
     const refreshOpen = !!examDate && today >= opensOn && today <= examDate;
     let stage, done = false;
     if (refreshOpen && (freshSince || tested)) { stage = "refresh"; done = !!freshSince && tested; }
-    else if (tried > 0 || (stats.triedEver || 0) > 0) { stage = "test"; done = tested; }
+    // after "Start this chapter again" (fresh_since set), only answers since then count
+    else if (tried > 0 || (!freshSince && (stats.triedEver || 0) > 0)) { stage = "test"; done = tested; }
     else if (learnDone > 0) { stage = "learn"; done = learnTotal > 0 && learnDone >= learnTotal; }
     else stage = "none";
     return { stage, done, tested, refreshOpen, examDate, opensOn, learnDone, learnTotal, classDone, freshSince, stats };
@@ -775,6 +776,13 @@
   async function startFresh(sb, profile, topicId){
     await sb("chapter_status", { method: "POST", prefer: "resolution=merge-duplicates,return=minimal",
       body: [{ profile_id: profile.id, topic_id: topicId, fresh_since: new Date().toISOString(), updated_at: new Date().toISOString() }] });
+  }
+  // "Start this chapter again": Learn shows as to-do again and questions come back as new.
+  // Links, answers and marks are all kept, so earlier results can still be compared.
+  async function restartChapter(sb, profile, topicId){
+    await sb(`nlm_progress?topic_id=eq.${topicId}&profile_id=eq.${profile.id}&done=eq.true`, { method: "PATCH", prefer: "return=minimal",
+      body: { done: false, updated_at: new Date().toISOString() } });
+    await startFresh(sb, profile, topicId);
   }
 
   function subjectBar(chs){
@@ -1343,5 +1351,5 @@
     });
   }
 
-  window.Stages = { topicStatus, ago, leftOff, nextUp, sessionNext, ringSvg, DAILY_GOAL, loadOverview, buildModel, renderHome, renderSubject, chapterStage, statusLine, examBox, markClassDone, startFresh, parseDate, fmtDate, untilText, REFRESH_DAYS, PRACTICE_TITLES, addCss };
+  window.Stages = { topicStatus, ago, leftOff, nextUp, sessionNext, ringSvg, DAILY_GOAL, loadOverview, buildModel, renderHome, renderSubject, chapterStage, statusLine, examBox, markClassDone, startFresh, restartChapter, parseDate, fmtDate, untilText, REFRESH_DAYS, PRACTICE_TITLES, addCss };
 })();
