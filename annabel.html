@@ -376,6 +376,19 @@
   .cv-tab-s{font-size:12px;font-weight:700;color:var(--t-muted);white-space:nowrap}
   @media (max-width:420px){.cv-tab{font-size:15px}.cv-tab-l{gap:5px}.cv-tab-s{font-size:11px}}
   .cv-tab-s.now{color:var(--t-accent)}
+  /* Folder tabs: the chosen tab is white with a coloured bar on top and joins the page below it */
+  .cv-tabs{background:none;padding:0;border-radius:0;margin-bottom:0;gap:6px;align-items:end}
+  .cv-tab{background:var(--t-soft2);color:var(--t-ink);border-radius:14px 14px 0 0;border-top:5px solid transparent;min-height:52px;padding:8px 4px;justify-content:center;box-shadow:none}
+  .cv-tab:hover{filter:brightness(.97)}
+  .cv-tab[aria-selected="true"]{background:var(--t-card);color:var(--t-accent);border-top-color:var(--t-accent);min-height:62px;font-size:17px;box-shadow:none;filter:none}
+  .cv-tab-ic{display:inline-flex}.cv-tab-ic svg{width:19px;height:19px}
+  .cv section[role="tabpanel"]{background:var(--t-card);border-radius:14px;padding:12px;margin-bottom:14px}
+  .cv[data-tab="learn"] #tab-learn{border-top-left-radius:0}
+  .cv[data-tab="refresh"] #tab-refresh{border-top-right-radius:0}
+  .cv section[role="tabpanel"] .cv-card,.cv section[role="tabpanel"] .pr-card{border:2px solid var(--t-line)}
+  .cv section[role="tabpanel"] > :last-child{margin-bottom:0}
+  .cv-focus section[role="tabpanel"]{border-radius:14px!important}
+  @media (max-width:420px){.cv-tab-ic{display:none}.cv-tab[aria-selected="true"]{font-size:16px}}
   .cv-tick{width:18px;height:18px;border-radius:50%;background:var(--t-accent);color:var(--t-on-accent);display:inline-grid;place-items:center;font-size:11px}
   .cv-now{width:9px;height:9px;border-radius:50%;background:var(--t-accent);display:inline-block}
   .cv-class-done{color:var(--t-muted)}
@@ -933,6 +946,11 @@ async function renderChapter(){
   }
 
   const TABS = [["learn", "Learn"], ["test", "Test"], ["refresh", "Exam questions"]];
+  const TAB_ICON = {
+    learn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 4 20 12 6 20 6 4"/></svg>',
+    test: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>',
+    refresh: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M8 13h8"/><path d="M8 17h5"/></svg>'
+  };
   // Open on the step he's at (worked out again once the questions have loaded)
   let autoTab = false;
   if (!state.chapterTab || state.chapterTabTopic !== state.topicId) {
@@ -954,7 +972,7 @@ async function renderChapter(){
       </div>
     </div>` : ""}
     <div class="cv-tabs" role="tablist" aria-label="Chapter sections">
-      ${TABS.map(([k, l]) => `<button type="button" role="tab" class="cv-tab" id="tabbtn-${k}" data-tab="${k}" aria-controls="tab-${k}"><span class="cv-tab-l"><span class="cv-tab-i"></span>${l}</span><span class="cv-tab-s"></span></button>`).join("")}
+      ${TABS.map(([k, l]) => `<button type="button" role="tab" class="cv-tab" id="tabbtn-${k}" data-tab="${k}" aria-controls="tab-${k}"><span class="cv-tab-l"><span class="cv-tab-i"></span><span class="cv-tab-ic">${TAB_ICON[k]}</span>${l}</span><span class="cv-tab-s"></span></button>`).join("")}
     </div>
 
     <section id="tab-learn" role="tabpanel" aria-labelledby="tabbtn-learn" hidden>
@@ -978,6 +996,7 @@ async function renderChapter(){
 
   function showTab(name){
     state.chapterTab = name;
+    const cvEl = document.querySelector(".cv"); if (cvEl) cvEl.dataset.tab = name;
     TABS.forEach(([k]) => {
       const p = document.getElementById("tab-" + k), b = document.getElementById("tabbtn-" + k);
       if (p) p.hidden = k !== name;
