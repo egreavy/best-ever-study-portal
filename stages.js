@@ -687,11 +687,13 @@
     const now = Date.now(), qs = {};
     (raw.questions || []).forEach(q => { qs[q.id] = q; });
     const isPastQ = q => q.qtype === "exam" && !/^exam-style/i.test(q.source || "");
+    // "Start this chapter again" clears the chapter everywhere, so answers from before it don't schedule checks
+    const freshOf = id => { const c = m.topics[(qs[id] || {}).topic_id]; return c && c.freshSince ? new Date(c.freshSince).getTime() : 0; };
     const anchor = {};
     (raw.reviews || []).forEach(r => {
       const q = qs[r.question_id]; if (!q || q.qtype !== "exam" || !r.marks_available) return;
       if (r.marks_awarded / r.marks_available < MEM_MIN) return;
-      const t = new Date(r.created_at).getTime(); if (!anchor[q.id] || t < anchor[q.id]) anchor[q.id] = t;
+      const t = new Date(r.created_at).getTime(); if (t < freshOf(q.id)) return; if (!anchor[q.id] || t < anchor[q.id]) anchor[q.id] = t;
     });
     const checks = [], tried = new Set(), lastTry = {};
     (raw.attempts || []).forEach(a => {
@@ -701,7 +703,7 @@
       if (mm) checks.push({ origin: mm[1], qid: a.question_id, t, pass: mm[2] === "pass" });
     });
     checks.sort((a, b) => a.t - b.t);
-    const byOrigin = {}; checks.forEach(c => (byOrigin[c.origin] = byOrigin[c.origin] || []).push(c));
+    const byOrigin = {}; checks.forEach(c => { if (c.t >= freshOf(c.origin)) (byOrigin[c.origin] = byOrigin[c.origin] || []).push(c); });
     const due = [];
     Object.keys(anchor).forEach(id => {
       const list = byOrigin[id] || [], last = list[list.length - 1];
@@ -1322,7 +1324,7 @@
       el.innerHTML = `<span class="ss-k">Suggested for these ${minLabel(mine.minutes)}</span>
         ${rows.length ? `<ol class="sn-list">${rows.map((r, n) => `<li><button type="button" class="sn-item${r.st.done ? " done" : ""}${r === next ? " next" : ""}" data-item="${r.i}"><span class="ss-num">${r.st.done ? "&#10003;" : n + 1}</span><span class="sn-b"><b>${esc(r.d.what)} · ${esc(r.d.name)}</b><span class="s">${esc(r.d.detail)}</span></span></button></li>`).join("")}</ol>` : `<span class="hs-sub" style="font-size:15px">Nothing to suggest here yet. Pick a topic below, or say what you'd like to do.</span>`}
         ${next ? `<button type="button" class="hs-btn ss-go" data-go>${begun ? "Carry on" : "Let's go"}</button>` : rows.length ? `<div class="td-t">All done &#10003;</div><button type="button" class="hs-btn ss-go" data-more>Find me more</button>` : ""}
-        <div class="td-then"><button type="button" class="hs-link quiet" data-end>End session</button><button type="button" class="hs-link" data-change>Change it</button></div>`;
+        <div class="td-then"><button type="button" class="hs-link quiet" data-end>End session</button><button type="button" class="hs-link" data-change>Edit session</button></div>`;
       el.querySelectorAll("[data-item]").forEach(b => b.onclick = () => { const it = mine.items[+b.dataset.item]; if (it) open(it); });
       const g = el.querySelector("[data-go]"); if (g) g.onclick = () => open(next.it);
       const more = el.querySelector("[data-more]"); if (more) more.onclick = () => {

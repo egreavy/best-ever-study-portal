@@ -6,6 +6,7 @@ const SUPABASE_URL = "https://dhxwajidrtyukyxmiyml.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRoeHdhamlkcnR5dWt5eG1peW1sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYzMzYyNzQsImV4cCI6MjA1MTkxMjI3NH0.fnH1eI1vLtQASjII_6K0d6NZevD62tnthXe0uyMgh0s";
 const MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5";
 const MAX_IMAGES = 3;
+const COULD_NOT_MARK = "We couldn't mark that just now. Your answer is still here, so please try again.";
 
 function sameSite(req) {
   const host = req.headers["x-forwarded-host"] || req.headers.host || "";
@@ -107,26 +108,30 @@ module.exports = async (req, res) => {
   content.push({ type: "text", text: instructions(q, images.length > 0, typed, subject) });
 
   try {
-    const r = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: Object.assign(
-        { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-        process.env.ANTHROPIC_WORKSPACE_ID ? { "anthropic-workspace-id": process.env.ANTHROPIC_WORKSPACE_ID.trim() } : {}
-      ),
-      body: JSON.stringify({ model: MODEL, max_tokens: 1500, messages: [{ role: "user", content }] }),
-    });
-    const data = await r.json().catch(() => ({}));
-    if (!r.ok) {
-      console.error("mark-answer anthropic", r.status, JSON.stringify(data).slice(0, 500));
-      const reason = data && data.error && data.error.message ? `: ${String(data.error.message).slice(0, 160)}` : "";
-      res.status(502).json({ error: r.status === 401 ? `The Anthropic key was refused (401${reason}).` : `Feedback couldn't be generated (${r.status}${reason}).` });
-      return;
-    }
-    const text = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("");
-    const m = text.match(/\{[\s\S]*\}/);
+    // A reply that can't be read gets one more try before the student sees an error
     let fb = null;
-    try { fb = m ? JSON.parse(m[0]) : null; } catch (e) { fb = null; }
-    if (!fb || typeof fb.marks_awarded !== "number") { res.status(502).json({ error: "Feedback came back in the wrong shape. Try again." }); return; }
+    for (let i = 0; i < 2 && !(fb && typeof fb.marks_awarded === "number"); i++) {
+      const r = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: Object.assign(
+          { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+          process.env.ANTHROPIC_WORKSPACE_ID ? { "anthropic-workspace-id": process.env.ANTHROPIC_WORKSPACE_ID.trim() } : {}
+        ),
+        body: JSON.stringify({ model: MODEL, max_tokens: 2500, messages: [{ role: "user", content }] }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        console.error("mark-answer anthropic", r.status, JSON.stringify(data).slice(0, 500));
+        const reason = data && data.error && data.error.message ? `: ${String(data.error.message).slice(0, 160)}` : "";
+        res.status(502).json({ error: r.status === 401 ? `The Anthropic key was refused (401${reason}).` : COULD_NOT_MARK });
+        return;
+      }
+      const text = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("");
+      const m = text.match(/\{[\s\S]*\}/);
+      try { fb = m ? JSON.parse(m[0]) : null; } catch (e) { fb = null; }
+      if (!fb || typeof fb.marks_awarded !== "number") console.error("mark-answer unreadable reply", data.stop_reason, text.slice(0, 300));
+    }
+    if (!fb || typeof fb.marks_awarded !== "number") { res.status(502).json({ error: COULD_NOT_MARK }); return; }
     const avail = Number(fb.marks_available) || q.marks || 5;
     fb.marks_available = avail;
     fb.marks_awarded = Math.max(0, Math.min(avail, Math.round(fb.marks_awarded * 2) / 2));
@@ -134,6 +139,6 @@ module.exports = async (req, res) => {
     res.status(200).json({ feedback: fb });
   } catch (e) {
     console.error("mark-answer failed", e && e.message);
-    res.status(502).json({ error: "Feedback couldn't be generated. Try again in a minute." });
+    res.status(502).json({ error: COULD_NOT_MARK });
   }
 };

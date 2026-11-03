@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Annabel's Study Portal</title>
+<title>Annabel's SOS Study Space</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <script src="theme.js?v=20261025c" data-profile="0525676f-a10f-424d-b707-8f75e5b3a053"></script>
 <script src="stickers.js?v=20261025c"></script>
@@ -465,7 +465,7 @@
 <body>
 <div class="wrap">
   <div class="topbar">
-    <a class="brand" href="#" id="brandHome" aria-label="Study Portal, go to home page"><span class="dot"></span> Study Portal</a>
+    <a class="brand" href="#" id="brandHome" aria-label="SOS Study Space, go to home page"><span class="dot"></span> SOS Study Space</a>
     <div style="display:flex;align-items:center;gap:8px;">
       <button id="settingsBtn" class="settings-btn" title="Settings" aria-label="Settings">&#9881;</button>
       <div class="profile-pill">
@@ -477,8 +477,8 @@
   <div id="view"><div class="loading">Loading…</div></div>
 </div>
 
-<script src="stages.js?v=20261102f"></script>
-<script src="practice.js?v=20261025f"></script>
+<script src="stages.js?v=20261103a"></script>
+<script src="practice.js?v=20261103a"></script>
 <script src="tutor.js?v=20261025c"></script>
 <script src="notes.js?v=20261025c"></script>
 <script>
@@ -765,7 +765,9 @@ async function renderChapter(){
     const cs = document.getElementById("cvStatus");
     // same status as the subject page's topic list (from the overview), so the two never disagree
     const mt = state.model && state.model.topics && state.model.topics[state.topicId];
-    if (cs) { const [k, line] = mt ? Stages.topicStatus(mt) : ["", Stages.statusLine(info)]; cs.textContent = line; cs.className = "cv-status" + (k === "ok" || k === "now" ? " on" : ""); }
+    // answers given on this page count straight away, before the overview next reloads
+    const live = mt && chapterStats ? { ...mt, stage: info.stage, tested: info.tested, stats: { ...mt.stats, quickFix: chapterStats.quickFix } } : mt;
+    if (cs) { const [k, line] = live ? Stages.topicStatus(live) : ["", Stages.statusLine(info)]; cs.textContent = line; cs.className = "cv-status" + (k === "ok" || k === "now" ? " on" : ""); }
     const set = (k, icon, sub, now) => {
       const b = document.getElementById("tabbtn-" + k); if (!b) return;
       b.querySelector(".cv-tab-i").innerHTML = icon === "tick" ? `<span class="cv-tick" aria-hidden="true">&#10003;</span>` : icon === "now" ? `<span class="cv-now" aria-hidden="true"></span>` : "";
@@ -1288,7 +1290,7 @@ function render(){
   renderDashboard();
 }
 
-// "Study Portal" in the top bar goes back to the home page from anywhere
+// "SOS Study Space" in the top bar goes back to the home page from anywhere
 document.getElementById("brandHome").addEventListener("click", (e) => { e.preventDefault(); goHome(); });
 
 const settingsBtn = document.getElementById("settingsBtn");

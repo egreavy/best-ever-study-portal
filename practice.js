@@ -131,6 +131,16 @@
   .pr-nx.minor .pr-nx-i{width:30px;height:30px}
   .pr-key{display:flex;flex-direction:column;gap:8px}
   .pr-k{margin:0;font-size:17px;line-height:1.5}
+  .pr-explain>summary{cursor:pointer;font-weight:700;min-height:36px;display:flex;align-items:center;font-size:15px}
+  .pr-explain>summary:focus-visible{outline:3px solid var(--t-accent);outline-offset:2px;border-radius:6px}
+  .pr-explain .pr-improve{margin-top:6px}
+  .pr-diagram{display:flex;align-items:center;gap:12px;padding:12px 14px;border:2px solid var(--t-accent);border-radius:12px;background:var(--t-card);cursor:pointer}
+  .pr-diagram:hover{background:var(--t-soft2)}
+  .pr-diagram:focus-within{outline:3px solid var(--t-accent);outline-offset:2px}
+  .pr-diagram svg{width:28px;height:28px;flex:none;color:var(--t-accent)}
+  .pr-diagram-b{display:flex;flex-direction:column;gap:2px;font-size:15px;line-height:1.35}
+  .pr-diagram-b b{font-size:17px}
+  .pr-diagram input{position:absolute;opacity:0;width:1px;height:1px}
   .pr-hear{margin-left:auto;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--t-line);background:var(--t-card);color:var(--t-ink);font:inherit;font-size:14px;font-weight:700;border-radius:99px;padding:6px 12px;min-height:36px;cursor:pointer}
   .pr-hear.on{border-color:var(--t-accent);color:var(--t-accent)}
   .pr-more>summary,.pr-modelbl>summary{cursor:pointer;font-weight:700;min-height:36px;display:flex;align-items:center}
@@ -362,6 +372,9 @@
   }
   const BOOK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h12v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5"/><path d="M9 8h6"/><path d="M9 12h6"/></svg>';
   const isPast = q => q.qtype === "exam" && !/^exam-style/i.test(q.source || "");
+  // Exam questions the student has to answer with a drawing, so a photo matters as much as the writing
+  const DIAGRAM_RE = /\b(with|aid of|using|by means of|include|including)\s+(the aid of\s+)?(an?\s+|one\s+)?((clearly|neatly|fully|well)[- ])?((labelled|annotated|sketch)\s+)?(diagrams?|sketch|graph)\b(?!\s+(below|above))|\b(draw|sketch)\s+(?!an?\s+(arrow|box|circle|ring|line|dashed))(an?|and label|in)\b|\bsketch,?\s+(and\s+)?label\b|\bdraw\s+(on\s+)?the\s+(\w+\s+)?(diagram|graph|map|axes|grid|curve|arrangement)\b|\bcomplete\s+(each|the)\s+diagram\b|\bshow\s+(in|on)\s+the\s+diagram\b|\b(labelled|annotated)\s+(diagram|sketch|graph|map)\b/i;
+  const needsDiagram = q => q.qtype === "exam" && DIAGRAM_RE.test(q.prompt || "");
   // Read short feedback aloud with the device's own voice (tap again to stop)
   const SPEAK_SVG = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>`;
   function speakOut(btn, text){
@@ -528,7 +541,7 @@
     const weakSpots = () => questions.filter(q => prog.everWeak.has(q.id) || !prog.ever.has(q.id));
     function paintStats(){
       const fx = fixes(), kn = known(), un = untried();
-      onStats({ total: questions.length, tried: questions.length - un.length, fixes: fx.length, right: kn.length, triedEver: prog.ever.size, lastAt: prog.lastAt, pastTotal: ex.filter(isPast).length, examTotal: ex.length, examTried: ex.filter(q => prog.latest[q.id] !== undefined).length });
+      onStats({ quickFix: quickFixes().length, total: questions.length, tried: questions.length - un.length, fixes: fx.length, right: kn.length, triedEver: prog.ever.size, lastAt: prog.lastAt, pastTotal: ex.filter(isPast).length, examTotal: ex.length, examTried: ex.filter(q => prog.latest[q.id] !== undefined).length });
       paintRefresh();
       if (!session || session.where !== prepSlot) paintPrep();
     }
@@ -593,7 +606,7 @@
       const years = past.map(yearOf).filter(Boolean).sort();
       const tag = past.length ? `Real State Exam questions${years.length ? ` · ${years[0] === years[years.length - 1] ? years[0] : years[0] + " to " + years[years.length - 1]}` : ""}` : "Exam-style questions from your textbook";
       const hero = h(`<div class="pp-hero"><span class="ft-icon">${PAPER_SVG}</span><span class="pp-hero-b"><span class="ft-tag">${esc(tag)}</span><span class="pp-hero-t">Do an exam question</span><span class="pr-sub">Write it, get it marked like the real exam, then improve it with your tutor. ${doneN} of ${pool.length} done.</span></span><button type="button" class="pr-btn big">Start</button></div>`);
-      hero.querySelector("button").onclick = () => start("Exam Prep", prepQueue(), "prep");
+      hero.querySelector("button").onclick = () => start("Exam question", prepQueue().slice(0, 1), "prep", false, { planned: true });
       const nodes = [hero];
       const row = q => {
         const b = h(`<button type="button" class="pp-row"><span class="pp-yr">${esc(isPast(q) ? yearOf(q) : "")}</span><span class="pp-b"><span class="pp-s">${esc(isPast(q) ? partOf(q) : "Practice question")} · ${q.marks || 5} marks</span><span class="pp-q">${esc(qMain(q))}</span></span>${chip(q)}</button>`);
@@ -685,7 +698,7 @@
         const nodes2 = [box];
         // Only once he's earned it: 80%+ on his last go
         if (ex.length && prepSlot && last && last.pct >= 80) {
-          const nx = h(`<button type="button" class="pp-next"><span class="pr-li-body"><span class="pr-li-title">Know this chapter well?</span><span class="pr-li-note">Move on to Exam Prep and try ${ex.some(isPast) ? "a real past paper question" : "an exam question"}.</span></span><b class="go">Exam Prep ›</b></button>`);
+          const nx = h(`<button type="button" class="pp-next"><span class="pr-li-body"><span class="pr-li-title">Know this chapter well?</span><span class="pr-li-note">Move on to Exam questions and try ${ex.some(isPast) ? "a real past paper question" : "an exam question"}.</span></span><b class="go">Exam Prep ›</b></button>`);
           nx.onclick = () => goTo("refresh");
           nodes2.push(nx);
         }
@@ -740,7 +753,7 @@
     function start(name, list, where, today, extra){
       if (!list || !list.length) return;
       if (session) { logTime(session); home(); }
-      session = { name, queue: list.map(q => ({ q, retry:false })), i:0, results:[], total:list.length, startTotal:list.length, t0: Date.now(), where: where === "prep" && prepSlot ? prepSlot : slot, today: !!today, base: 0, memory: (extra && extra.memory) || null, paper: !!(extra && extra.paper) };
+      session = { planned: !!(extra && extra.planned), name, queue: list.map(q => ({ q, retry:false })), i:0, results:[], total:list.length, startTotal:list.length, t0: Date.now(), where: where === "prep" && prepSlot ? prepSlot : slot, today: !!today, base: 0, memory: (extra && extra.memory) || null, paper: !!(extra && extra.paper) };
       if (today) todayBase().then(m => { if (session) { session.base = m; paintRing(); } });
       setChrome(false);
       next();
@@ -752,7 +765,7 @@
       const fromNotes = q.source === "From your notes" ? " · From your notes" : "";
       const label = q.qtype === "exam" ? (isPast(q) ? `Past paper · ${esc(q.source || "")} · ${q.marks || 5} marks` : `Exam-style question · ${q.marks || 5} marks`) : (q.qtype === "recall" ? "Short answer" : "Quick quiz") + fromNotes;
       const card = h(`<div class="pr-card">
-        <div class="pr-row" style="justify-content:space-between"><button type="button" class="pr-btn ghost" data-stop>${session.paper && toPaper ? "← Back to the paper" : "← Go back"}</button><span class="pr-small" style="font-variant-numeric:tabular-nums">${entry.again ? "Improving your answer" : retry ? "Second try" : session.memory ? "Memory check" : `Question ${session.i+1} of ${session.total}`}</span></div>
+        <div class="pr-row" style="justify-content:space-between"><button type="button" class="pr-btn ghost" data-stop>${session.paper && toPaper ? "← Back to the paper" : session.results.length ? "← Finish here" : session.where === prepSlot ? "← Back to Exam questions" : "← Back to Test"}</button><span class="pr-small" style="font-variant-numeric:tabular-nums">${entry.again ? "Improving your answer" : retry ? "Second try" : session.memory ? "Memory check" : `Question ${session.i+1} of ${session.total}`}</span></div>
         <div class="pr-progress"><i style="width:${Math.min(session.i,session.total)/session.total*100}%"></i></div>
         <div class="pr-meta"><span>${label}</span>${session.today ? `<span class="pr-today" data-ring></span>` : ""}</div>
         ${questionHtml(q)}</div>`);
@@ -774,10 +787,13 @@
       const lastOne = session.i >= session.queue.length - 1, single = lastOne && session.startTotal === 1 && session.where === prepSlot;
       const inPaper = lastOne && session.paper && toPaper;
       const cur = session.queue[session.i] && session.queue[session.i].q;
-      const listNext = single && !session.paper && !session.memory && cur ? prepNextAfter(cur) : null;
+      // Asked for one exam question: that's the job done, and another is a choice
+      const planned = single && session.planned;
+      const another = () => prepQueue().find(x => !cur || x.id !== cur.id) || null;
+      const listNext = single && !planned && !session.paper && !session.memory && cur ? prepNextAfter(cur) : null;
       const hasNext = inPaper ? !!(paperNext && paperNext(false)) : !!listNext;
-      const label = (inPaper || single) && hasNext ? "Next question ›" : inPaper ? "Back to the paper" : !lastOne ? "Next question ›" : single ? "Back to Exam Prep" : "Finish practice";
-      const back = (inPaper || single) && hasNext ? (inPaper ? "Back to the paper" : "Back to Exam Prep") : "";
+      const label = (inPaper || single) && hasNext ? "Next question ›" : inPaper ? "Back to the paper" : !lastOne ? "Next question ›" : single ? "Back to Exam questions" : "Finish practice";
+      const back = (inPaper || single) && hasNext ? (inPaper ? "Back to the paper" : "Back to Exam questions") : planned && another() ? "Do another exam question" : "";
       const b = h(`<div class="pr-row pr-nextrow"><button type="button" class="pr-btn" data-go>${label}</button>${back ? `<button type="button" class="pr-btn ghost" data-back>${back}</button>` : ""}</div>`);
       const leave = () => { logTime(session); session = null; };
       b.querySelector("[data-go]").onclick = () => {
@@ -788,7 +804,12 @@
         session.i++; next();
       };
       const bk = b.querySelector("[data-back]");
-      if (bk) bk.onclick = () => { if (inPaper) { leave(); toPaper(); } else { logTime(session); home(); } };
+      if (bk) bk.onclick = () => {
+        if (inPaper) { leave(); toPaper(); return; }
+        const nx = planned ? another() : null;
+        logTime(session);
+        if (nx) start("Exam question", [nx], "prep", false, { planned: true }); else home();
+      };
       card.append(b); b.querySelector("[data-go]").focus({ preventScroll:true });
     }
     const save = async (qid, v, source) => { await record(sb, profile, qid, v, source); prog = await loadProgress(sb, profile, questions, freshSince()); paintStats(); };
@@ -817,10 +838,10 @@
     }
 
     // After marking: "What next?" — improve it step by step, talk it through, or just try again
-    function improveRow(card, q, text, f, entry){
+    function improveRow(card, q, text, f, entry, { quiet = false, images = [] } = {}){
       const isExam = q.qtype === "exam";
       const again = (added) => {
-        session.queue.splice(session.i + 1, 0, { q, retry:true, again:true, added: added || [],
+        session.queue.splice(session.i + 1, 0, { q, retry:true, again:true, images: images.slice(), added: added || [],
           prev: added && added.length ? (text ? text.trim() + "\n\n" : "") + added.join(" ") : text,
           tips: added && added.length ? [] : f.to_improve.slice(),
           before: { marks_awarded: f.marks_awarded, marks_available: f.marks_available } });
@@ -829,7 +850,7 @@
       const opt = (key, icon, title, note, main) => `<button type="button" class="pr-nx${main ? " main" : " minor"}" data-${key}><span class="pr-nx-i">${icon}</span><span class="pr-li-body"><span class="pr-li-title">${title}</span><span class="pr-li-note">${note}</span></span><span class="pr-chev" aria-hidden="true">›</span></button>`;
       const wrap = h(`<div class="pr-improve">
         <span class="pr-nx-l">What next?</span>
-        ${isExam ? opt("steps", STEPS_SVG, "Improve it step by step", `${Math.min(3, f.to_improve.length)} short step${Math.min(3, f.to_improve.length) === 1 ? "" : "s"}, one sentence each`, true) : ""}
+        ${isExam ? opt("steps", STEPS_SVG, "Improve it step by step", `${Math.min(3, f.to_improve.length)} short step${Math.min(3, f.to_improve.length) === 1 ? "" : "s"}${needsDiagram(q) ? "" : ", one sentence each"}`, true) : ""}
         ${isExam && window.coachAnswer ? opt("talk", MIC_SVG, "Talk it through with my tutor", "A short voice call about this answer") : ""}
         ${opt("again", PEN_SVG, "Just try again", isExam ? "You already know what to fix" : "Have another go using these tips", !isExam)}
         <div data-coachslot></div></div>`);
@@ -854,7 +875,9 @@
           } }); };
       // Straight under the mark and summary, so the next step is the first thing he sees
       const head = card.querySelector(":scope > .pr-key") || card.querySelector(":scope > .pr-row");
-      if (head) head.after(wrap); else card.append(wrap);
+      // After one round of improving, more is a choice: tucked away so the next step is clear
+      if (quiet) { const d = h(`<details class="pr-explain"><summary>Improve it further (optional)</summary></details>`); d.append(wrap); card.append(d); }
+      else if (head) head.after(wrap); else card.append(wrap);
     }
 
     // Improve it step by step: one point at a time, one sentence each, then put it together
@@ -871,8 +894,9 @@
       let steps;
       try { steps = (await post({ action: "plan" })).steps; }
       catch (e) {
-        box.replaceChildren(h(`<div class="pr-row"><p class="pr-err" style="flex:1">${esc(e.message)}</p><button type="button" class="pr-btn ghost">Back</button></div>`));
-        box.querySelector("button").onclick = onCancel; return;
+        box.replaceChildren(h(`<div style="display:flex;flex-direction:column;gap:10px"><p class="pr-err">We couldn't load your improvement steps. Your answer and mark are saved.</p><div class="pr-row"><button type="button" class="pr-btn" data-retry>Try again</button><button type="button" class="pr-btn ghost" data-not>Not now</button></div></div>`));
+        box.querySelector("[data-retry]").onclick = () => stepper(slot2, q, text, f, onDone, onCancel);
+        box.querySelector("[data-not]").onclick = onCancel; return;
       }
       const added = []; let i = 0;
       function paint(){
@@ -881,7 +905,7 @@
           <div class="pr-bars">${steps.map((_, k) => `<i class="${k <= i ? "on" : ""}"></i>`).join("")}</div>
           <div class="pr-row" style="justify-content:space-between"><span class="pr-eyebrow">Step ${i + 1} of ${steps.length}</span>${i ? `<span class="pr-small" style="color:var(--t-accent);font-weight:700">&#10003; ${i === 1 ? "Step 1" : "Steps 1–" + i} done</span>` : ""}</div>
           <div class="pr-stepcard"><b>${esc(s.title)}</b><span>${esc(s.why)}</span>${s.hint ? `<details><summary>Need a hint?</summary><span>${esc(s.hint)}</span></details>` : ""}</div>
-          <label class="pr-nx-l" for="stepTa">Write one sentence</label>
+          <label class="pr-nx-l" for="stepTa">${needsDiagram(q) ? "Write one sentence on what to add" : "Write one sentence"}</label>
           <div class="pr-answer"><textarea id="stepTa" rows="2" placeholder="Your sentence"></textarea><div class="pr-tools" data-inputs></div></div>
           <div class="pr-verdict" hidden></div>
           <div class="pr-row"><button type="button" class="pr-btn" data-check>Check it</button><button type="button" class="pr-btn ghost" data-skip>${last ? "Skip and put it together" : "Skip this step"}</button></div>
@@ -928,11 +952,12 @@
     }
 
     function writtenView(card, q, retry, entry = {}){
-      const images = [], isExam = q.qtype === "exam";
+      const images = (entry.images || []).slice(), isExam = q.qtype === "exam", wantsDiagram = needsDiagram(q);
       const mem = session && session.memory && !entry.again && !retry ? session.memory : null;
       const box = h(`<div style="display:flex;flex-direction:column;gap:10px">
         <p class="pr-tip">Type your answer, tap the microphone to speak it, or add a photo of a written answer.</p>
         ${SR ? "" : speakTip()}
+        ${wantsDiagram ? `<label class="pr-diagram">${CAM_SVG}<span class="pr-diagram-b"><b>Add your diagram</b><span>Draw your answer on paper, label it, then add a photo.</span></span><input type="file" accept="image/*" multiple></label>` : ""}
         <div class="pr-answer">
           <textarea aria-label="Your answer" placeholder="Your answer"></textarea>
           <div class="pr-tools" data-inputs><label class="pr-icon" title="Add a photo of your answer" aria-label="Add a photo of your answer">${CAM_SVG}<input type="file" accept="image/*" multiple></label></div>
@@ -940,7 +965,8 @@
         <div class="pr-thumbs"></div>
         <div class="pr-row"><button type="button" class="pr-btn" data-fb>Check my answer</button><button type="button" class="pr-btn ghost" data-self>Just show the answer</button></div>
         <p class="pr-err" hidden></p></div>`);
-      const ta = box.querySelector("textarea"), thumbs = box.querySelector(".pr-thumbs"), file = box.querySelector("input[type=file]"), err = box.querySelector(".pr-err");
+      const ta = box.querySelector("textarea"), thumbs = box.querySelector(".pr-thumbs"), err = box.querySelector(".pr-err");
+      images.forEach((d, n) => thumbs.append(h(`<img alt="Your answer photo ${n + 1}" src="${d}">`)));
       const fbBtn = box.querySelector("[data-fb]"), selfBtn = box.querySelector("[data-self]");
       if (mem) {
         // From fresh: no notes, no peeking at the answer, marked like the real exam
@@ -957,20 +983,21 @@
           ? `Last time: ${entry.before.marks_awarded} out of ${entry.before.marks_available}. Add the points you talked through, then check it again.`
           : "Add the points you talked through, then check it again.";
         if (entry.added && entry.added.length) { box.querySelector(".pr-tip").classList.add("pr-alldone"); ta.rows = 8; }
+        if (wantsDiagram && entry.images && entry.images.length) box.querySelector(".pr-tip").append(" Your photo is still attached. If your diagram needs changing, add a new photo too.");
         selfBtn.style.display = "none";
-        if (entry.tips && entry.tips.length) box.querySelector(".pr-tip").after(h(`<div class="pr-fb"><h4>${isExam ? "To get more marks" : "Where you can add more marks"}</h4><ul>${entry.tips.map(t => `<li>${esc(t)}</li>`).join("")}</ul></div>`));
+        if (entry.tips && entry.tips.length) box.querySelector(".pr-tip").after(h(`<div class="pr-fb"><h4>${isExam ? "To get more marks" : "Tips"}</h4><ul>${entry.tips.map(t => `<li>${esc(t)}</li>`).join("")}</ul></div>`));
       }
       const inputsRow = box.querySelector("[data-inputs]");
       attachMic(inputsRow, ta, err);
       const stopMic = () => { if (inputsRow._stopMic) inputsRow._stopMic(); };
-      if (file) file.onchange = async () => {
+      box.querySelectorAll("input[type=file]").forEach(file => file.onchange = async () => {
         err.hidden = true;
         for (const f of Array.from(file.files || []).slice(0, 3 - images.length)) {
           try { const d = await shrink(f); images.push(d); thumbs.append(h(`<img alt="Your answer photo ${images.length}" src="${d}">`)); }
           catch (e) { err.textContent = e.message; err.hidden = false; }
         }
         file.value = "";
-      };
+      });
       const done = (v, source) => {
         if (entry.again) { const r = session.results.find(x => x.q === q); if (r) r.v = Math.max(r.v, v); save(q.id, v, source); }
         else if (!retry) { session.results.push({ q, v }); save(q.id, v, source); }
@@ -985,7 +1012,7 @@
         try {
           const r = await fetch("/api/mark-answer", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ question_id: q.id, answer_text: text, images }) });
           const data = await r.json().catch(() => ({}));
-          if (!r.ok || !data.feedback) throw new Error(data.error || "Feedback couldn't be generated.");
+          if (!r.ok || !data.feedback) throw new Error(data.error || "We couldn't mark that just now. Your answer is still here, so please try again.");
           const f = data.feedback, frac = f.marks_available ? f.marks_awarded / f.marks_available : 0;
           const v = frac >= 0.8 ? 1 : frac >= 0.4 ? 0.5 : 0;
           await sb("answer_reviews", { method:"POST", prefer:"return=minimal", body:[{ profile_id: profile.id, question_id: q.id, answer_text: text || f.transcription || null, marks_awarded: f.marks_awarded, marks_available: f.marks_available, feedback: f }] });
@@ -995,14 +1022,19 @@
           // Short first: the mark, one thing that worked, the one change worth most. The rest is folded.
           const good1 = f.went_well[0] || f.summary || "", fix1 = f.to_improve[0] || "";
           const shown = text || f.transcription || "";
-          const upTxt = entry.before && f.marks_awarded > entry.before.marks_awarded ? (isExam ? `Up from ${entry.before.marks_awarded} to ${f.marks_awarded} marks.` : "Better than last time.") : "";
-          const memLine = mem ? `<p class="pr-k pr-memres"><b>${frac >= 0.6 ? `You remembered this from ${mem.days} days ago &#10003;` : "Worth another go. This one will come back in a few days."}</b></p>` : "";
+          const stopHere = isExam && entry.again && entry.before;
+          const stopLine = !stopHere ? "" : f.marks_awarded > entry.before.marks_awarded ? `You improved from ${entry.before.marks_awarded} to ${f.marks_awarded} marks.` : `That's ${f.marks_awarded} out of ${f.marks_available} this time. You can leave it there for now.`;
+          const upTxt = !stopHere && entry.before && f.marks_awarded > entry.before.marks_awarded ? (isExam ? `Up from ${entry.before.marks_awarded} to ${f.marks_awarded} marks.` : "Better than last time.") : "";
+          // Short answers: one confirmation, one correction if needed. The rest waits behind Explain more.
+          const extraPts = isExam ? [] : [...f.went_well.slice(f.went_well.length ? 1 : 0), ...f.to_improve.slice(v < 1 ? 1 : 0)];
+          const memLine = stopLine ? `<p class="pr-k pr-memres"><b>${esc(stopLine)}</b></p>` : mem ? `<p class="pr-k pr-memres"><b>${frac >= 0.6 ? `You remembered this from ${mem.days} days ago &#10003;` : "Worth another go. This one will come back in a few days."}</b></p>` : "";
           const fbEl = h(`<div class="pr-fb ${v===1?"good":""}">
             <div class="pr-key">${memLine}
               <div class="pr-row" style="gap:12px 16px">${isExam ? `<span class="pr-score">${f.marks_awarded}/${f.marks_available}</span>` : `<span class="pr-verd">${v === 1 ? `<span class="pr-tick" aria-hidden="true">&#10003;</span><strong>Got it.</strong>` : `<strong>${v ? "Nearly." : "Not yet."}</strong>`}</span>`}${upTxt ? `<span class="pr-up">${upTxt}</span>` : ""}${"speechSynthesis" in window ? `<button type="button" class="pr-hear" data-hear aria-label="Hear the feedback">${SPEAK_SVG}<span>Hear it</span></button>` : ""}</div>
               ${isExam ? `${good1 ? `<p class="pr-k"><b>Good:</b> ${esc(good1)}</p>` : ""}
-              ${fix1 ? `<p class="pr-k"><b>For more marks:</b> ${esc(fix1)}</p>` : ""}` : `${f.went_well.length ? `<h4>What you got right</h4>${list(f.went_well)}` : ""}
-              ${f.to_improve.length ? `<h4>Where you can add more marks</h4>${list(f.to_improve)}` : ""}`}
+              ${fix1 ? `<p class="pr-k"><b>For more marks:</b> ${esc(fix1)}</p>` : ""}` : `${good1 ? `<p class="pr-k">${esc(good1)}</p>` : ""}
+              ${v < 1 && fix1 ? `<p class="pr-k"><b>To fix:</b> ${esc(fix1)}</p>` : ""}
+              ${extraPts.length ? `<details class="pr-explain"><summary>Explain more</summary>${list(extraPts)}</details>` : ""}`}
             </div>
 
           </div>`);
@@ -1010,12 +1042,12 @@
           fbEl.querySelector(".pr-key").after(h(modelBlock()));
           const hb = fbEl.querySelector("[data-hear]");
           if (hb) hb.onclick = () => speakOut(hb, (isExam
-            ? [`${f.marks_awarded} out of ${f.marks_available}.`, upTxt, good1 ? "Good: " + good1 : "", fix1 ? "For more marks: " + fix1 : ""]
-            : [v === 1 ? "Got it." : v ? "Nearly." : "Not yet.", upTxt, f.went_well.length ? "What you got right. " + f.went_well.join(" ") : "", f.to_improve.length ? "Where you can add more marks. " + f.to_improve.join(" ") : ""]).filter(Boolean).join(" "));
-          if (f.to_improve.length && (isExam || v < 1) && (!f.marks_available || f.marks_awarded < f.marks_available)) improveRow(fbEl, q, text || f.transcription || "", f, entry);
+            ? [`${f.marks_awarded} out of ${f.marks_available}.`, stopLine, upTxt, good1 ? "Good: " + good1 : "", fix1 ? "For more marks: " + fix1 : ""]
+            : [v === 1 ? "Got it." : v ? "Nearly." : "Not yet.", upTxt, good1, v < 1 && fix1 ? "To fix: " + fix1 : ""]).filter(Boolean).join(" "));
+          if (f.to_improve.length && (isExam || v < 1) && (!f.marks_available || f.marks_awarded < f.marks_available)) improveRow(fbEl, q, text || f.transcription || "", f, entry, { quiet: !!stopHere, images });
           nextBtn(card);
         } catch (e) {
-          err.textContent = e.message + " You can still check it yourself with Just show the answer."; err.hidden = false;
+          err.textContent = e.message + (mem ? "" : " You can also check it yourself with Just show the answer."); err.hidden = false;
           fbBtn.disabled = selfBtn.disabled = false; fbBtn.textContent = "Check my answer";
         }
       };
@@ -1041,7 +1073,7 @@
       const card = h(`<div class="pr-card"><h3>${esc(session.name)}: done</h3>
         <p class="pr-next">${R.length ? `You answered ${plural(R.length, "question", "questions")}. ${plural(good.length, "was", "were")} right${gaps.length ? `, and ${plural(gaps.length, "goes", "go")} on your Try Again list` : ""}.` : "No answers saved this time."}</p>
         ${gaps.length > 4 ? `<details class="pr-fb"><summary style="cursor:pointer;font-weight:700">${gaps.length} to try again next time</summary><ul style="margin-top:6px">${gaps.map(r=>`<li>${esc(shortTitle(r.q))}</li>`).join("")}</ul><span class="pr-tip">Your tutor will start with these too.</span></details>` : gaps.length ? `<div class="pr-fb"><h4>To try again next time</h4><ul>${gaps.map(r=>`<li>${esc(shortTitle(r.q))}</li>`).join("")}</ul><span class="pr-tip">Your tutor will start with these too.</span></div>` : ""}
-        <div class="pr-row" data-acts><button type="button" class="pr-btn${session.where !== prepSlot && R.length >= 3 ? " ghost" : ""}" data-home>Back to ${session.where === prepSlot ? "Exam Prep" : "Quick Tests"}</button></div></div>`);
+        <div class="pr-row" data-acts><button type="button" class="pr-btn${session.where !== prepSlot && R.length >= 3 ? " ghost" : ""}" data-home>Back to ${session.where === prepSlot ? "Exam questions" : "Test"}</button></div></div>`);
       card.querySelector("[data-home]").onclick = () => home();
       // After a quick test: under 70% -> review the material; 80%+ -> on to exam questions
       if (session.where !== prepSlot && R.length >= 3) {
@@ -1056,7 +1088,7 @@
           const miss = gaps.slice(0, 8).map(r => `<li><b>${esc(r.q.prompt)}</b><br>${esc(r.q.qtype === "mcq" ? (r.q.explanation || (r.q.options || [])[r.q.answer_index] || "") : (r.q.model_answer || r.q.explanation || ""))}</li>`).join("");
           if (miss) missEl = (h(`<details class="pr-fb pr-missed"><summary style="cursor:pointer;font-weight:700">What you missed (${gaps.length})</summary><ul style="margin-top:8px;display:flex;flex-direction:column;gap:8px">${miss}</ul></details>`));
         }
-        else if (pct >= 80) { msg = ex.length ? `You know this well. Time to try exam questions.` : `You know this well.`; if (ex.length) { btn = h(`<button type="button" class="pr-btn">Go to Exam Prep ›</button>`); btn.onclick = () => { home(); goTo("refresh"); }; } }
+        else if (pct >= 80) { msg = ex.length ? `You know this well. Time to try exam questions.` : `You know this well.`; if (ex.length) { btn = h(`<button type="button" class="pr-btn">Go to Exam questions ›</button>`); btn.onclick = () => { home(); goTo("refresh"); }; } }
         else { msg = `Nearly there. Try the ones you missed again, then you're ready for exam questions.`; const fx = quickFixes(); if (fx.length) { btn = h(`<button type="button" class="pr-btn">Try Again (${fx.length})</button>`); btn.onclick = () => start("Try Again", fx); } }
         const half = R.filter(r => r.v > 0 && r.v < 1).length;
         card.querySelector("h3").after(h(`<div class="pr-score-msg ${pct >= 80 ? "good" : pct < 70 ? "low" : ""}"><span class="pr-score">${good.length}/${R.length}</span><span><b>right</b>${half ? `, ${half} half right` : ""}<br>${esc(msg)}</span></div>`));
@@ -1109,7 +1141,7 @@
     function runExam(){
       if (!ex.length) return false;
       goTo("refresh");
-      start("Exam focus", prepQueue(), "prep");
+      start("Exam question", prepQueue().slice(0, 1), "prep", false, { planned: true });
       return true;
     }
     // One question from a past paper (exam focus → Try an exam paper)

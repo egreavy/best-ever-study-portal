@@ -52,6 +52,8 @@ For each step give:
 - "why": one short sentence on why it earns marks, e.g. "The question asks for two sources, 20 marks each."
 - "hint": one guiding question or clue that points to the right facts without giving the sentence, e.g. "Tacitus wrote the Annals. What did he say happened to Christus?"
 
+Keep "why" and "hint" under 25 words each.
+
 Reply with ONLY JSON: {"steps":[{"title":"","why":"","hint":""}]}`;
 }
 
@@ -114,23 +116,24 @@ module.exports = async (req, res) => {
       { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
       process.env.ANTHROPIC_WORKSPACE_ID ? { "anthropic-workspace-id": process.env.ANTHROPIC_WORKSPACE_ID.trim() } : {}
     ),
-    body: JSON.stringify({ model: MODEL, max_tokens: 700, messages: [{ role: "user", content: qImgs.length ? [{ type: "text", text: "The picture(s) below are part of the exam question:" }, ...qImgs.map(url => ({ type: "image", source: { type: "url", url } })), { type: "text", text: prompt }] : prompt }] }),
+    body: JSON.stringify({ model: MODEL, max_tokens: 1500, messages: [{ role: "user", content: qImgs.length ? [{ type: "text", text: "The picture(s) below are part of the exam question:" }, ...qImgs.map(url => ({ type: "image", source: { type: "url", url } })), { type: "text", text: prompt }] : prompt }] }),
   });
   try {
     let parsed = null;
     for (let i = 0; i < 2 && !parsed; i++) {
       const r = await call();
       const data = await r.json().catch(() => ({}));
-      if (!r.ok) { console.error("improve anthropic", r.status, JSON.stringify(data).slice(0, 300)); res.status(502).json({ error: `That didn't work just now (${r.status}). Try again.` }); return; }
+      if (!r.ok) { console.error("improve anthropic", r.status, JSON.stringify(data).slice(0, 300)); res.status(502).json({ error: "We couldn't do that just now. Please try again." }); return; }
       const text = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("");
       const m = text.match(/\{[\s\S]*\}/);
       try { parsed = m ? JSON.parse(m[0]) : null; } catch (e) { parsed = null; }
+      if (!parsed) console.error("improve unreadable reply", data.stop_reason, text.slice(0, 300));
     }
-    if (!parsed) { res.status(502).json({ error: "That came back in the wrong shape. Try again." }); return; }
+    if (!parsed) { res.status(502).json({ error: "We couldn't do that just now. Please try again." }); return; }
     if (action === "plan") {
       const steps = (Array.isArray(parsed.steps) ? parsed.steps : []).slice(0, 3)
         .map(s => ({ title: clip(s.title, 80), why: clip(s.why, 240), hint: clip(s.hint, 300) })).filter(s => s.title);
-      if (!steps.length) { res.status(502).json({ error: "Couldn't work out the steps. Try again." }); return; }
+      if (!steps.length) { res.status(502).json({ error: "We couldn't do that just now. Please try again." }); return; }
       res.status(200).json({ steps });
     } else {
       const verdict = ["good", "close", "not_yet"].includes(parsed.verdict) ? parsed.verdict : "close";
