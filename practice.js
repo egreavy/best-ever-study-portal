@@ -710,7 +710,7 @@
           b.onclick = fn; box.append(b);
         };
         add("Quick Quiz", "Multiple choice, one tap answers", () => start("Quick Quiz", shuffle(mcq)), !mcq.length);
-        if (rec.length) add("Short Answer Practice", "Write a line or two, then compare", () => start("Short Answer Practice", shuffle(rec)));
+        if (rec.length) add("Short Answer Practice", rec.some(q => q.answer_kind) ? "Quick answers: a word or one sentence" : "Write a line or two, then compare", () => start("Short Answer Practice", shuffle(rec)));
         const nodes2 = [box];
         // Only once he's earned it: 80%+ on his last go
         if (ex.length && prepSlot && last && last.pct >= 80) {
