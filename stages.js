@@ -250,6 +250,12 @@
   .sv-b{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
   .sv-t{font-size:17px;font-weight:700;line-height:1.3}
   .sv-s{font-size:14px;color:var(--t-muted)}
+  .sv-star{color:var(--t-accent);margin-right:6px}
+  .sv-ana>summary{cursor:pointer;font-weight:700;padding:14px 18px;font-size:16px}
+  .sv-ana>summary:focus-visible{outline:3px solid var(--t-accent);outline-offset:-3px;border-radius:8px}
+  .sv-ana-p{margin:0;padding:0 18px 10px;font-size:15px;line-height:1.45;color:var(--t-muted)}
+  .sv-ana-r{display:flex;flex-direction:column;gap:2px;padding:10px 18px;border-top:1px solid var(--t-line)}
+  .sv-ana-t{font-size:16px;font-weight:700}
   .sv-s.ok{color:var(--t-accent);font-weight:700}.sv-s.now{color:var(--t-accent);font-weight:600}.sv-s.dim{color:var(--t-muted)}
   .sv-papers{display:flex;align-items:center;gap:14px;width:100%;padding:16px 18px;border:2px solid var(--t-line);border-radius:18px;background:var(--t-card);font:inherit;color:var(--t-ink);text-align:left;cursor:pointer}
   .sv-ico{flex:none;width:44px;height:44px;border-radius:12px;background:var(--t-accent-tint);color:var(--t-accent);display:grid;place-items:center}
@@ -485,7 +491,7 @@
       sb(`topic_flags?select=topic_id,flag_type,note,updated_at&profile_id=eq.${profile.id}`),
       sb(`study_time?select=kind,seconds,created_at&profile_id=eq.${profile.id}&created_at=gte.${encodeURIComponent(since)}`),
       sb(`answer_reviews?select=question_id,marks_awarded,marks_available,created_at&profile_id=eq.${profile.id}&order=created_at.asc&limit=2000`),
-      sb(`student_settings?select=exam_focus&profile_id=eq.${profile.id}`).catch(() => [])
+      sb(`student_settings?select=exam_focus,new_courses&profile_id=eq.${profile.id}`).catch(() => [])
     ]);
     const topicIds = topics.map(t => t.id);
     const questions = [];
@@ -503,7 +509,7 @@
       part.forEach(a => attempts.push(a));
       if (part.length < 1000 || off > 50000) break;
     }
-    return { subjects, topics, templatesAll, disabled, progress, status, exams, flags, timeRows, questions, attempts, reviews: reviews || [], focus: ((settings || [])[0] || {}).exam_focus || {} };
+    return { subjects, topics, templatesAll, disabled, progress, status, exams, flags, timeRows, questions, attempts, reviews: reviews || [], focus: ((settings || [])[0] || {}).exam_focus || {}, newCourses: ((settings || [])[0] || {}).new_courses || [] };
   }
 
   function buildModel(raw){
@@ -643,6 +649,7 @@
       if (v === undefined || v < 1) { e.open++; e.openMarks += q.marks || 0; } });
     Object.values(m.topics).forEach(c => { c.exam = examBy[c.id] || { n: 0, tried: 0, open: 0, openMarks: 0, marks: 0 }; });
     m.focus = raw.focus || {};
+    examAnalysis(m, raw);
     // Real past papers, rebuilt from the chapter questions: subject -> year -> questions in paper order
     const bestRev = {};
     (raw.reviews || []).forEach(r => { if (!r.marks_available) return; const b = bestRev[r.question_id]; if (!b || r.marks_awarded > b.a) bestRev[r.question_id] = { a: Number(r.marks_awarded), b: Number(r.marks_available) }; });
@@ -732,6 +739,60 @@
     const lastBy = {}; checks.forEach(c => { lastBy[c.origin] = c; });
     const remembered = new Set(Object.values(lastBy).filter(c => c.pass).map(c => c.origin));
     return { next: allowed ? next : null, waiting: next, checks, weekCount, remembered, eligible: Object.keys(anchor).length };
+  }
+
+  // ---- Exam analysis ----
+  // From the real past-paper questions in each subject: each chapter's share of the marks, and how many of
+  // the last five papers asked it. A star means asked in every one of the last five papers AND in the top
+  // third of the subject's chapters by marks. Subjects on a new course (student_settings.new_courses) get
+  // no analysis, because old papers don't show what the new exam asks. Chapters that are graded another
+  // way (a project, or an essay skill) are marked "Part of your grade" by hand.
+  const GRADE_PART = /citizenship project|discursive essay/i;
+  function examAnalysis(m, raw){
+    const isNew = new Set((raw.newCourses || []).map(x => String(x).toLowerCase()));
+    const byTopic = {};
+    (raw.questions || []).forEach(q => {
+      if (q.qtype !== "exam" || /^exam-style/i.test(q.source || "")) return;
+      const y = parseInt((/\b((?:19|20)\d{2})\b/.exec(q.source || "") || [])[1], 10); if (!y) return;
+      const e = byTopic[q.topic_id] = byTopic[q.topic_id] || { marks: 0, years: new Set() };
+      e.marks += q.marks || 0; e.years.add(y);
+    });
+    m.analysis = {};
+    m.subjects.forEach(s => {
+      const chs = s.chapters || [];
+      const fresh = isNew.has(String(s.title).toLowerCase());
+      const years = [...new Set(chs.flatMap(c => [...((byTopic[c.id] || {}).years || [])]))].sort((a, b) => b - a);
+      const last = years.slice(0, 5), total = chs.reduce((n, c) => n + ((byTopic[c.id] || {}).marks || 0), 0);
+      const ranked = chs.slice().sort((a, b) => ((byTopic[b.id] || {}).marks || 0) - ((byTopic[a.id] || {}).marks || 0));
+      const topN = Math.ceil(chs.length / 3);
+      chs.forEach(c => {
+        const e = byTopic[c.id] || { marks: 0, years: new Set() };
+        const recent = last.filter(y => e.years.has(y)).length;
+        const pct = total ? Math.round(e.marks / total * 100) : 0;
+        const top = ranked.indexOf(c) < topN && e.marks > 0;
+        c.examInfo = fresh ? { fresh: true } : { marks: e.marks, pct, recent, of: last.length, lastYear: e.years.size ? Math.max(...e.years) : null,
+          star: last.length >= 5 && recent === last.length && top, grade: GRADE_PART.test(c.title || "") };
+      });
+      m.analysis[s.id] = { fresh, years: last, total, ranked: ranked.filter(c => !fresh) };
+    });
+  }
+  // One quiet line about a chapter in past papers. Never says a chapter won't come up.
+  function examLine(c){
+    const x = c && c.examInfo; if (!x || x.fresh) return "";
+    if (x.grade) return "Part of your grade";
+    const share = x.pct >= 1 ? `about ${x.pct}% of past-paper marks` : "a small share of past-paper marks";
+    if (x.star) return `★ Asked every year · ${share}`;
+    if (x.recent) return `Asked in ${x.recent} of the last ${x.of} papers · ${share}`;
+    if (x.marks && x.lastYear) return `Last asked in ${x.lastYear}`;
+    return "";
+  }
+  function analysisHTML(m, s){
+    const a = m.analysis && m.analysis[s.id]; if (!a) return "";
+    if (a.fresh) return `<details class="sv-list sv-ana"><summary>Exam analysis</summary><p class="sv-ana-p">${esc(s.title)} has a new course, so past papers don't show what your exam will ask yet. This will appear once there's a sample paper for the new course.</p></details>`;
+    if (!a.total) return "";
+    const yrs = a.years.length ? (a.years.length > 1 ? `${a.years[a.years.length - 1]} to ${a.years[0]}` : a.years[0]) : "";
+    const rows = a.ranked.map(c => { const l = examLine(c); return `<div class="sv-ana-r"><span class="sv-ana-t">${c.examInfo && c.examInfo.star ? `<span class="sv-star" aria-hidden="true">★</span>` : ""}${esc(shortTitle(c.title))}</span><span class="sv-s">${esc(l.replace(/^★ /, "") || "Not in recent papers")}</span></div>`; }).join("");
+    return `<details class="sv-list sv-ana"><summary>Exam analysis</summary><p class="sv-ana-p">How often each topic came up in the last ${a.years.length} papers${yrs ? ` (${yrs})` : ""}, and its share of the marks. Any topic on your course can come up, so cover them all.</p><p class="sv-ana-p"><b>★ Asked every year:</b> in every one of the last ${a.years.length} papers, and among the topics worth the most marks.</p>${rows}</details>`;
   }
 
   // Most urgent first: refresh before an exam, things he pinned, questions to fix, then learning
@@ -1449,7 +1510,8 @@
         ${chs.length ? `<div id="subjSession"></div>` : ""}
         ${chs.length ? `<div class="sv-list"><span class="sv-lab" style="padding:14px 18px 6px">${state.examFocus ? "Exam questions by topic" : "Topics"}</span>${gapNote(chs)}${chs.filter(c => !state.examFocus || (c.exam && c.exam.n)).map(c => { const [cls, txt0] = topicStatus(c);
           const txt = state.examFocus ? `${plural(c.exam.n, "exam question", "exam questions")}${c.exam.tried ? ` · ${c.exam.tried} tried` : ""}` : txt0;
-          return `<button type="button" class="sv-row" data-open="${c.id}"><span class="sv-n">${esc(String(c.order_num ?? ""))}</span><span class="sv-b"><span class="sv-t">${esc(shortTitle(c.title))}</span><span class="sv-s ${cls}">${c.book ? esc(c.book) + " · " : ""}${esc(txt)}</span></span><span class="hs-chev" aria-hidden="true">›</span></button>`; }).join("")}</div>` : `<div class="hs-empty">No topics yet.</div>`}
+          return `<button type="button" class="sv-row" data-open="${c.id}"><span class="sv-n">${esc(String(c.order_num ?? ""))}</span><span class="sv-b"><span class="sv-t">${c.examInfo && c.examInfo.star ? `<span class="sv-star" title="Asked every year" aria-label="Asked every year">★</span>` : ""}${esc(shortTitle(c.title))}</span><span class="sv-s ${cls}">${c.book ? esc(c.book) + " · " : ""}${esc(txt)}</span></span><span class="hs-chev" aria-hidden="true">›</span></button>`; }).join("")}</div>` : `<div class="hs-empty">No topics yet.</div>`}
+        ${chs.length ? analysisHTML(m, s) : ""}
         ${years.length ? `<button type="button" class="sv-papers" data-mode="papers"><span class="sv-ico" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M8 13h8"/><path d="M8 17h5"/></svg></span><span class="sv-b"><span class="sv-t">Past papers</span><span class="sv-s">Real exam papers, ${years.length > 1 ? `${years[years.length - 1]}–${years[0]}` : years[0]}</span></span><span class="hs-chev" aria-hidden="true">›</span></button>` : ""}`;
     }
     view.innerHTML = `<div class="hs sv">${body}</div>`;
@@ -1470,5 +1532,5 @@
     });
   }
 
-  window.Stages = { topicStatus, ago, leftOff, nextUp, sessionNext, ringSvg, DAILY_GOAL, loadOverview, buildModel, renderHome, renderSubject, chapterStage, statusLine, examBox, markClassDone, startFresh, restartChapter, parseDate, fmtDate, untilText, REFRESH_DAYS, PRACTICE_TITLES, addCss };
+  window.Stages = { examLine, topicStatus, ago, leftOff, nextUp, sessionNext, ringSvg, DAILY_GOAL, loadOverview, buildModel, renderHome, renderSubject, chapterStage, statusLine, examBox, markClassDone, startFresh, restartChapter, parseDate, fmtDate, untilText, REFRESH_DAYS, PRACTICE_TITLES, addCss };
 })();
