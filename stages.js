@@ -310,7 +310,13 @@
   .sn-q{font-size:17px;margin-top:4px}
   .sn-subs{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
   .sn-sub{display:flex;flex-direction:column;gap:3px;text-align:left;padding:14px 16px;border-radius:14px;border:2px solid var(--t-line);background:var(--t-card);color:var(--t-ink);font:inherit;cursor:pointer}
-  .sn-sub b{font-size:16px}.sn-sub:hover,.sn-chip:hover{border-color:var(--t-accent)}
+  .sn-sub b{font-size:16px}
+  .sn-sub.sugg{border-color:var(--t-accent)}
+  .sn-tag{font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--t-accent)}
+  .sn-wk{display:block;height:6px;border-radius:3px;background:var(--t-line);overflow:hidden;margin-top:6px}
+  .sn-wk i{display:block;height:100%;background:var(--t-accent)}
+  .sn-checkin{background:var(--t-card);border:2px solid var(--t-line);border-radius:18px;padding:18px 20px;display:flex;flex-direction:column;gap:12px}
+  .sn-checkin .step-h{justify-content:space-between;align-items:flex-start;gap:12px}.sn-sub:hover,.sn-chip:hover{border-color:var(--t-accent)}
   .sn-box{border:2px solid var(--t-accent);margin:4px 0 6px}
   .sn-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
   .sn-item{width:100%;display:flex;gap:12px;align-items:flex-start;text-align:left;background:var(--t-soft);border:2px solid transparent;border-radius:12px;padding:12px 14px;font:inherit;color:var(--t-ink);cursor:pointer}
@@ -425,6 +431,7 @@
   }
   const BOOKMARK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"/></svg>';
   const DAILY_GOAL = 30;
+  const WEEK_GOAL = 60;   // minutes per subject per week: learning and testing
   const STREAK_ROUND = 10;
   const STREAK_RULE = "A streak day is one finished round of 10 questions, one exam question, or 30 minutes of testing";
   // Where to pick up: the chapter tested most recently that still has quick-test questions left
@@ -489,7 +496,7 @@
       sb(`chapter_status?select=topic_id,class_done_at,fresh_since,test_on&profile_id=eq.${profile.id}`),
       sb(`exam_dates?select=subject_id,label,exam_date&profile_id=eq.${profile.id}`),
       sb(`topic_flags?select=topic_id,flag_type,note,updated_at&profile_id=eq.${profile.id}`),
-      sb(`study_time?select=kind,seconds,created_at&profile_id=eq.${profile.id}&created_at=gte.${encodeURIComponent(since)}`),
+      sb(`study_time?select=kind,seconds,created_at,topic_id&profile_id=eq.${profile.id}&created_at=gte.${encodeURIComponent(since)}`),
       sb(`answer_reviews?select=question_id,marks_awarded,marks_available,created_at&profile_id=eq.${profile.id}&order=created_at.asc&limit=2000`),
       sb(`student_settings?select=exam_focus,new_courses&profile_id=eq.${profile.id}`).catch(() => [])
     ]);
@@ -530,7 +537,7 @@
       if (!sid || !(learnSteps[sid] && learnSteps[sid].has(r.step_order))) return;
       learnDone[r.topic_id] = (learnDone[r.topic_id] || 0) + 1;
       if (r.updated_at) learnLast[r.topic_id] = Math.max(learnLast[r.topic_id] || 0, new Date(r.updated_at).getTime());
-      if (r.updated_at) learnEvents.push({ at: new Date(r.updated_at), min: minutes[sid + ":" + r.step_order] || 5 });
+      if (r.updated_at) learnEvents.push({ at: new Date(r.updated_at), min: minutes[sid + ":" + r.step_order] || 5, tid: r.topic_id });
     });
     const status = {}; (raw.status || []).forEach(r => { status[r.topic_id] = r; });
     const exams = {}; (raw.exams || []).forEach(r => { exams[r.subject_id] = r; });
@@ -601,6 +608,12 @@
     let testSec = 0; (raw.timeRows || []).forEach(r => { if (r.kind === "test" && thisWeek(new Date(r.created_at))) testSec += r.seconds; });
     let learnMin = 0; learnEvents.forEach(e => { if (thisWeek(e.at)) learnMin += e.min; });
     (raw.timeRows || []).forEach(r => { if (r.kind === "learn" && thisWeek(new Date(r.created_at))) learnMin += r.seconds / 60; });
+    // Minutes this week per subject, learning and testing together, against an hour per subject
+    const weekBy = {};
+    const addW = (tid, min) => { const t = m.topics[tid]; if (!t) return; const k = (m.groupOf && m.groupOf[t.subject_id]) || t.subject_id; weekBy[k] = (weekBy[k] || 0) + min; };
+    (raw.timeRows || []).forEach(r => { if (r.topic_id && thisWeek(new Date(r.created_at))) addW(r.topic_id, r.seconds / 60); });
+    learnEvents.forEach(e => { if (e.tid && thisWeek(e.at)) addW(e.tid, e.min); });
+    m.weekly = { goal: WEEK_GOAL, by: weekBy, ws, checkedIn: Object.values(status).some(r => r.class_done_at && new Date(r.class_done_at) >= ws) };
     let answered = 0, fixed = 0; const everWrong = new Set();
     (raw.attempts || []).forEach(a => {
       const at = new Date(a.created_at), r = Number(a.result);
@@ -895,7 +908,7 @@
   // ---- "What's new at school?" ----
   const QA_MIC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v5"/></svg>';
   function isoDay(d){ const x = new Date(d); return x.getFullYear() + "-" + String(x.getMonth()+1).padStart(2,"0") + "-" + String(x.getDate()).padStart(2,"0"); }
-  function mountQuickAdd(el, m, { sb, profile, reload, state }){
+  function mountQuickAdd(el, m, { sb, profile, reload, state, title = "What's new at school?", hint = "Say or type what's coming up, what you did in class, or any tests.", onSaved = null, onSkip = null }){
     if (!el) return;
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     const subjTitle = id => (m.bySubject[id] || {}).title || "";
@@ -909,10 +922,11 @@
       return (chs.find(c => c.stage === "none") || chs[0] || {}).id || null;
     };
     function paintInput(msgHtml, value){
-      el.innerHTML = `<div class="step-h"><div><h3>What's new at school?</h3><span class="hs-sub">Say or type what's coming up, what you did in class, or any tests.</span></div></div>
+      el.innerHTML = `<div class="step-h"><div><h3>${esc(title)}</h3><span class="hs-sub">${esc(hint)}</span></div>${onSkip ? `<button type="button" class="hs-link quiet" data-skip>Not this week</button>` : ""}</div>
         <form class="qa-row"><div class="qa-box"><input type="text" name="t" autocomplete="off" aria-label="What's new at school" placeholder='e.g. "econ ch 3 coming up, we did polsoc ch 5, geog test friday"'>${SR ? `<button type="button" class="qa-mic" aria-label="Speak" title="Speak">${QA_MIC}</button>` : ""}</div><button class="hs-btn ghost" type="submit" style="min-height:48px;padding:10px 22px;font-size:16px">Add</button></form>
         <p class="qa-err" hidden></p>${msgHtml || ""}`;
       const form = el.querySelector("form"), input = form.t, err = el.querySelector(".qa-err");
+      const sk = el.querySelector("[data-skip]"); if (sk) sk.onclick = onSkip;
       if (value) input.value = value;
       const mic = el.querySelector(".qa-mic");
       let rec = null;
@@ -963,7 +977,7 @@
         return `<div class="qa-item"><span class="qa-ic ${ic[0]}">${ic[1]}</span><span class="qa-b"><span class="k">${esc(k)}</span><span class="t">${a.type === "unclear" || a.type === "exam" || a.type === "deadline" ? t : esc(t)}</span><span class="w">${w}</span></span>${can ? `<input type="checkbox" class="qa-check" data-i="${i}" checked aria-label="Include this">` : ""}</div>`;
       };
       const usable = actions.some(a => a.type !== "unclear");
-      el.innerHTML = `<div class="step-h"><div><h3>What's new at school?</h3><span class="hs-sub">You said: "${esc(text)}"</span></div></div>
+      el.innerHTML = `<div class="step-h"><div><h3>${esc(title)}</h3><span class="hs-sub">You said: "${esc(text)}"</span></div></div>
         <b style="font-size:17px">Here's what I'll do</b>
         <div class="qa-list">${actions.map(item).join("")}</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap">${usable ? `<button class="hs-btn" type="button" data-ok style="min-height:48px;padding:10px 24px;font-size:16px">Looks right</button>` : ""}<button class="hs-btn ghost" type="button" data-again style="min-height:48px;padding:10px 22px;font-size:16px">Start again</button></div>
@@ -974,7 +988,7 @@
       if (ok) ok.onclick = async () => {
         ok.disabled = true; ok.textContent = "Saving…";
         const chosen = actions.filter((a, i) => { const cb = el.querySelector(`.qa-check[data-i="${i}"]`); return a.type !== "unclear" && cb && cb.checked; });
-        try { const summary = await applyActions(chosen); state.qaMsg = summary; reload(); }
+        try { const summary = await applyActions(chosen); state.qaMsg = summary; if (onSaved) onSaved(); reload(); }
         catch (x) { const e2 = el.querySelector(".qa-err"); e2.textContent = "Something didn't save. Try again."; e2.hidden = false; ok.disabled = false; ok.textContent = "Looks right"; }
       };
     }
@@ -1199,6 +1213,13 @@
   function mountSession(el, m, { profile, openChapter, openSubject, state, again, sb, reload, setFocus, subject }){
     const goalMin = m.goal ? m.goal.minutes : DAILY_GOAL, todayMin = m.goal ? m.goal.today : 0;
     const need = todayMin >= goalMin ? 10 : goalMin - todayMin;
+    // The week: an hour per subject, learning and testing. The subject with least time is suggested.
+    const wk = m.weekly || { goal: WEEK_GOAL, by: {} };
+    const subjMin = sj => Math.round(wk.by[sj.id] || 0);
+    const withCh = m.subjects.filter(sj => (sj.chapters || []).length);
+    const weekGoal = wk.goal * withCh.length, weekDone = withCh.reduce((n, sj) => n + Math.min(wk.goal, subjMin(sj)), 0);
+    const suggested = withCh.filter(sj => subjMin(sj) < wk.goal).sort((a, b) => subjMin(a) - subjMin(b))[0] || null;
+    const hm = n => n >= 60 ? `${Math.floor(n / 60)} h${n % 60 ? " " + (n % 60) : ""}` : `${n} min`;
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     const head = (sub) => `<div class="pl-head">${ringSvg(56, todayMin / goalMin, todayMin >= goalMin ? "&#10003;" : "", 7)}<span><b>Today's session</b><span class="s">${sub || (todayMin >= goalMin ? `Today's ${goalMin} minutes: done &#10003; Anything more is a bonus.` : todayMin ? `${todayMin} of ${goalMin} minutes tested today. ${goalMin - todayMin} to go.` : `${goalMin} minutes of testing today.`)}${todayMin < goalMin ? (m.goal && m.goal.todayCounts ? " Today counts for your streak &#10003;" : " One round counts for your streak.") : ""}</span></span></div>`;
     const sum = items => items.reduce((n, it) => n + (it.mins || 0), 0);
@@ -1333,11 +1354,11 @@
 
     const rowsOf = s => s.items.map((it, i) => ({ it, i, d: describe(m, it), st: itemStatus(m.topics[it.topic_id], it, s.startedAt, m) })).filter(r => r.d);
     function topBar(){
-      const pct = Math.min(100, Math.round(todayMin / goalMin * 100));
+      const pct = Math.min(100, Math.round(weekDone / Math.max(1, weekGoal) * 100));
       const fx = m.focus || {}, x = m.nextExam;
       const offer = !fx.on && x && x.days <= REFRESH_DAYS && fx.dismissed !== x.iso
         ? `<div class="td-offer"><span>${esc(x.label || "Exams")} ${x.days === 0 ? "start today" : x.days === 1 ? "start tomorrow" : `in ${x.days} days`}. Switch on exam focus?</span><span class="td-offer-b"><button type="button" class="hs-link" data-fx-yes>Switch on</button><button type="button" class="hs-link quiet" data-fx-no>Not now</button></span></div>` : "";
-      return `${offer}<div class="td-top"><span class="ss-k">Study now${fx.on ? " · exam focus" : ""}</span><span class="td-min">${todayMin >= goalMin ? `Today's ${goalMin} min done &#10003;` : `${todayMin} of ${goalMin} min today`}</span></div><div class="td-bar" aria-hidden="true"><i style="width:${pct}%"></i></div>`;
+      return `${offer}<div class="td-top"><span class="ss-k">Study now${fx.on ? " · exam focus" : ""}</span><span class="td-min">${weekDone >= weekGoal ? `This week's ${hm(weekGoal)} done &#10003;` : `${hm(weekDone)} of ${hm(weekGoal)} this week`}</span></div><div class="td-bar" aria-hidden="true"><i style="width:${pct}%"></i></div>`;
     }
 
     // Home: how long, then which subject. A session already running offers to carry on.
@@ -1353,12 +1374,23 @@
         resume = `<button type="button" class="sn-resume" data-go><span class="sn-b"><b>Carry on with ${esc(s.title)}</b><span class="s">${cur.line}${next ? ` · next: ${esc(next.d.what.charAt(0).toLowerCase() + next.d.what.slice(1))}, ${esc(next.d.name)}` : " · all done &#10003;"}</span></span><span class="hs-chev" aria-hidden="true">›</span></button>`;
       }
       let mins = lastMinutes(profile);
+      // Weekly check-in: what was covered in class, so the plan follows the class
+      const ck = `sp-checkin:${profile.id}:${isoDay(wk.ws || weekStart(new Date()))}`;
+      const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+      const lsSet = k => { try { localStorage.setItem(k, "1"); } catch (e) {} };
+      const showCheckin = !!sb && (state && state.qaMsg || (!wk.checkedIn && !lsGet(ck)));
       el.innerHTML = `${topBar()}
+        ${showCheckin ? `<div class="sn-checkin" id="weekCheckin"></div>` : ""}
         ${resume}
         <div class="td-t">${s ? "Or start something new. How long?" : "How long do you want to study?"}</div>
         ${chipsHTML(mins)}
         <div class="td-t sn-q">Which subject?</div>
-        <div class="sn-subs">${m.subjects.map(sj => { const [k, t] = cur && cur.key === sj.id ? ["now", `In progress · ${cur.line}`] : subjectHint(m, sj); return `<button type="button" class="sn-sub" data-sub="${sj.id}"><b>${esc(sj.title)}</b><span class="sv-s ${k}">${esc(t)}</span></button>`; }).join("")}</div>`;
+        <div class="sn-subs">${m.subjects.map(sj => { const [k, t] = cur && cur.key === sj.id ? ["now", `In progress · ${cur.line}`] : subjectHint(m, sj); const wm = subjMin(sj), has = (sj.chapters || []).length;
+          return `<button type="button" class="sn-sub${suggested === sj ? " sugg" : ""}" data-sub="${sj.id}">${suggested === sj ? `<span class="sn-tag">Suggested · least time this week</span>` : ""}<b>${esc(sj.title)}</b><span class="sv-s ${k}">${esc(t)}</span>${has ? `<span class="sn-wk" aria-hidden="true"><i style="width:${Math.min(100, Math.round(wm / wk.goal * 100))}%"></i></span><span class="sv-s">${wm >= wk.goal ? `${hm(wk.goal)} this week &#10003;` : `${wm} of ${wk.goal} min this week`}</span>` : ""}</button>`; }).join("")}</div>`;
+      const ci = el.querySelector("#weekCheckin");
+      if (ci) mountQuickAdd(ci, m, { sb, profile, reload, state, title: "This week in class",
+        hint: "What did you cover in class this week? Say or type it and your plan will follow your class.",
+        onSaved: () => lsSet(ck), onSkip: () => { lsSet(ck); paint(); } });
       bindChips(el, n => { mins = n; });
       const g = el.querySelector("[data-go]"); if (g) g.onclick = () => openSubject && openSubject(s.subject);
       el.querySelectorAll("[data-sub]").forEach(b => b.onclick = () => {
