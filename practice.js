@@ -781,6 +781,27 @@
       card.scrollIntoView({ block:"start", behavior:"smooth" });
     }
 
+    // "That's today's session done": a clear stopping point, with more as a choice
+    function doneBox(){
+      const box = h(`<div class="pr-nextup"><span class="lab">Today's session</span><b>That's today's session done &#10003;</b><span>Anything more is a bonus.</span>
+        <div class="pr-row"><button type="button" class="pr-btn big" data-hm>Back to home</button></div></div>`);
+      box.querySelector("[data-hm]").onclick = () => goHome ? goHome() : home();
+      return box;
+    }
+    // After a planned exam question or memory check: lead with the next thing in today's session
+    function sessionContinue(card, kind){
+      if (!sessionNext) return;
+      saving.catch(() => {}).then(() => sessionNext(topic.id, kind)).catch(() => null).then(n => {
+        if (!n || !card.isConnected) return;
+        const row = card.querySelector(".pr-nextrow");
+        if (n.done) { if (row) row.querySelectorAll(".pr-btn").forEach(b => b.classList.add("ghost")); (row || card).after(doneBox()); return; }
+        const box = h(`<div class="pr-nextup"><span class="lab">Next up</span><b>${esc(n.title)}</b>${n.note ? `<span>${esc(n.note)}</span>` : ""}
+          <button type="button" class="pr-btn big" data-keep>Continue session</button></div>`);
+        box.querySelector("[data-keep]").onclick = () => { if (session) { logTime(session); session = null; } openToday && openToday(n); };
+        if (row) { row.querySelectorAll(".pr-btn").forEach(b => b.classList.add("ghost")); row.before(box); } else card.append(box);
+        box.querySelector("[data-keep]").focus({ preventScroll:true });
+      });
+    }
     function nextBtn(card){
       // Say where it goes. Single exam questions (from a paper or the Exam Prep list) get a Next question
       // button to the next one in that paper or list, with Back as the second choice.
@@ -811,8 +832,10 @@
         if (nx) start("Exam question", [nx], "prep", false, { planned: true }); else home();
       };
       card.append(b); b.querySelector("[data-go]").focus({ preventScroll:true });
+      if (single && !inPaper && (planned || session.memory)) sessionContinue(card, session.memory ? "memory" : "exam");
     }
-    const save = async (qid, v, source) => { await record(sb, profile, qid, v, source); prog = await loadProgress(sb, profile, questions, freshSince()); paintStats(); };
+    let saving = Promise.resolve();
+    const save = (qid, v, source) => (saving = (async () => { await record(sb, profile, qid, v, source); prog = await loadProgress(sb, profile, questions, freshSince()); paintStats(); })());
     function logTime(s){
       if (!s || !s.results.length) return;
       const sec = Math.min(Math.round((Date.now() - s.t0) / 1000), s.results.length * 300 + 60, 7200);
@@ -1106,9 +1129,10 @@
         const leftHere = questions.filter(q => q.qtype !== "exam" && (prog.latest[q.id] === undefined || prog.latest[q.id] < 1)).length;
         const chTitle = String(topic.title).replace(/^Ch\s*\d+\s*:\s*/i, ""), nextN = Math.min(ROUND, leftHere);
         // Today's session comes first: once this chapter's part is done, go to the next item in it
-        const pick = (sessionNext ? sessionNext(topic.id).catch(() => null) : Promise.resolve(null)).then(sn => sn || (leftHere ? { here: true, left: leftHere, title: stoppedEarly ? `Carry on with ${chTitle}` : `Another ${nextN} on ${chTitle}`, keep: stoppedEarly ? "Keep going" : `Another ${nextN}` } : (nextUp ? nextUp(topic.id) : null)));
+        const pick = (sessionNext ? sessionNext(topic.id, "test").catch(() => null) : Promise.resolve(null)).then(sn => sn && sn.done ? { sessionDone: true } : sn || (leftHere ? { here: true, left: leftHere, title: stoppedEarly ? `Carry on with ${chTitle}` : `Another ${nextN} on ${chTitle}`, keep: stoppedEarly ? "Keep going" : `Another ${nextN}` } : (nextUp ? nextUp(topic.id) : null)));
         pick.then(n => {
           if (!n || !card.isConnected) return;
+          if (n.sessionDone) { card.querySelector(".pr-todaybox").after(doneBox()); return; }
           const box = h(`<div class="pr-nextup"><span class="lab">Next up</span><b>${esc(n.title)}</b><span>${esc(n.note ? n.note : n.here ? `About ${estMin(roundList())} min. ${plural(n.left, "question", "questions")} left in this chapter.` : n.why === "unfinished" ? `You started this one ${n.when || "before"}. ${plural(n.left, "question", "questions")} left.` : `${plural(n.left, "question", "questions")} to try.`)}</span>
             <button type="button" class="pr-btn big" data-keep>${esc(n.keep || "Keep going")}</button>
             <div class="pr-row"><button type="button" class="pp-link" data-choose style="margin:0">Choose a different chapter</button></div></div>`);

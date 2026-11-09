@@ -478,8 +478,8 @@
   <div id="view"><div class="loading">Loading…</div></div>
 </div>
 
-<script src="stages.js?v=20261109a"></script>
-<script src="practice.js?v=20261103a"></script>
+<script src="stages.js?v=20261109b"></script>
+<script src="practice.js?v=20261109b"></script>
 <script src="tutor.js?v=20261025c"></script>
 <script src="notes.js?v=20261025c"></script>
 <script>
@@ -1062,12 +1062,16 @@ async function renderChapter(){
       state.paperRun = { topic: n.topic, qid: n.id }; state.fromPaper = true; openChapter(n.topic, n.subject, "refresh"); return n;
     },
     // After a round, when today's session has another item: go to it
-    sessionNext: async (currentId) => {
+    sessionNext: async (currentId, kind) => {
       const { model } = await loadModel(); state.model = model;
-      const n = Stages.sessionNext(model, PROFILE, currentId); if (!n) return null;
-      return { id: n.c.id, subject_id: n.c.subject_id, tab: n.tab, why: "session", left: (n.c.stats || {}).quickLeft || 0, title: n.title, note: n.note, keep: "Next" };
+      const n = Stages.sessionNext(model, PROFILE, currentId, kind); if (!n) return null;
+      if (n.done) return { done: true };
+      return { id: n.c.id, subject_id: n.c.subject_id, tab: n.tab, item: n.item, why: "session", left: (n.c.stats || {}).quickLeft || 0, title: n.title, note: n.note, keep: "Next" };
     },
-    openToday: (n) => { if (n.tab && n.tab !== "test") { openChapter(n.id, n.subject_id, n.tab); return; } state.todayRun = n.id; openChapter(n.id, n.subject_id, "test"); }
+    openToday: (n) => {
+      if (n.item && state.model) { Stages.openItem(state.model, n.item, state, openChapter); return; }
+      if (n.tab && n.tab !== "test") { openChapter(n.id, n.subject_id, n.tab); return; } state.todayRun = n.id; openChapter(n.id, n.subject_id, "test");
+    }
   }).then(api => {
     practiceApi = api;
     if (api && state.todayRun === state.topicId) { state.todayRun = null; autoTab = false; api.runToday(); }

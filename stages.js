@@ -1140,16 +1140,27 @@
   }
   // The next unfinished item in today's session, for "Next up" after a round. Returns null while
   // the chapter they're on still has session work left, so they carry on there first.
-  function sessionNext(m, profile, currentId){
-    const s = loadSession(profile); if (!s) return null;
+  // kind is what they just did there ("test", "exam" or "memory"). When everything is done: { done: true }.
+  function sessionNext(m, profile, currentId, kind = "test"){
+    const s = loadSession(profile); if (!s || s.ended) return null;
     const rows = s.items.map(it => ({ it, c: m.topics[it.topic_id] })).filter(r => r.c);
-    const here = rows.find(r => r.c.id === currentId);
-    if (here && here.it.kind !== "memory" && !itemStatus(here.c, here.it, s.startedAt, m).done) return null;
-    const next = rows.find(r => r.c.id !== currentId && r.it.kind !== "memory" && !itemStatus(r.c, r.it, s.startedAt, m).done);
-    if (!next) return null;
+    const isHere = r => r.c.id === currentId && (r.it.kind || "test") === kind;
+    const here = rows.find(isHere);
+    if (here && !itemStatus(here.c, here.it, s.startedAt, m).done) return null;
+    const next = rows.find(r => !isHere(r) && !itemStatus(r.c, r.it, s.startedAt, m).done);
+    if (!next) return rows.length && here ? { done: true, title: s.title || "" } : null;
     const d = describe(m, next.it);
     return { c: next.c, item: next.it, tab: { learn: "learn", revise: "learn", exam: "refresh" }[next.it.kind] || "test",
       title: `Next in today's session: ${d.subj} · ${d.name}`, note: `${d.what} · ${d.detail}.` };
+  }
+
+  // Open one session item and start it straight away
+  function openItem(m, it, state, openChapter){
+    const c = m.topics[it.topic_id]; if (!c) return;
+    if (it.kind === "test") { state.todayRun = c.id; openChapter(c.id, c.subject_id, "test"); }
+    else if (it.kind === "memory") { state.memoryRun = { topic: c.id, qid: it.qid, origin: it.origin, days: it.days }; openChapter(c.id, c.subject_id, "refresh"); }
+    else if (it.kind === "exam") { state.examRun = c.id; openChapter(c.id, c.subject_id, "refresh"); }
+    else openChapter(c.id, c.subject_id, "learn");
   }
 
   // ---- Study now: choose how long, then a subject; the subject page suggests what fills that time ----
@@ -1191,13 +1202,7 @@
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     const head = (sub) => `<div class="pl-head">${ringSvg(56, todayMin / goalMin, todayMin >= goalMin ? "&#10003;" : "", 7)}<span><b>Today's session</b><span class="s">${sub || (todayMin >= goalMin ? `Today's ${goalMin} minutes: done &#10003; Anything more is a bonus.` : todayMin ? `${todayMin} of ${goalMin} minutes tested today. ${goalMin - todayMin} to go.` : `${goalMin} minutes of testing today.`)}${todayMin < goalMin ? (m.goal && m.goal.todayCounts ? " Today counts for your streak &#10003;" : " One round counts for your streak.") : ""}</span></span></div>`;
     const sum = items => items.reduce((n, it) => n + (it.mins || 0), 0);
-    const open = (it) => {
-      const c = m.topics[it.topic_id]; if (!c) return;
-      if (it.kind === "test") { state.todayRun = c.id; openChapter(c.id, c.subject_id, "test"); }
-      else if (it.kind === "memory") { state.memoryRun = { topic: c.id, qid: it.qid, origin: it.origin, days: it.days }; openChapter(c.id, c.subject_id, "refresh"); }
-      else if (it.kind === "exam") { state.examRun = c.id; openChapter(c.id, c.subject_id, "refresh"); }
-      else openChapter(c.id, c.subject_id, "learn");
-    };
+    const open = (it) => openItem(m, it, state, openChapter);
 
 
     // 2. Say (or type) what they want instead
@@ -1532,5 +1537,5 @@
     });
   }
 
-  window.Stages = { examLine, topicStatus, ago, leftOff, nextUp, sessionNext, ringSvg, DAILY_GOAL, loadOverview, buildModel, renderHome, renderSubject, chapterStage, statusLine, examBox, markClassDone, startFresh, restartChapter, parseDate, fmtDate, untilText, REFRESH_DAYS, PRACTICE_TITLES, addCss };
+  window.Stages = { openItem, examLine, topicStatus, ago, leftOff, nextUp, sessionNext, ringSvg, DAILY_GOAL, loadOverview, buildModel, renderHome, renderSubject, chapterStage, statusLine, examBox, markClassDone, startFresh, restartChapter, parseDate, fmtDate, untilText, REFRESH_DAYS, PRACTICE_TITLES, addCss };
 })();
