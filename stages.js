@@ -225,6 +225,7 @@
   .ss-start{margin-left:40px;min-height:46px;font-size:16px}
   .ss-add{border:2px dashed var(--t-accent);background:var(--t-card);color:var(--t-accent);border-radius:999px;min-height:44px;font:inherit;font-weight:700;font-size:15px;cursor:pointer}
   .ss-k{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--t-accent)}
+  .ss-k .hs-link{text-transform:none;letter-spacing:0;font-size:13px;font-weight:700}
   .ss-count{font-size:19px;font-weight:700}
   .hc .hc-hello{display:flex;flex-direction:column;gap:4px}
   .td{gap:12px}
@@ -1407,19 +1408,25 @@
       el.className = "pl td sn-box";
       const sj = m.bySubject[subject] || {};
       const s = subjectSession(profile), mine = s && s.subject === subject ? s : null;
-      if (!mine) {
-        let mins = lastMinutes(profile);
+      const chooser = () => {
+        let mins = (mine && mine.minutes) || lastMinutes(profile);
         el.innerHTML = `<span class="ss-k">Study now</span>
           <div class="td-t">How long do you want to study ${esc(sj.title || "")}?</div>
           ${chipsHTML(mins)}
           <button type="button" class="hs-btn ss-go" data-start>Start</button>`;
         bindChips(el, n => { mins = n; });
         el.querySelector("[data-start]").onclick = () => { startSubjectSession(m, profile, subject, mins); paint(); };
-        return;
+      };
+      if (!mine) {
+        // Arriving here any way (home, the back button, a link) shows the same thing: a suggested plan for
+        // this subject at the usual length. Only a session the student ended here asks again.
+        const last = loadSession(profile);
+        if (last && last.subject === subject && last.ended) { chooser(); return; }
+        startSubjectSession(m, profile, subject, lastMinutes(profile)); paintSubject(); return;
       }
       const rows = rowsOf(mine), left = rows.filter(r => !r.st.done), next = left[0];
       const begun = rows.some(r => r.st.done || r.st.n);
-      el.innerHTML = `<span class="ss-k">Suggested for these ${minLabel(mine.minutes)}</span>
+      el.innerHTML = `<span class="ss-k">Suggested for these ${minLabel(mine.minutes)} · <button type="button" class="hs-link" data-mins>change</button></span>
         ${rows.length ? `<ol class="sn-list">${rows.map((r, n) => `<li><button type="button" class="sn-item${r.st.done ? " done" : ""}${r === next ? " next" : ""}" data-item="${r.i}"><span class="ss-num">${r.st.done ? "&#10003;" : n + 1}</span><span class="sn-b"><b>${esc(r.d.what)} · ${esc(r.d.name)}</b><span class="s">${esc(r.d.detail)}</span></span></button></li>`).join("")}</ol>` : `<span class="hs-sub" style="font-size:15px">Nothing to suggest here yet. Pick a topic below, or say what you'd like to do.</span>`}
         ${next ? `<button type="button" class="hs-btn ss-go" data-go>${begun ? "Carry on" : "Let's go"}</button>` : rows.length ? `<div class="td-t">All done &#10003;</div><button type="button" class="hs-btn ss-go" data-more>Find me more</button>` : ""}
         <div class="td-then"><button type="button" class="hs-link quiet" data-end>End session</button><button type="button" class="hs-link" data-change>Edit session</button></div>`;
@@ -1432,6 +1439,7 @@
       };
       el.querySelector("[data-end]").onclick = () => { mine.ended = true; saveSession(profile, mine); paint(); };
       el.querySelector("[data-change]").onclick = () => paintSay();
+      el.querySelector("[data-mins]").onclick = chooser;
     }
 
     function bindOffer(){
