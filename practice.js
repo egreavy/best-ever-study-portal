@@ -372,6 +372,22 @@
   }
   const BOOK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h12v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5"/><path d="M9 8h6"/><path d="M9 12h6"/></svg>';
   const isPast = q => q.qtype === "exam" && !/^exam-style/i.test(q.source || "");
+  // Quick recall: a one-to-three-word answer is checked on the spot against the accepted answers,
+  // allowing small spelling slips. Anything that doesn't match goes to the AI, so a correct answer
+  // in other words still counts.
+  const norm = t => String(t || "").toLowerCase().replace(/[‘’']/g, "").replace(/[^a-z0-9=+%€.\s-]/g, " ").replace(/\b(a|an|the)\b/g, " ").replace(/\s+/g, " ").trim();
+  function editDist(a, b){ if (Math.abs(a.length - b.length) > 2) return 9; const d = Array.from({ length: a.length + 1 }, (_, i) => [i]); for (let j = 1; j <= b.length; j++) d[0][j] = j;
+    for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i-1][j] + 1, d[i][j-1] + 1, d[i-1][j-1] + (a[i-1] === b[j-1] ? 0 : 1)); return d[a.length][b.length]; }
+  function instantMatch(q, text){
+    if (q.answer_kind !== "word" || !Array.isArray(q.accept) || !q.accept.length) return false;
+    const t = norm(text).replace(/\s*=\s*/g, "="); if (!t || t.split(" ").length > 6) return false;
+    // Word by word: each word exact, or a small slip in a longer word that starts with the same letter
+    // (so "homogenius" counts, but "price makers" never matches "price takers")
+    const close = (w, x) => w === x || w.replace(/s$/, "") === x.replace(/s$/, "") || (x.length >= 6 && w[0] === x[0] && editDist(w, x) <= (x.length >= 10 ? 2 : 1));
+    return q.accept.some(a => { const x = norm(a).replace(/\s*=\s*/g, "="); if (!x) return false;
+      const tw = t.split(" "), xw = x.split(" ");
+      return tw.length === xw.length && tw.every((w, i) => close(w, xw[i])); });
+  }
   // Exam questions the student has to answer with a drawing, so a photo matters as much as the writing
   const DIAGRAM_RE = /\b(with|aid of|using|by means of|include|including)\s+(the aid of\s+)?(an?\s+|one\s+)?((clearly|neatly|fully|well)[- ])?((labelled|annotated|sketch)\s+)?(diagrams?|sketch|graph)\b(?!\s+(below|above))|\b(draw|sketch)\s+(?!an?\s+(arrow|box|circle|ring|line|dashed))(an?|and label|in)\b|\bsketch,?\s+(and\s+)?label\b|\bdraw\s+(on\s+)?the\s+(\w+\s+)?(diagram|graph|map|axes|grid|curve|arrangement)\b|\bcomplete\s+(each|the)\s+diagram\b|\bshow\s+(in|on)\s+the\s+diagram\b|\b(labelled|annotated)\s+(diagram|sketch|graph|map)\b/i;
   const needsDiagram = q => q.qtype === "exam" && DIAGRAM_RE.test(q.prompt || "");
@@ -490,7 +506,7 @@
     const freshSince = typeof opts.freshSince === "function" ? opts.freshSince : () => opts.freshSince || null;
     if (!slot || !topic) return null;
     addCss();
-    const questions = await sb(`quiz_questions?select=id,qtype,topic_label,difficulty,prompt,display,options,answer_index,explanation,model_answer,marking_scheme,source,marks&topic_id=eq.${topic.id}&order=id.asc`);
+    const questions = await sb(`quiz_questions?select=id,qtype,topic_label,difficulty,prompt,display,options,answer_index,explanation,model_answer,marking_scheme,source,marks,accept,answer_kind&topic_id=eq.${topic.id}&retired=is.false&order=id.asc`);
     if (!questions || !questions.length) return null;
     let prog = await loadProgress(sb, profile, questions, freshSince());
     let session = null;
@@ -978,7 +994,7 @@
       const images = (entry.images || []).slice(), isExam = q.qtype === "exam", wantsDiagram = needsDiagram(q);
       const mem = session && session.memory && !entry.again && !retry ? session.memory : null;
       const box = h(`<div style="display:flex;flex-direction:column;gap:10px">
-        <p class="pr-tip">Type your answer, tap the microphone to speak it, or add a photo of a written answer.</p>
+        <p class="pr-tip">${q.answer_kind === "word" ? "One to three words is enough. Type it or tap the microphone." : q.answer_kind === "sentence" ? "One sentence is enough. Type it or tap the microphone." : "Type your answer, tap the microphone to speak it, or add a photo of a written answer."}</p>
         ${SR ? "" : speakTip()}
         ${wantsDiagram ? `<label class="pr-diagram">${CAM_SVG}<span class="pr-diagram-b"><b>Add your diagram</b><span>Draw your answer on paper, label it, then add a photo.</span></span><input type="file" accept="image/*" multiple></label>` : ""}
         <div class="pr-answer">
@@ -988,7 +1004,8 @@
         <div class="pr-thumbs"></div>
         <div class="pr-row"><button type="button" class="pr-btn" data-fb>Check my answer</button><button type="button" class="pr-btn ghost" data-self>Just show the answer</button></div>
         <p class="pr-err" hidden></p></div>`);
-      const ta = box.querySelector("textarea"), thumbs = box.querySelector(".pr-thumbs"), err = box.querySelector(".pr-err");
+      const ta = box.querySelector("textarea"); if (q.answer_kind) { ta.rows = q.answer_kind === "word" ? 1 : 2; ta.style.minHeight = "0"; ta.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); fbBtn.click(); } }); }
+      const thumbs = box.querySelector(".pr-thumbs"), err = box.querySelector(".pr-err");
       images.forEach((d, n) => thumbs.append(h(`<img alt="Your answer photo ${n + 1}" src="${d}">`)));
       const fbBtn = box.querySelector("[data-fb]"), selfBtn = box.querySelector("[data-self]");
       if (mem) {
@@ -1038,12 +1055,18 @@
         if (!text && !images.length) { err.textContent = "Type, speak or add a photo of your answer first, or use Just show the answer."; err.hidden = false; return; }
         fbBtn.disabled = selfBtn.disabled = true; fbBtn.textContent = "Reading your answer…"; err.hidden = true;
         try {
-          const r = await fetch("/api/mark-answer", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ question_id: q.id, answer_text: text, images }) });
-          const data = await r.json().catch(() => ({}));
-          if (!r.ok || !data.feedback) throw new Error(data.error || "We couldn't mark that just now. Your answer is still here, so please try again.");
-          const f = data.feedback, frac = f.marks_available ? f.marks_awarded / f.marks_available : 0;
+          const instant = !images.length && instantMatch(q, text);
+          let f;
+          if (instant) f = { marks_awarded: 1, marks_available: 1, summary: "", went_well: [`Answer: ${q.model_answer || ""}`], to_improve: [], instant: true };
+          else {
+            const r = await fetch("/api/mark-answer", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ question_id: q.id, answer_text: text, images }) });
+            const data = await r.json().catch(() => ({}));
+            if (!r.ok || !data.feedback) throw new Error(data.error || "We couldn't mark that just now. Your answer is still here, so please try again.");
+            f = data.feedback;
+          }
+          const frac = f.marks_available ? f.marks_awarded / f.marks_available : 0;
           const v = frac >= 0.8 ? 1 : frac >= 0.4 ? 0.5 : 0;
-          await sb("answer_reviews", { method:"POST", prefer:"return=minimal", body:[{ profile_id: profile.id, question_id: q.id, answer_text: text || f.transcription || null, marks_awarded: f.marks_awarded, marks_available: f.marks_available, feedback: f }] });
+          if (!instant) await sb("answer_reviews", { method:"POST", prefer:"return=minimal", body:[{ profile_id: profile.id, question_id: q.id, answer_text: text || f.transcription || null, marks_awarded: f.marks_awarded, marks_available: f.marks_available, feedback: f }] });
           done(v, mem ? `memory:${mem.origin}:${frac >= 0.6 ? "pass" : "miss"}` : entry.again ? "helped" : "written");
           box.remove();
           const list = a => a.length ? `<ul>${a.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "";

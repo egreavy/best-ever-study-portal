@@ -287,7 +287,7 @@ ${notes || "(no notes for this chapter)"}`;
     let questions = [], notesRow = [];
     try {
       [questions, notesRow] = await Promise.all([
-        sb(`quiz_questions?select=id,qtype,topic_label,prompt,options,answer_index,explanation,model_answer,marking_scheme,source,marks&topic_id=eq.${topic.id}&order=id.asc`),
+        sb(`quiz_questions?select=id,qtype,topic_label,prompt,options,answer_index,explanation,model_answer,marking_scheme,source,marks&topic_id=eq.${topic.id}&retired=is.false&order=id.asc`),
         sb(`topic_notes?select=notes&topic_id=eq.${topic.id}`)
       ]);
     } catch (e) { return; }

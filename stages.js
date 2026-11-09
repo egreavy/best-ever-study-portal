@@ -505,7 +505,7 @@
     // The database returns at most 1,000 rows per request, so page through every batch
     for (let i = 0; i < topicIds.length; i += 40) {
       for (let off = 0; ; off += 1000) {
-        const part = await sb(`quiz_questions?select=id,topic_id,qtype,marks,source&topic_id=in.${inList(topicIds.slice(i, i + 40))}&order=id.asc&limit=1000&offset=${off}`) || [];
+        const part = await sb(`quiz_questions?select=id,topic_id,qtype,marks,source&topic_id=in.${inList(topicIds.slice(i, i + 40))}&retired=is.false&order=id.asc&limit=1000&offset=${off}`) || [];
         part.forEach(q => questions.push(q));
         if (part.length < 1000) break;
       }

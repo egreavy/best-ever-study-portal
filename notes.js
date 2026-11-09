@@ -62,7 +62,7 @@
     async function load(){
       [notes, qs] = await Promise.all([
         sb(`student_notes?select=id,title,covered,question_ids,created_at&profile_id=eq.${profile.id}&topic_id=eq.${topic.id}&order=created_at.desc`).catch(() => []),
-        sb(`quiz_questions?select=id,qtype,topic_label,prompt,options,answer_index,model_answer,source&topic_id=eq.${topic.id}&order=id.asc`).catch(() => [])
+        sb(`quiz_questions?select=id,qtype,topic_label,prompt,options,answer_index,model_answer,source&topic_id=eq.${topic.id}&retired=is.false&order=id.asc`).catch(() => [])
       ]);
       notes = notes || []; qs = qs || [];
     }

@@ -15,7 +15,7 @@ function sameSite(req) {
 }
 
 async function getQuestion(id) {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/quiz_questions?select=id,topic_id,qtype,topic_label,prompt,display,model_answer,marking_scheme,source,marks&id=eq.${encodeURIComponent(id)}`,
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/quiz_questions?select=id,topic_id,qtype,topic_label,prompt,display,model_answer,marking_scheme,source,marks,answer_kind&id=eq.${encodeURIComponent(id)}`,
     { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } });
   const rows = r.ok ? await r.json() : [];
   return rows[0] || null;
@@ -54,7 +54,9 @@ A full-marks model answer, for your reference only: ${q.model_answer || "(none)"
 
 ${hasImages ? "The student's answer is in the attached photo(s) or screenshot(s). Read it carefully, including handwriting." : ""}${typed ? `\nThe student's typed answer:\n"""${typed}"""` : ""}
 
-${q.qtype !== "exam" ? `IMPORTANT: this is a quick short-answer check, not an exam question. In "summary", "went_well", "to_improve", "example" and "next_step", never mention marks, scoring, full marks or losing marks. Just say plainly what is right and what is missing. (Still fill in the number fields.)
+${q.answer_kind ? `This is a quick recall question: the expected answer is ${q.answer_kind === "word" ? "one to three words" : "one short sentence"}. Give full marks to any answer with the same meaning as the model answer, however briefly it is put. Keep every feedback item to one short sentence.
+
+` : ""}${q.qtype !== "exam" ? `IMPORTANT: this is a quick short-answer check, not an exam question. In "summary", "went_well", "to_improve", "example" and "next_step", never mention marks, scoring, full marks or losing marks. Just say plainly what is right and what is missing. (Still fill in the number fields.)
 
 ` : ""}Rules:
 - Never take marks off for spelling, grammar or handwriting. Mark the ideas.
