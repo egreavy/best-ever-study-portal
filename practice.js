@@ -753,7 +753,7 @@
     function start(name, list, where, today, extra){
       if (!list || !list.length) return;
       if (session) { logTime(session); home(); }
-      session = { planned: !!(extra && extra.planned), name, queue: list.map(q => ({ q, retry:false })), i:0, results:[], total:list.length, startTotal:list.length, t0: Date.now(), where: where === "prep" && prepSlot ? prepSlot : slot, today: !!today, base: 0, memory: (extra && extra.memory) || null, paper: !!(extra && extra.paper) };
+      session = { planned: !!(extra && extra.planned), guided: !!(extra && extra.guided), name, queue: list.map(q => ({ q, retry:false })), i:0, results:[], total:list.length, startTotal:list.length, t0: Date.now(), where: where === "prep" && prepSlot ? prepSlot : slot, today: !!today, base: 0, memory: (extra && extra.memory) || null, paper: !!(extra && extra.paper) };
       if (today) todayBase().then(m => { if (session) { session.base = m; paintRing(); } });
       setChrome(false);
       next();
@@ -996,6 +996,11 @@
         box.querySelector(".pr-tip").innerHTML = `<b>Memory check.</b> Answer from memory, with no notes or book. It's marked like the real exam, and shows what has stuck since you did this chapter ${mem.days} days ago.`;
         selfBtn.style.display = "none";
       }
+      if (session && session.guided && isExam && !entry.again && !retry && !mem && q.marking_scheme) {
+        // First exam question on a chapter: show what the examiner rewards, while the content is fresh
+        box.querySelector(".pr-tip").innerHTML = `<b>Your first exam question on this chapter.</b> Read what the examiner is looking for, then write your answer. A low mark on a first go is normal.`;
+        box.querySelector(".pr-tip").after(h(`<details class="pr-fb pr-guide" open><summary style="cursor:pointer;font-weight:700">What the examiner is looking for</summary><span style="white-space:pre-line;margin-top:6px">${esc(q.marking_scheme)}</span></details>`));
+      }
       if (entry.again) {
         ta.value = entry.prev || "";
         box.querySelector(".pr-tip").textContent = entry.added && entry.added.length
@@ -1119,11 +1124,22 @@
         if (btn) acts.prepend(btn); else card.querySelector("[data-home]").classList.remove("ghost");
       }
       const wasToday = session.today, mins = todayMins(), stoppedEarly = session.i < session.queue.length - 1;
+      // After the first quick-test round on a chapter: an exam question while it's fresh
+      const firstExam = session.where !== prepSlot && R.length >= 3 && ex.length > 0 && !ex.some(q => prog.ever.has(q.id));
       logTime(session);
       const where = session.where;
       session = null;
       where.replaceChildren(card);
-      if (wasToday) {
+      if (firstExam) {
+        const fq = prepQueue()[0];
+        const box = h(`<div class="pr-nextup"><span class="lab">While it's fresh</span><b>Try an exam question on this chapter</b><span>See what the examiner looks for, then write your answer. A low mark on a first go is normal. About 12 min.</span>
+          <button type="button" class="pr-btn big" data-exq>Try an exam question</button></div>`);
+        box.querySelector("[data-exq]").onclick = () => { goTo("refresh"); start("Exam question", [fq], "prep", false, { planned: true, guided: true }); };
+        (card.querySelector(".pr-missed") || card.querySelector(".pr-score-msg") || card.querySelector("h3")).after(box);
+        card.querySelectorAll("[data-acts] .pr-btn").forEach(b => b.classList.add("ghost"));
+        box.querySelector("[data-exq]").focus({ preventScroll:true });
+      }
+      if (wasToday && !firstExam) {
         const done = mins >= dailyGoal;
         (card.querySelector(".pr-missed") || card.querySelector(".pr-score-msg") || card.querySelector("h3")).after(h(`<div class="pr-todaybox">${ringHtml(64, mins, 7)}<span>${done ? `<b>Today's ${dailyGoal} minutes: done &#10003;</b> Anything more is a bonus.` : `<b>${mins} of ${dailyGoal} minutes</b> today. ${dailyGoal - mins} to go.`}</span></div>`));
         const leftHere = questions.filter(q => q.qtype !== "exam" && (prog.latest[q.id] === undefined || prog.latest[q.id] < 1)).length;
