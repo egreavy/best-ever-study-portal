@@ -309,6 +309,27 @@
   .sn-chip{min-height:46px;padding:8px 18px;border-radius:999px;border:2px solid var(--t-line);background:var(--t-card);color:var(--t-ink);font:inherit;font-size:16px;font-weight:700;cursor:pointer}
   .sn-chip.on{background:var(--t-accent);border-color:var(--t-accent);color:var(--t-on-accent)}
   .sn-q{font-size:17px;margin-top:4px}
+  .hm{gap:14px}
+  .hm-hero{background:var(--t-card);border:2px solid var(--t-accent);border-radius:20px;padding:22px 24px;display:flex;flex-direction:column;gap:6px}
+  .hm-big{font-size:22px;font-weight:700;line-height:1.25}
+  .hm-why{margin:0 0 10px;color:var(--t-muted);font-size:16px;line-height:1.4}
+  .hm-go{width:100%;justify-content:center;padding:14px;font-size:18px}
+  .hm-links{display:flex;justify-content:space-between;gap:12px;margin-top:8px;flex-wrap:wrap}
+  .hm-links .hs-link{font-size:15px}
+  .hm-chips{margin-top:6px}
+  .hm-ck{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--t-card);border:2px solid var(--t-line);border-radius:16px;padding:12px 18px;font-size:15px}
+  .hm-week{display:flex;justify-content:space-between;gap:12px;color:var(--t-muted);font-size:14px;margin:6px 4px -4px;flex-wrap:wrap}
+  .hm-subs{background:var(--t-card);border:2px solid var(--t-line);border-radius:18px;overflow:hidden}
+  .hm-row{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--t-line);padding:13px 18px;font:inherit;color:inherit;cursor:pointer}
+  .hm-row:first-child{border-top:0}
+  .hm-row:hover{background:var(--t-soft2)}
+  .hm-row:focus-visible{outline:3px solid var(--t-accent);outline-offset:-3px}
+  .hm-row-t{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}
+  .hm-row-t b{font-size:16px}
+  .hm-row-m{font-size:14px;color:var(--t-muted);white-space:nowrap}
+  .hm-bar{width:64px;height:6px;border-radius:3px;background:var(--t-line);overflow:hidden;flex:none}
+  .hm-bar i{display:block;height:100%;background:var(--t-accent)}
+  @media (max-width:520px){.hm-bar{display:none}.hm-hero{padding:18px}}
   .sn-subs{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
   .sn-sub{display:flex;flex-direction:column;gap:3px;text-align:left;padding:14px 16px;border-radius:14px;border:2px solid var(--t-line);background:var(--t-card);color:var(--t-ink);font:inherit;cursor:pointer}
   .sn-sub b{font-size:16px}
@@ -914,6 +935,12 @@
   // ---- "What's new at school?" ----
   const QA_MIC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v5"/></svg>';
   function isoDay(d){ const x = new Date(d); return x.getFullYear() + "-" + String(x.getMonth()+1).padStart(2,"0") + "-" + String(x.getDate()).padStart(2,"0"); }
+  // An example for the check-in box built from this student's own subjects
+  function qaExample(m){
+    const n = (m.subjects || []).map(s => String(s.title || "").replace(/\s*PolSoc$/i, "").split(/[\s&]+/)[0].toLowerCase()).filter(Boolean);
+    const a = n[0] || "science", b = n[1] || n[0] || "history", c = n[2] || n[0] || "geography";
+    return `${a} ch 3 coming up, we did ${b} ch 5, ${c} test friday`;
+  }
   function mountQuickAdd(el, m, { sb, profile, reload, state, title = "What's new at school?", hint = "Say or type what's coming up, what you did in class, or any tests.", onSaved = null, onSkip = null }){
     if (!el) return;
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -929,7 +956,7 @@
     };
     function paintInput(msgHtml, value){
       el.innerHTML = `<div class="step-h"><div><h3>${esc(title)}</h3><span class="hs-sub">${esc(hint)}</span></div>${onSkip ? `<button type="button" class="hs-link quiet" data-skip>Not this week</button>` : ""}</div>
-        <form class="qa-row"><div class="qa-box"><input type="text" name="t" autocomplete="off" aria-label="What's new at school" placeholder='e.g. "econ ch 3 coming up, we did polsoc ch 5, geog test friday"'>${SR ? `<button type="button" class="qa-mic" aria-label="Speak" title="Speak">${QA_MIC}</button>` : ""}</div><button class="hs-btn ghost" type="submit" style="min-height:48px;padding:10px 22px;font-size:16px">Add</button></form>
+        <form class="qa-row"><div class="qa-box"><input type="text" name="t" autocomplete="off" aria-label="What's new at school" placeholder='e.g. "${esc(qaExample(m))}"'>${SR ? `<button type="button" class="qa-mic" aria-label="Speak" title="Speak">${QA_MIC}</button>` : ""}</div><button class="hs-btn ghost" type="submit" style="min-height:48px;padding:10px 22px;font-size:16px">Add</button></form>
         <p class="qa-err" hidden></p>${msgHtml || ""}`;
       const form = el.querySelector("form"), input = form.t, err = el.querySelector(".qa-err");
       const sk = el.querySelector("[data-skip]"); if (sk) sk.onclick = onSkip;
@@ -1387,52 +1414,96 @@
     }
 
     const rowsOf = s => s.items.map((it, i) => ({ it, i, d: describe(m, it), st: itemStatus(m.topics[it.topic_id], it, s.startedAt, m) })).filter(r => r.d);
-    function topBar(){
+    function topBar(offerOnly){
       const pct = Math.min(100, Math.round(weekDone / Math.max(1, weekGoal) * 100));
       const fx = m.focus || {}, x = m.nextExam;
       const offer = !fx.on && x && x.days <= REFRESH_DAYS && fx.dismissed !== x.iso
         ? `<div class="td-offer"><span>${esc(x.label || "Exams")} ${x.days === 0 ? "start today" : x.days === 1 ? "start tomorrow" : `in ${x.days} days`}. Switch on exam focus?</span><span class="td-offer-b"><button type="button" class="hs-link" data-fx-yes>Switch on</button><button type="button" class="hs-link quiet" data-fx-no>Not now</button></span></div>` : "";
+      if (offerOnly) return offer;
       return `${offer}<div class="td-top"><span class="ss-k">Study now${fx.on ? " · exam focus" : ""}</span><span class="td-min">${weekDone >= weekGoal ? `This week's ${hm(weekGoal)} done &#10003;` : `${hm(weekDone)} of ${hm(weekGoal)} this week`}</span></div><div class="td-bar" aria-hidden="true"><i style="width:${pct}%"></i></div>`;
     }
 
-    // Home: how long, then which subject. A session already running offers to carry on.
-    // Home: always how long, then which subject. A session already on the go is a small
-    // "carry on" line at the top, never a screen of its own, so nobody feels locked in.
+    // Home: one clear next step. The app picks the subject with the strongest reason (a session on the
+    // go, a memory check, a test coming up, questions to fix, recall due, then least time this week),
+    // and Start opens its first task. Time and subject are small changes, not questions to answer first.
+    function pickSubject(){
+      const withCh = m.subjects.filter(sj => (sj.chapters || []).length);
+      const started = withCh.filter(sj => sj.chapters.some(c => c.stage !== "none"));
+      const pool = started.length ? started : withCh;
+      const mem = memoryItem(m), memKey = mem && m.topics[mem.topic_id] ? groupKey(m, m.topics[mem.topic_id]) : null;
+      const now = Date.now(), soon = c => c.testOn && (new Date(c.testOn) - now) / DAY >= -1 && (new Date(c.testOn) - now) / DAY <= 7;
+      const fixes = sj => sj.chapters.reduce((n, c) => n + ((c.stats && c.stats.quickFix) || 0), 0);
+      const recall = sj => sj.chapters.some(c => recallDue(c, now));
+      const r = (sj) => {
+        if (memKey === sj.id) return [6, "A memory check is due"];
+        const t = sj.chapters.find(soon); if (t) return [5, `Test coming up on ${shortTitle(t.title)}`];
+        const fx = fixes(sj); if (fx) return [4, `${plural(fx, "question", "questions")} to fix`];
+        if (recall(sj)) return [3, "Time to recall earlier chapters"];
+        return [subjMin(sj) < wk.goal ? 2 : 1, subjMin(sj) ? "Least time this week" : "Nothing done this week yet"];
+      };
+      const ranked = pool.map(sj => ({ sj, r: r(sj) })).sort((x, y) => (y.r[0] - x.r[0]) || (subjMin(x.sj) - subjMin(y.sj)));
+      return ranked[0] || null;
+    }
     function paintHome(){
-      el.className = "pl td";
-      const s = subjectSession(profile);
-      let resume = "", cur = null;
-      if (s) {
-        const rows = rowsOf(s), left = rows.filter(r => !r.st.done), next = left[0];
-        cur = { key: s.subject, line: `${rows.length - left.length} of ${rows.length} done` };
-        resume = `<button type="button" class="sn-resume" data-go><span class="sn-b"><b>Carry on with ${esc(s.title)}</b><span class="s">${cur.line}${next ? ` · next: ${esc(next.d.what.charAt(0).toLowerCase() + next.d.what.slice(1))}, ${esc(next.d.name)}` : " · all done &#10003;"}</span></span><span class="hs-chev" aria-hidden="true">›</span></button>`;
-      }
+      el.className = "pl td hm";
       let mins = lastMinutes(profile);
-      // Weekly check-in: what was covered in class, so the plan follows the class
+      const s = subjectSession(profile);
+      const live = s && !s.ended ? rowsOf(s) : [];
+      const left = live.filter(r => !r.st.done);
+      // a session already on the go comes first; otherwise the app's pick at the usual length
+      let key, why, items;
+      if (s && !s.ended && left.length) { key = s.subject; why = `Carry on · ${live.length - left.length} of ${live.length} done`; items = left.map(r => r.it); }
+      else { const p = pickSubject(); if (p) { key = p.sj.id; why = p.r[1]; items = suggestSession(m, mins, key); } }
+      const sj = key ? m.bySubject[key] : null;
+      const first = items && items[0] ? describe(m, items[0]) : null;
+      const total = (items || []).reduce((n, it) => n + (it.mins || 0), 0);
+      const more = (items || []).slice(1).map(it => describe(m, it)).filter(Boolean);
+      const lower = t => t ? t.charAt(0).toLowerCase() + t.slice(1) : "";
+      const thenLine = more.length ? `, then ${more.length === 1 ? `${lower(more[0].what)} on ${more[0].name}` : `${more.length} more tasks`}` : "";
+      const hero = sj && first ? `<div class="hm-hero">
+          <span class="ss-k">${esc(why)}</span>
+          <div class="hm-big">${esc(sj.title)} · ${esc(lower(first.what))}</div>
+          <p class="hm-why">${esc(first.name)}${esc(thenLine)} · about ${total} min</p>
+          <button type="button" class="hs-btn hm-go" data-start>Start</button>
+          <div class="hm-links"><button type="button" class="hs-link" data-mins>${minLabel(mins)} · change</button><button type="button" class="hs-link" data-other>Do another subject</button></div>
+          <div class="hm-chips" hidden>${chipsHTML(mins)}</div>
+        </div>` : `<div class="hm-hero"><div class="hm-big">Pick a subject to start</div></div>`;
+      // Weekly check-in: one line until tapped, so it never crowds out the next step
       const ck = `sp-checkin:${profile.id}:${isoDay(wk.ws || weekStart(new Date()))}`;
       const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
       const lsSet = k => { try { localStorage.setItem(k, "1"); } catch (e) {} };
       const showCheckin = !!sb && (state && state.qaMsg || (!wk.checkedIn && !lsGet(ck)));
-      el.innerHTML = `${topBar()}
-        ${showCheckin ? `<div class="sn-checkin" id="weekCheckin"></div>` : ""}
-        ${resume}
-        <div class="td-t">${s ? "Or start something new. How long?" : "How long do you want to study?"}</div>
-        ${chipsHTML(mins)}
-        <div class="td-t sn-q">Which subject?</div>
-        <div class="sn-subs">${m.subjects.map(sj => { const [k, t] = cur && cur.key === sj.id ? ["now", `In progress · ${cur.line}`] : subjectHint(m, sj); const wm = subjMin(sj), has = (sj.chapters || []).length;
-          return `<button type="button" class="sn-sub${suggested === sj ? " sugg" : ""}" data-sub="${sj.id}">${suggested === sj ? `<span class="sn-tag">Suggested · least time this week</span>` : ""}<b>${esc(sj.title)}</b><span class="sv-s ${k}">${esc(t)}</span>${has ? `<span class="sn-wk" aria-hidden="true"><i style="width:${Math.min(100, Math.round(wm / wk.goal * 100))}%"></i></span><span class="sv-s">${wm >= wk.goal ? `${hm(wk.goal)} this week &#10003;` : `${wm} of ${wk.goal} min this week`}</span>` : ""}</button>`; }).join("")}</div>`;
-      const ci = el.querySelector("#weekCheckin");
-      if (ci) mountQuickAdd(ci, m, { sb, profile, reload, state, title: "This week in class",
-        hint: "What did you cover in class this week? Say or type it and your plan will follow your class.",
-        onSaved: () => lsSet(ck), onSkip: () => { lsSet(ck); paint(); } });
-      bindChips(el, n => { mins = n; });
-      const g = el.querySelector("[data-go]"); if (g) g.onclick = () => openSubject && openSubject(s.subject);
+      const rows = m.subjects.map(x => { const has = (x.chapters || []).length, wm = subjMin(x), [k, t] = subjectHint(m, x);
+        return `<button type="button" class="hm-row" data-sub="${x.id}"><span class="hm-row-t"><b>${esc(x.title)}</b><span class="sv-s ${k}">${esc(t)}</span></span>
+          <span class="hm-row-m">${has ? (wm >= wk.goal ? "1 h &#10003;" : `${wm} of ${wk.goal} min`) : ""}</span>
+          <span class="hm-bar" aria-hidden="true"><i style="width:${has ? Math.min(100, Math.round(wm / wk.goal * 100)) : 0}%"></i></span></button>`; }).join("");
+      el.innerHTML = `${topBar(true)}${hero}
+        ${showCheckin ? `<div class="hm-ck" id="weekCheckin"><span>&#128221; <b>What did you cover in class this week?</b></span><button type="button" class="hs-link" data-ck>Tell me</button></div>` : ""}
+        <div class="hm-week" id="hmSubjects"><span>This week</span><span>${hm(weekDone)} of ${hm(weekGoal)} · an hour per subject</span></div>
+        <div class="hm-subs">${rows}</div>`;
+      const go = el.querySelector("[data-start]");
+      if (go) go.onclick = () => {
+        // keep the session the student is carrying on with; otherwise start the suggested one
+        let ses = s && s.subject === key && !s.ended && left.length ? s : startSubjectSession(m, profile, key, mins);
+        const next = rowsOf(ses).find(r => !r.st.done);
+        if (next && openChapter) openItem(m, next.it, state, openChapter); else if (openSubject) openSubject(key);
+      };
+      const mb = el.querySelector("[data-mins]");
+      if (mb) mb.onclick = () => { const c = el.querySelector(".hm-chips"); c.hidden = !c.hidden; };
+      bindChips(el, n => { mins = n; setLastMinutes(profile, n); if (!(s && s.subject === key && left.length)) paintHome(); });
+      const ob = el.querySelector("[data-other]");
+      if (ob) ob.onclick = () => { const t = el.querySelector("#hmSubjects"); if (t) t.scrollIntoView({ behavior: "smooth", block: "start" }); };
       el.querySelectorAll("[data-sub]").forEach(b => b.onclick = () => {
-        const key = b.dataset.sub;
-        // the subject already on the go just reopens; a new choice starts a fresh plan
-        if (!(s && s.subject === key && s.minutes === mins)) startSubjectSession(m, profile, key, mins);
-        if (openSubject) openSubject(key);
+        const k = b.dataset.sub;
+        if (!(s && s.subject === k && !s.ended)) startSubjectSession(m, profile, k, mins);
+        if (openSubject) openSubject(k);
       });
+      const ckb = el.querySelector("[data-ck]");
+      const openCk = () => { const ci = el.querySelector("#weekCheckin"); ci.className = "sn-checkin"; mountQuickAdd(ci, m, { sb, profile, reload, state, title: "This week in class",
+        hint: "What did you cover in class this week? Say or type it and your plan will follow your class.",
+        onSaved: () => lsSet(ck), onSkip: () => { lsSet(ck); paint(); } }); };
+      if (ckb) ckb.onclick = openCk;
+      if (state && state.qaMsg && el.querySelector("#weekCheckin")) openCk();
       bindOffer();
     }
 
