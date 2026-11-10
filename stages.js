@@ -553,11 +553,12 @@
       const at = new Date(a.created_at);
       // answer times per chapter, so today's session can tell which items are done
       ((qQuick[a.question_id] ? quickAt : examAt)[tid] = (qQuick[a.question_id] ? quickAt : examAt)[tid] || []).push(at.getTime());
-      if (qQuick[a.question_id]) ((a.source === "recall" ? recallAt : testAt)[tid] = (a.source === "recall" ? recallAt : testAt)[tid] || []).push(at.getTime());
       latestEver[a.question_id] = Number(a.result);
       lastAt[tid] = at;
       const fresh = status[tid] && status[tid].fresh_since ? new Date(status[tid].fresh_since) : null;
       if (!fresh || at >= fresh) latest[a.question_id] = Number(a.result);
+      // recall timing ignores answers from before "Start this chapter again"
+      if (qQuick[a.question_id] && (!fresh || at >= fresh)) ((a.source === "recall" ? recallAt : testAt)[tid] = (a.source === "recall" ? recallAt : testAt)[tid] || []).push(at.getTime());
     });
     const stats = {};
     Object.keys(qCount).forEach(tid => { stats[tid] = { total: qCount[tid], tried: 0, fixes: 0, right: 0, triedEver: 0, lastAt: lastAt[tid] || null, quickLeft: 0 }; });
