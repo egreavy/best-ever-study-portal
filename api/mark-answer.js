@@ -40,7 +40,16 @@ async function subjectFor(topicId) {
   } catch (e) { return ""; }
 }
 
+// The parts a question is split into, e.g. ["(a)","(b)"] or ["(i)","(ii)"]; "(b)(i)" counts as one part
+function partLabels(prompt) {
+  const seen = [];
+  (String(prompt || "").match(/\((?:[a-h]|i{1,3}|iv|vi{0,2})\)(?:\((?:i{1,3}|iv|vi{0,2})\))?/g) || []).forEach(t => { if (!seen.includes(t)) seen.push(t); });
+  return seen.length >= 2 ? seen : [];
+}
+const normPart = s => String(s || "").toLowerCase().replace(/[^a-z]/g, "");
+
 function instructions(q, hasImages, typed, subject) {
+  const labels = partLabels(q.prompt);
   const marks = q.marks || 5;
   const level = /^jc-/.test(q.id || "") ? "Junior Cycle Higher Level" : "Leaving Certificate Higher Level";
   return `You are an experienced ${level} ${subject || "Politics and Society"} examiner, and a kind, encouraging tutor. The student is dyslexic.
@@ -66,7 +75,7 @@ ${q.answer_kind ? `This is a quick recall question: the expected answer is ${q.a
 - Don't rewrite the whole answer for them. You may give one example sentence showing how to improve one point.
 - If the photo can't be read or isn't an answer to this question, say so in "summary" and give 0 marks.
 - Never say the question asks for something it doesn't. If the marking scheme rewards more than the question's wording suggests (for example marks for each of three reasons, when the question only asks what caused something), say that the marking scheme gives marks for each reason or point, and how many it rewards, so the student learns what examiners expect.
-- If the question has lettered parts ((a), (b), (c)…), mark each part separately and fill "parts", one entry per part in order, so the student sees feedback on every part they answered.
+${labels.length ? `- This question has ${labels.length} parts: ${labels.join(", ")}. Mark each part separately and fill "parts" with exactly one entry per part, in this order, using these labels. Include every part, even one the student didn't answer (0 marks, comment "Not answered yet" plus what it needs).` : `- If the question has parts, mark each part separately and fill "parts", one entry per part in order.`}
 
 Reply with ONLY a JSON object, no other text:
 {"transcription": "what the student wrote, as you read it (short; fix nothing)",
@@ -112,6 +121,7 @@ module.exports = async (req, res) => {
     content.push({ type: "image", source: { type: "base64", media_type: mt, data } });
   });
   const subject = await subjectFor(q.topic_id);
+  const labels = partLabels(q.prompt);
   content.push({ type: "text", text: instructions(q, images.length > 0, typed, subject) });
 
   try {
@@ -137,6 +147,11 @@ module.exports = async (req, res) => {
       const m = text.match(/\{[\s\S]*\}/);
       try { fb = m ? JSON.parse(m[0]) : null; } catch (e) { fb = null; }
       if (!fb || typeof fb.marks_awarded !== "number") console.error("mark-answer unreadable reply", data.stop_reason, text.slice(0, 300));
+      // Every part must have its own line; if any is missing, mark again once
+      else if (labels.length) {
+        const got = new Set((Array.isArray(fb.parts) ? fb.parts : []).map(p => normPart(p && p.part)));
+        if (!labels.every(l => got.has(normPart(l)))) { console.error("mark-answer missing parts", [...got].join(","), labels.join(",")); if (i === 0) fb = null; }
+      }
     }
     if (!fb || typeof fb.marks_awarded !== "number") { res.status(502).json({ error: COULD_NOT_MARK }); return; }
     const avail = Number(fb.marks_available) || q.marks || 5;
