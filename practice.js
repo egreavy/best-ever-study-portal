@@ -766,10 +766,23 @@
       start("Practice round", list, undefined, true);
     }
 
+    // Recall: quick questions from a chapter tested a while ago. One-word and one-sentence questions first,
+    // ones got wrong before at the front, then ones not seen for longest; topped up with multiple choice.
+    function runRecall(n = 10){
+      const seenAt = {}; (prog.att || []).forEach(a => { const t = new Date(a.created_at).getTime(); if (!seenAt[a.question_id] || t > seenAt[a.question_id]) seenAt[a.question_id] = t; });
+      const wrongBefore = q => prog.everWeak.has(q.id);
+      const order = list => shuffle(list).sort((a, b) => (wrongBefore(b) - wrongBefore(a)) || ((seenAt[a.id] || 0) - (seenAt[b.id] || 0)));
+      const quickRec = order(rec.filter(q => q.answer_kind));
+      const pick = quickRec.slice(0, n);
+      if (pick.length < n) order(mcq).slice(0, n - pick.length).forEach(q => pick.push(q));
+      if (!pick.length) return;
+      goTo("test");
+      start("Recall", shuffle(pick), undefined, true, { recall: true });
+    }
     function start(name, list, where, today, extra){
       if (!list || !list.length) return;
       if (session) { logTime(session); home(); }
-      session = { planned: !!(extra && extra.planned), guided: !!(extra && extra.guided), name, queue: list.map(q => ({ q, retry:false })), i:0, results:[], total:list.length, startTotal:list.length, t0: Date.now(), where: where === "prep" && prepSlot ? prepSlot : slot, today: !!today, base: 0, memory: (extra && extra.memory) || null, paper: !!(extra && extra.paper) };
+      session = { recall: !!(extra && extra.recall), planned: !!(extra && extra.planned), guided: !!(extra && extra.guided), name, queue: list.map(q => ({ q, retry:false })), i:0, results:[], total:list.length, startTotal:list.length, t0: Date.now(), where: where === "prep" && prepSlot ? prepSlot : slot, today: !!today, base: 0, memory: (extra && extra.memory) || null, paper: !!(extra && extra.paper) };
       if (today) todayBase().then(m => { if (session) { session.base = m; paintRing(); } });
       setChrome(false);
       next();
@@ -851,7 +864,7 @@
       if (single && !inPaper && (planned || session.memory)) sessionContinue(card, session.memory ? "memory" : "exam");
     }
     let saving = Promise.resolve();
-    const save = (qid, v, source) => (saving = (async () => { await record(sb, profile, qid, v, source); prog = await loadProgress(sb, profile, questions, freshSince()); paintStats(); })());
+    const save = (qid, v, source) => (saving = (async () => { await record(sb, profile, qid, v, session && session.recall && !/^memory/.test(source || "") ? "recall" : source); prog = await loadProgress(sb, profile, questions, freshSince()); paintStats(); })());
     function logTime(s){
       if (!s || !s.results.length) return;
       const sec = Math.min(Math.round((Date.now() - s.t0) / 1000), s.results.length * 300 + 60, 7200);
@@ -1057,7 +1070,7 @@
         try {
           const instant = !images.length && instantMatch(q, text);
           let f;
-          if (instant) f = { marks_awarded: 1, marks_available: 1, summary: "", went_well: [`Answer: ${q.model_answer || ""}`], to_improve: [], instant: true };
+          if (instant) f = { marks_awarded: 1, marks_available: 1, summary: "", went_well: [], to_improve: [], instant: true };
           else {
             const r = await fetch("/api/mark-answer", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ question_id: q.id, answer_text: text, images }) });
             const data = await r.json().catch(() => ({}));
@@ -1071,17 +1084,21 @@
           box.remove();
           const list = a => a.length ? `<ul>${a.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "";
           // Short first: the mark, one thing that worked, the one change worth most. The rest is folded.
-          const good1 = f.went_well[0] || f.summary || "", fix1 = f.to_improve[0] || "";
+          // Quick recall: the useful feedback is the answer itself, so show it plainly instead of general comments
+          const quickQ = !!q.answer_kind && !isExam;
+          const good1 = quickQ ? (v >= 1 ? "" : "") : (f.went_well[0] || f.summary || ""), fix1 = quickQ ? "" : (f.to_improve[0] || "");
+          const ansLine = quickQ ? `${v >= 1 ? "Answer" : "The answer"}: ${q.model_answer || ""}` : "";
           const shown = text || f.transcription || "";
           const stopHere = isExam && entry.again && entry.before;
           const stopLine = !stopHere ? "" : f.marks_awarded > entry.before.marks_awarded ? `You improved from ${entry.before.marks_awarded} to ${f.marks_awarded} marks.` : `That's ${f.marks_awarded} out of ${f.marks_available} this time. You can leave it there for now.`;
           const upTxt = !stopHere && entry.before && f.marks_awarded > entry.before.marks_awarded ? (isExam ? `Up from ${entry.before.marks_awarded} to ${f.marks_awarded} marks.` : "Better than last time.") : "";
           // Short answers: one confirmation, one correction if needed. The rest waits behind Explain more.
-          const extraPts = isExam ? [] : [...f.went_well.slice(f.went_well.length ? 1 : 0), ...f.to_improve.slice(v < 1 ? 1 : 0)];
+          const extraPts = isExam || quickQ ? [] : [...f.went_well.slice(f.went_well.length ? 1 : 0), ...f.to_improve.slice(v < 1 ? 1 : 0)];
           const memLine = stopLine ? `<p class="pr-k pr-memres"><b>${esc(stopLine)}</b></p>` : mem ? `<p class="pr-k pr-memres"><b>${frac >= 0.6 ? `You remembered this from ${mem.days} days ago &#10003;` : "Worth another go. This one will come back in a few days."}</b></p>` : "";
           const fbEl = h(`<div class="pr-fb ${v===1?"good":""}">
             <div class="pr-key">${memLine}
               <div class="pr-row" style="gap:12px 16px">${isExam ? `<span class="pr-score">${f.marks_awarded}/${f.marks_available}</span>` : `<span class="pr-verd">${v === 1 ? `<span class="pr-tick" aria-hidden="true">&#10003;</span><strong>Got it.</strong>` : `<strong>${v ? "Nearly." : "Not yet."}</strong>`}</span>`}${upTxt ? `<span class="pr-up">${upTxt}</span>` : ""}${"speechSynthesis" in window ? `<button type="button" class="pr-hear" data-hear aria-label="Hear the feedback">${SPEAK_SVG}<span>Hear it</span></button>` : ""}</div>
+              ${ansLine ? `<p class="pr-k"><b>${esc(ansLine.split(": ")[0])}:</b> ${esc(ansLine.slice(ansLine.indexOf(": ") + 2))}</p>` : ""}
               ${isExam ? `${good1 ? `<p class="pr-k"><b>Good:</b> ${esc(good1)}</p>` : ""}
               ${fix1 ? `<p class="pr-k"><b>For more marks:</b> ${esc(fix1)}</p>` : ""}` : `${good1 ? `<p class="pr-k">${esc(good1)}</p>` : ""}
               ${v < 1 && fix1 ? `<p class="pr-k"><b>To fix:</b> ${esc(fix1)}</p>` : ""}
@@ -1094,7 +1111,7 @@
           const hb = fbEl.querySelector("[data-hear]");
           if (hb) hb.onclick = () => speakOut(hb, (isExam
             ? [`${f.marks_awarded} out of ${f.marks_available}.`, stopLine, upTxt, good1 ? "Good: " + good1 : "", fix1 ? "For more marks: " + fix1 : ""]
-            : [v === 1 ? "Got it." : v ? "Nearly." : "Not yet.", upTxt, good1, v < 1 && fix1 ? "To fix: " + fix1 : ""]).filter(Boolean).join(" "));
+            : [v === 1 ? "Got it." : v ? "Nearly." : "Not yet.", upTxt, ansLine, good1, v < 1 && fix1 ? "To fix: " + fix1 : ""]).filter(Boolean).join(" "));
           if (f.to_improve.length && (isExam || v < 1) && (!f.marks_available || f.marks_awarded < f.marks_available)) improveRow(fbEl, q, text || f.transcription || "", f, entry, { quiet: !!stopHere, images });
           nextBtn(card);
         } catch (e) {
@@ -1148,7 +1165,8 @@
       }
       const wasToday = session.today, mins = todayMins(), stoppedEarly = session.i < session.queue.length - 1;
       // After the first quick-test round on a chapter: an exam question while it's fresh
-      const firstExam = session.where !== prepSlot && R.length >= 3 && ex.length > 0 && !ex.some(q => prog.ever.has(q.id));
+      const wasRecall = !!session.recall;
+      const firstExam = !wasRecall && session.where !== prepSlot && R.length >= 3 && ex.length > 0 && !ex.some(q => prog.ever.has(q.id));
       logTime(session);
       const where = session.where;
       session = null;
@@ -1168,7 +1186,7 @@
         const leftHere = questions.filter(q => q.qtype !== "exam" && (prog.latest[q.id] === undefined || prog.latest[q.id] < 1)).length;
         const chTitle = String(topic.title).replace(/^Ch\s*\d+\s*:\s*/i, ""), nextN = Math.min(ROUND, leftHere);
         // Today's session comes first: once this chapter's part is done, go to the next item in it
-        const pick = (sessionNext ? sessionNext(topic.id, "test").catch(() => null) : Promise.resolve(null)).then(sn => sn && sn.done ? { sessionDone: true } : sn || (leftHere ? { here: true, left: leftHere, title: stoppedEarly ? `Carry on with ${chTitle}` : `Another ${nextN} on ${chTitle}`, keep: stoppedEarly ? "Keep going" : `Another ${nextN}` } : (nextUp ? nextUp(topic.id) : null)));
+        const pick = (sessionNext ? sessionNext(topic.id, wasRecall ? "recall" : "test").catch(() => null) : Promise.resolve(null)).then(sn => sn && sn.done ? { sessionDone: true } : sn || (leftHere ? { here: true, left: leftHere, title: stoppedEarly ? `Carry on with ${chTitle}` : `Another ${nextN} on ${chTitle}`, keep: stoppedEarly ? "Keep going" : `Another ${nextN}` } : (nextUp ? nextUp(topic.id) : null)));
         pick.then(n => {
           if (!n || !card.isConnected) return;
           if (n.sessionDone) { card.querySelector(".pr-todaybox").after(doneBox()); return; }
@@ -1222,7 +1240,7 @@
       start(name || "Practice", list);
       return true;
     }
-    return { refresh: paintStats, startToday: () => start("Your Daily Practice", todaysPick()), runToday, runMemory, runExam, runQuestion, runList };
+    return { refresh: paintStats, startToday: () => start("Your Daily Practice", todaysPick()), runToday, runRecall, runMemory, runExam, runQuestion, runList };
   }
   window.mountPractice = mountPractice;
 })();

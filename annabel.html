@@ -478,8 +478,8 @@
   <div id="view"><div class="loading">Loading…</div></div>
 </div>
 
-<script src="stages.js?v=20261109e"></script>
-<script src="practice.js?v=20261109e"></script>
+<script src="stages.js?v=20261110a"></script>
+<script src="practice.js?v=20261110a"></script>
 <script src="tutor.js?v=20261109d"></script>
 <script src="notes.js?v=20261109d"></script>
 <script>
@@ -1077,6 +1077,7 @@ async function renderChapter(){
     if (api && state.todayRun === state.topicId) { state.todayRun = null; autoTab = false; api.runToday(); }
     if (api && state.notesRun && state.notesRun.topic === state.topicId) { const r = state.notesRun; state.notesRun = null; autoTab = false; api.runList(r.ids, r.name); }
     if (api && state.examRun === state.topicId) { state.examRun = null; autoTab = false; api.runExam(); }
+    if (api && state.recallRun && state.recallRun.topic === state.topicId) { const r = state.recallRun; state.recallRun = null; autoTab = false; api.runRecall(r.q); }
     if (api && state.paperRun && state.paperRun.topic === state.topicId) { const r = state.paperRun; state.paperRun = null; state.paperCurrent = r.qid; autoTab = false; api.runQuestion(r.qid); }
     if (api && state.memoryRun && state.memoryRun.topic === state.topicId) { const r = state.memoryRun; state.memoryRun = null; autoTab = false; api.runMemory(r.qid, r.origin, r.days); }
     if (!api && autoTab) { autoTab = false; paintTabs(); }

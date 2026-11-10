@@ -547,12 +547,13 @@
     (raw.questions || []).forEach(q => { qTopic[q.id] = q.topic_id; qCount[q.topic_id] = (qCount[q.topic_id] || 0) + 1; if (q.qtype !== "exam") qQuick[q.id] = q.qtype; });
 
     // results per topic, honouring "start fresh"
-    const latest = {}, latestEver = {}, lastAt = {}, quickAt = {}, examAt = {};
+    const latest = {}, latestEver = {}, lastAt = {}, quickAt = {}, examAt = {}, recallAt = {}, testAt = {};
     (raw.attempts || []).forEach(a => {
       const tid = qTopic[a.question_id]; if (!tid) return;
       const at = new Date(a.created_at);
       // answer times per chapter, so today's session can tell which items are done
       ((qQuick[a.question_id] ? quickAt : examAt)[tid] = (qQuick[a.question_id] ? quickAt : examAt)[tid] || []).push(at.getTime());
+      if (qQuick[a.question_id]) ((a.source === "recall" ? recallAt : testAt)[tid] = (a.source === "recall" ? recallAt : testAt)[tid] || []).push(at.getTime());
       latestEver[a.question_id] = Number(a.result);
       lastAt[tid] = at;
       const fresh = status[tid] && status[tid].fresh_since ? new Date(status[tid].fresh_since) : null;
@@ -586,7 +587,8 @@
         exam: examFor(sid), stats: stats[t.id] || { total: 0, tried: 0, fixes: 0, right: 0, triedEver: 0 }
       });
       const ch = { ...t, ...info, flag: flags[t.id] || null, classDoneAt: st.class_done_at || null, testOn: st.test_on || null, line: "",
-        quickAt: quickAt[t.id] || [], examAt: examAt[t.id] || [], learnLastAt: learnLast[t.id] || 0 };
+        quickAt: quickAt[t.id] || [], examAt: examAt[t.id] || [], learnLastAt: learnLast[t.id] || 0,
+        recallAt: recallAt[t.id] || [], testAt: testAt[t.id] || [] };
       ch.line = statusLine(ch);
       m.topics[t.id] = ch;
       m.bySubject[sid].chapters.push(ch);
@@ -614,7 +616,9 @@
     const addW = (tid, min) => { const t = m.topics[tid]; if (!t) return; const k = (m.groupOf && m.groupOf[t.subject_id]) || t.subject_id; weekBy[k] = (weekBy[k] || 0) + min; };
     (raw.timeRows || []).forEach(r => { if (r.topic_id && thisWeek(new Date(r.created_at))) addW(r.topic_id, r.seconds / 60); });
     learnEvents.forEach(e => { if (e.tid && thisWeek(e.at)) addW(e.tid, e.min); });
-    m.weekly = { goal: WEEK_GOAL, by: weekBy, ws, checkedIn: Object.values(status).some(r => r.class_done_at && new Date(r.class_done_at) >= ws) };
+    const recallBy = {};
+    Object.values(m.topics).forEach(c => { const n = (c.recallAt || []).filter(t => t >= ws.getTime()).length; if (n) { const k = (m.groupOf && m.groupOf[c.subject_id]) || c.subject_id; recallBy[k] = (recallBy[k] || 0) + n; } });
+    m.weekly = { goal: WEEK_GOAL, recallBy, by: weekBy, ws, checkedIn: Object.values(status).some(r => r.class_done_at && new Date(r.class_done_at) >= ws) };
     let answered = 0, fixed = 0; const everWrong = new Set();
     (raw.attempts || []).forEach(a => {
       const at = new Date(a.created_at), r = Number(a.result);
@@ -1083,6 +1087,28 @@
   }
   // Fill the session's minutes: finish one chapter's questions before moving on.
   // With a subject key, everything comes from that subject only.
+  // Recall: about 15 minutes a week per subject of quick questions from chapters tested a while ago.
+  // A chapter comes back 2 weeks after it was last tested, then a month after its first recall, then
+  // every 2 months. Only chapters already tested are used, so nothing is asked before it's learned.
+  const RECALL_WEEK_Q = 30, RECALL_Q = 10, RECALL_GAPS = [14, 30, 60];
+  function recallDue(c, now){
+    const tests = c.testAt || [], recalls = c.recallAt || []; if (!tests.length) return null;
+    const lastTest = Math.max(...tests), lastRecall = recalls.length ? Math.max(...recalls) : 0;
+    const rounds = new Set(recalls.map(t => Math.floor(t / DAY))).size;          // days it was recalled on
+    const since = Math.max(lastTest, lastRecall), gap = RECALL_GAPS[Math.min(rounds, RECALL_GAPS.length - 1)];
+    const days = Math.floor((now - since) / DAY);
+    return days >= gap ? { days, over: days - gap, since: Math.floor((now - lastTest) / DAY) } : null;
+  }
+  function recallItems(m, key, inSubj){
+    const now = Date.now(), wk = m.weekly || {};
+    const doneThisWeek = key ? ((wk.recallBy || {})[key] || 0) : 0;
+    let left = Math.max(0, RECALL_WEEK_Q - doneThisWeek); if (!left) return [];
+    const due = Object.values(m.topics).filter(c => inSubj(c)).map(c => ({ c, d: recallDue(c, now) })).filter(x => x.d)
+      .sort((a, b) => b.d.over - a.d.over);
+    const out = [];
+    for (const { c, d } of due) { if (left < 5 || out.length >= 3) break; const q = Math.min(RECALL_Q, left); out.push({ topic_id: c.id, kind: "recall", q, days: d.since, mins: Math.max(3, Math.round(q / 2)) }); left -= q; }
+    return out;
+  }
   function suggestSession(m, need, key){
     const inSubj = c => !key || groupKey(m, c) === key;
     const items = []; let total = 0;
@@ -1104,8 +1130,11 @@
       const ec = examPool[Math.floor(day / 2) % Math.min(3, examPool.length)];
       items.push({ topic_id: ec.id, kind: "exam", mins: 12 }); total += 12;
     }
+    // This week's recall slot for the subject, before new quick tests
+    if (key) for (const r of recallItems(m, key, inSubj)) { if (total + r.mins > need + 3) break; items.push(r); total += r.mins; }
     for (const p of (key ? subjectPlan(m, key) : todayPlan(m))) {
       if (total >= need) break;
+      if (items.some(x => x.topic_id === p.c.id && x.kind === "recall")) continue;
       if (mem && p.c.id === mem.topic_id) continue;
       const st = p.c.stats || {}, left = st.quickLeft || st.quickTotal || 0;
       const maxRounds = Math.max(1, Math.min(3, Math.ceil(left / 10)));
@@ -1135,6 +1164,7 @@
     if (it.kind === "memory") { const ck = ((m && m.memory && m.memory.checks) || []).find(x => x.origin === it.origin && x.t >= since); return { done: !!ck, n: 0, pass: ck ? ck.pass : null }; }
     if (it.kind === "learn") return { done: (c.learnLastAt || 0) >= since, n: 0 };
     if (it.kind === "exam") { const n = (c.examAt || []).filter(t => t >= since).length; return { done: n >= 1, n }; }
+    if (it.kind === "recall") { const n = (c.recallAt || []).filter(t => t >= since).length; return { done: n >= (it.q || 1), n }; }
     const n = (c.quickAt || []).filter(t => t >= since).length;
     return { done: n >= (it.q || 1), n };
   }
@@ -1145,6 +1175,7 @@
     if (it.kind === "memory") { what = what || "Memory check"; detail = `a ${it.marks ? it.marks + "-mark " : ""}exam question, from memory · you did this chapter ${it.days} days ago · about ${it.mins} min`; }
     else if (it.kind === "learn") { what = what || "Learn"; detail = `video or revision guide · about ${it.mins} min`; }
     else if (it.kind === "exam") { what = what || "Exam question"; detail = `write one and get it marked · about ${it.mins} min`; }
+    else if (it.kind === "recall") { what = what || "Recall"; detail = `${it.q} quick questions · you tested this ${it.days >= 28 ? Math.round(it.days / 7) + " weeks" : it.days + " days"} ago · about ${it.mins} min`; }
     else if (it.kind === "revise") { what = what || "Revise"; detail = `revision guide, then a quick round · about ${it.mins} min`; }
     else {
       const fixOnly = st.quickFix && !st.quickNew && (st.quickLeft || 0) <= it.q;
@@ -1175,6 +1206,7 @@
     if (it.kind === "test") { state.todayRun = c.id; openChapter(c.id, c.subject_id, "test"); }
     else if (it.kind === "memory") { state.memoryRun = { topic: c.id, qid: it.qid, origin: it.origin, days: it.days }; openChapter(c.id, c.subject_id, "refresh"); }
     else if (it.kind === "exam") { state.examRun = c.id; openChapter(c.id, c.subject_id, "refresh"); }
+    else if (it.kind === "recall") { state.recallRun = { topic: c.id, q: it.q || 10 }; openChapter(c.id, c.subject_id, "test"); }
     else openChapter(c.id, c.subject_id, "learn");
   }
 

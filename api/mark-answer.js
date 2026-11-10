@@ -54,7 +54,7 @@ A full-marks model answer, for your reference only: ${q.model_answer || "(none)"
 
 ${hasImages ? "The student's answer is in the attached photo(s) or screenshot(s). Read it carefully, including handwriting." : ""}${typed ? `\nThe student's typed answer:\n"""${typed}"""` : ""}
 
-${q.answer_kind ? `This is a quick recall question: the expected answer is ${q.answer_kind === "word" ? "one to three words" : "one short sentence"}. Give full marks to any answer with the same meaning as the model answer, however briefly it is put. Keep every feedback item to one short sentence.
+${q.answer_kind ? `This is a quick recall question: the expected answer is ${q.answer_kind === "word" ? "one to three words" : "one short sentence"}. Give full marks to any answer with the same meaning as the model answer, however briefly it is put. Keep every feedback item to one short sentence, about the content of the answer only. Never comment on the length or format of the answer.
 
 ` : ""}${q.qtype !== "exam" ? `IMPORTANT: this is a quick short-answer check, not an exam question. In "summary", "went_well", "to_improve", "example" and "next_step", never mention marks, scoring, full marks or losing marks. Just say plainly what is right and what is missing. (Still fill in the number fields.)
 
