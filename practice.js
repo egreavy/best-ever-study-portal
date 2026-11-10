@@ -131,6 +131,10 @@
   .pr-nx.minor .pr-nx-i{width:30px;height:30px}
   .pr-key{display:flex;flex-direction:column;gap:8px}
   .pr-k{margin:0;font-size:17px;line-height:1.5}
+  .pr-parts{display:flex;flex-direction:column;gap:10px;margin-top:4px}
+  .pr-part{display:flex;flex-direction:column;gap:2px;font-size:16px;line-height:1.45;padding-left:12px;border-left:3px solid var(--t-line)}
+  .pr-part-h{display:flex;gap:10px;align-items:baseline}
+  .pr-part-m{font-weight:700;color:var(--t-muted)}.pr-part-m.full{color:var(--t-accent)}
   .pr-explain>summary{cursor:pointer;font-weight:700;min-height:36px;display:flex;align-items:center;font-size:15px}
   .pr-explain>summary:focus-visible{outline:3px solid var(--t-accent);outline-offset:2px;border-radius:6px}
   .pr-explain .pr-improve{margin-top:6px}
@@ -372,6 +376,9 @@
   }
   const BOOK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h12v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5"/><path d="M9 8h6"/><path d="M9 12h6"/></svg>';
   const isPast = q => q.qtype === "exam" && !/^exam-style/i.test(q.source || "");
+  // Multi-part exam questions: a line per part, so every part answered gets feedback
+  const partsOf = f => (Array.isArray(f && f.parts) ? f.parts : []).filter(p => p && p.part && typeof p.awarded === "number" && typeof p.available === "number");
+  const partsHTML = parts => `<div class="pr-parts">${parts.map(p => `<div class="pr-part"><span class="pr-part-h"><b>${esc(p.part)}</b><span class="pr-part-m${p.awarded >= p.available ? " full" : ""}">${p.awarded}/${p.available}${p.awarded >= p.available ? " &#10003;" : ""}</span></span><span>${esc(p.comment || "")}</span></div>`).join("")}</div>`;
   // Quick recall: a one-to-three-word answer is checked on the spot against the accepted answers,
   // allowing small spelling slips. Anything that doesn't match goes to the AI, so a correct answer
   // in other words still counts.
@@ -1099,8 +1106,8 @@
             <div class="pr-key">${memLine}
               <div class="pr-row" style="gap:12px 16px">${isExam ? `<span class="pr-score">${f.marks_awarded}/${f.marks_available}</span>` : `<span class="pr-verd">${v === 1 ? `<span class="pr-tick" aria-hidden="true">&#10003;</span><strong>Got it.</strong>` : `<strong>${v ? "Nearly." : "Not yet."}</strong>`}</span>`}${upTxt ? `<span class="pr-up">${upTxt}</span>` : ""}${"speechSynthesis" in window ? `<button type="button" class="pr-hear" data-hear aria-label="Hear the feedback">${SPEAK_SVG}<span>Hear it</span></button>` : ""}</div>
               ${ansLine ? `<p class="pr-k"><b>${esc(ansLine.split(": ")[0])}:</b> ${esc(ansLine.slice(ansLine.indexOf(": ") + 2))}</p>` : ""}
-              ${isExam ? `${good1 ? `<p class="pr-k"><b>Good:</b> ${esc(good1)}</p>` : ""}
-              ${fix1 ? `<p class="pr-k"><b>For more marks:</b> ${esc(fix1)}</p>` : ""}` : `${good1 ? `<p class="pr-k">${esc(good1)}</p>` : ""}
+              ${isExam ? (partsOf(f).length >= 2 ? partsHTML(partsOf(f)) : `${good1 ? `<p class="pr-k"><b>Good:</b> ${esc(good1)}</p>` : ""}
+              ${fix1 ? `<p class="pr-k"><b>For more marks:</b> ${esc(fix1)}</p>` : ""}`) : `${good1 ? `<p class="pr-k">${esc(good1)}</p>` : ""}
               ${v < 1 && fix1 ? `<p class="pr-k"><b>To fix:</b> ${esc(fix1)}</p>` : ""}
               ${extraPts.length ? `<details class="pr-explain"><summary>Explain more</summary>${list(extraPts)}</details>` : ""}`}
             </div>
@@ -1110,7 +1117,7 @@
           fbEl.querySelector(".pr-key").after(h(modelBlock()));
           const hb = fbEl.querySelector("[data-hear]");
           if (hb) hb.onclick = () => speakOut(hb, (isExam
-            ? [`${f.marks_awarded} out of ${f.marks_available}.`, stopLine, upTxt, good1 ? "Good: " + good1 : "", fix1 ? "For more marks: " + fix1 : ""]
+            ? [`${f.marks_awarded} out of ${f.marks_available}.`, stopLine, upTxt, ...(partsOf(f).length >= 2 ? partsOf(f).map(p => `Part ${p.part.replace(/[()]/g, "")}: ${p.awarded} out of ${p.available}. ${p.comment}`) : [good1 ? "Good: " + good1 : "", fix1 ? "For more marks: " + fix1 : ""])]
             : [v === 1 ? "Got it." : v ? "Nearly." : "Not yet.", upTxt, ansLine, good1, v < 1 && fix1 ? "To fix: " + fix1 : ""]).filter(Boolean).join(" "));
           if (f.to_improve.length && (isExam || v < 1) && (!f.marks_available || f.marks_awarded < f.marks_available)) improveRow(fbEl, q, text || f.transcription || "", f, entry, { quiet: !!stopHere, images });
           nextBtn(card);

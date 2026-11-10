@@ -42,7 +42,8 @@ async function subjectFor(topicId) {
 
 function instructions(q, hasImages, typed, subject) {
   const marks = q.marks || 5;
-  return `You are an experienced Leaving Certificate Higher Level ${subject || "Politics and Society"} examiner, and a kind, encouraging tutor. The student is dyslexic.
+  const level = /^jc-/.test(q.id || "") ? "Junior Cycle Higher Level" : "Leaving Certificate Higher Level";
+  return `You are an experienced ${level} ${subject || "Politics and Society"} examiner, and a kind, encouraging tutor. The student is dyslexic.
 
 Mark the student's answer to this question exactly as the State Examinations Commission would, using the marking scheme, then give feedback that helps them improve.
 
@@ -64,6 +65,8 @@ ${q.answer_kind ? `This is a quick recall question: the expected answer is ${q.a
 - Feedback in plain, short sentences a 16-year-old can act on. No jargon. Calm and matter-of-fact: no exclamation marks, no gushing praise (great, amazing, excellent); say specifically what earned marks.
 - Don't rewrite the whole answer for them. You may give one example sentence showing how to improve one point.
 - If the photo can't be read or isn't an answer to this question, say so in "summary" and give 0 marks.
+- Never say the question asks for something it doesn't. If the marking scheme rewards more than the question's wording suggests (for example marks for each of three reasons, when the question only asks what caused something), say that the marking scheme gives marks for each reason or point, and how many it rewards, so the student learns what examiners expect.
+- If the question has lettered parts ((a), (b), (c)…), mark each part separately and fill "parts", one entry per part in order, so the student sees feedback on every part they answered.
 
 Reply with ONLY a JSON object, no other text:
 {"transcription": "what the student wrote, as you read it (short; fix nothing)",
@@ -73,7 +76,9 @@ Reply with ONLY a JSON object, no other text:
  "went_well": ["up to 3 specific things that earned marks; put the most important FIRST, as one short sentence"],
  "to_improve": ["up to 3 specific, actionable changes that would earn more marks, ordered by how many marks each would gain, biggest FIRST; each one short sentence"],
  "example": "one example sentence showing how to improve a point, or empty string",
- "next_step": "one short thing to practise next"}`;
+ "next_step": "one short thing to practise next",
+ "parts": [{"part": "(a)", "awarded": number, "available": number, "comment": "one short sentence: what earned marks, and the single most useful thing to add for this part"}]}
+("parts" is [] when the question has no lettered parts.)`;
 }
 
 module.exports = async (req, res) => {
