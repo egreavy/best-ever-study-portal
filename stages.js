@@ -1456,6 +1456,12 @@
       else { const p = pickSubject(); if (p) { key = p.sj.id; why = p.r[1]; items = suggestSession(m, mins, key); } }
       const sj = key ? m.bySubject[key] : null;
       const first = items && items[0] ? describe(m, items[0]) : null;
+      // the label above says why the FIRST task is first, so it always matches what Start opens
+      if (first && !/^Carry on/.test(why || "")) {
+        const k = items[0].kind, fx = (first.c.stats || {}).quickFix || 0;
+        why = k === "memory" ? "A memory check is due" : k === "recall" ? "Time to recall an earlier chapter" : k === "exam" ? "Exam practice while it's fresh"
+          : k === "learn" ? "Next chapter to learn" : fx ? `${plural(fx, "question", "questions")} to fix` : why;
+      }
       const total = (items || []).reduce((n, it) => n + (it.mins || 0), 0);
       const more = (items || []).slice(1).map(it => describe(m, it)).filter(Boolean);
       const lower = t => t ? t.charAt(0).toLowerCase() + t.slice(1) : "";
