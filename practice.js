@@ -1085,7 +1085,7 @@
               const p = pts[k], first = k === 0, last = k === pts.length - 1;
               sw.innerHTML = `<div class="pr-start">
                 <div class="pr-start-top"><span class="pr-eyebrow">How to build this answer</span><span class="pr-small">Step ${k + 1} of ${pts.length}</span></div>
-                ${first && d.shape ? `<p class="pr-start-shape">${esc(d.shape)}</p>` : ""}
+                ${d.shape ? `<p class="pr-start-shape">${esc(d.shape)}</p>` : ""}
                 <div class="pr-start-step"><b>${esc(p.title)}</b>
                   ${p.hint ? `<details><summary>Show a clue</summary><span>${esc(p.hint)}</span></details>` : ""}
                   ${first && opener ? `<div class="pr-start-open"><span>Try starting with: <i>${esc(opener)}</i></span>${ta.value.trim() ? "" : `<button type="button" class="pr-btn ghost" data-open>Use this start</button>`}</div>` : ""}
