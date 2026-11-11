@@ -180,10 +180,10 @@
   .pr-startbtn > span{display:flex;flex-direction:column;gap:2px}
   .pr-startbtn b{font-size:16px;color:var(--t-accent)}
   .pr-startbtn > span > span{font-size:14px;color:var(--t-muted)}
-  .pr-start{background:var(--t-soft2);border:1px solid var(--t-line);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;font-size:16px;line-height:1.5}
+  .pr-start{background:var(--t-card);border:2px solid var(--t-line);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;font-size:16px;line-height:1.5}
   .pr-start-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
   .pr-start-shape{margin:0;font-size:15px;color:var(--t-muted)}
-  .pr-start-step{background:var(--t-card);border:1px solid var(--t-line);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;min-height:92px}
+  .pr-start-step{padding:2px 0;display:flex;flex-direction:column;gap:8px;min-height:92px}
   .pr-start-step > b{font-size:18px;line-height:1.35}
   .pr-start-step summary{cursor:pointer;font-weight:700;color:var(--t-accent);font-size:15px;width:max-content}
   .pr-start-step details span{display:block;margin-top:4px}
