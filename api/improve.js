@@ -1,5 +1,6 @@
 // "Improve it step by step": after an answer is marked, turn the feedback into up to three
 // short steps (plan), then check the one sentence the student writes for each step (check).
+// "Help me get started" (start): before a first attempt, the shape of the answer and a clue per point.
 // Needs ANTHROPIC_API_KEY (and ANTHROPIC_WORKSPACE_ID if used).
 
 const SUPABASE_URL = "https://dhxwajidrtyukyxmiyml.supabase.co";
@@ -57,6 +58,36 @@ Keep "why" and "hint" under 25 words each.
 Reply with ONLY JSON: {"steps":[{"title":"","why":"","hint":""}]}`;
 }
 
+// "Help me get started": before the first attempt, show the shape of a full-mark answer and a
+// clue for each point, without giving the answer away.
+function startContext({ q, subject, notes }) {
+  return `Leaving Certificate Higher Level ${subject || ""} question (${q.source || "practice question"}, ${q.marks || 5} marks):
+${q.prompt}
+
+Marking scheme: ${q.marking_scheme || "-"}
+Model answer (reference only; never copy it or its facts into your reply): ${q.model_answer || "-"}
+
+Chapter notes:
+${clip(notes, 12000) || "(none)"}`;
+}
+
+function startPrompt(ctx) {
+  return `${ctx}
+
+A student (dyslexic, finds it hard to start a blank answer) hasn't written anything yet and asked for help getting started. Help them plan, not answer.
+
+Give:
+- "shape": one plain sentence on what a full-mark answer needs, worked out from the marking scheme, e.g. "Three explained points, about 5 marks each, plus a clear conclusion." Under 25 words.
+- "points": the parts of the answer to write, in order, at most 5 (one per point or part the marking scheme rewards). For each:
+  - "title": what this part does, 2-7 plain words, e.g. "First reason, with an example". Don't put the answer in the title.
+  - "hint": one guiding question that points to the right area of the chapter without stating the fact, e.g. "What happened to food supplies in the cities during the war?" Under 25 words.
+- "opener": the first few words of a possible opening sentence, ending in "…", that doesn't contain any of the answer's facts, e.g. "One reason the government acted was…". Under 12 words.
+
+Never write a full sentence of the answer or name the key facts, dates, people or terms the student should recall. Calm, plain words; no exclamation marks.
+
+Reply with ONLY JSON: {"shape":"","points":[{"title":"","hint":""}],"opener":""}`;
+}
+
 function checkPrompt(ctx, step, sentence) {
   return `${ctx}
 
@@ -81,7 +112,7 @@ module.exports = async (req, res) => {
   let body = req.body;
   if (typeof body === "string") { try { body = JSON.parse(body); } catch (e) { body = {}; } }
   body = body || {};
-  const action = body.action === "check" ? "check" : "plan";
+  const action = ["check", "start"].includes(body.action) ? body.action : "plan";
   const rows = await getJson(`quiz_questions?select=id,topic_id,prompt,display,model_answer,marking_scheme,source,marks&id=eq.${encodeURIComponent(String(body.question_id || ""))}`);
   const q = rows[0];
   if (!q) { res.status(404).json({ error: "Question not found." }); return; }
@@ -98,10 +129,12 @@ module.exports = async (req, res) => {
   ]);
   let subject = "";
   if (topicRow[0]) { const s = await getJson(`subjects?select=title&id=eq.${topicRow[0].subject_id}`); subject = s[0] ? String(s[0].title).replace(/\s*\d+$/, "").replace(/\s*PolSoc$/i, "").trim() : ""; }
-  const ctx = context({ q, subject, notes: (notesRow[0] || {}).notes || "", answer, f });
+  const notes = (notesRow[0] || {}).notes || "";
+  const ctx = action === "start" ? "" : context({ q, subject, notes, answer, f });
 
   let prompt;
-  if (action === "plan") prompt = planPrompt(ctx);
+  if (action === "start") prompt = startPrompt(startContext({ q, subject, notes }));
+  else if (action === "plan") prompt = planPrompt(ctx);
   else {
     const st = body.step || {};
     const sentence = clip(body.sentence, 1500).trim();
@@ -130,7 +163,12 @@ module.exports = async (req, res) => {
       if (!parsed) console.error("improve unreadable reply", data.stop_reason, text.slice(0, 300));
     }
     if (!parsed) { res.status(502).json({ error: "We couldn't do that just now. Please try again." }); return; }
-    if (action === "plan") {
+    if (action === "start") {
+      const points = (Array.isArray(parsed.points) ? parsed.points : []).slice(0, 5)
+        .map(p => ({ title: clip(p.title, 90), hint: clip(p.hint, 240) })).filter(p => p.title);
+      if (!points.length) { res.status(502).json({ error: "We couldn't do that just now. Please try again." }); return; }
+      res.status(200).json({ shape: clip(parsed.shape, 240), points, opener: clip(parsed.opener, 120) });
+    } else if (action === "plan") {
       const steps = (Array.isArray(parsed.steps) ? parsed.steps : []).slice(0, 3)
         .map(s => ({ title: clip(s.title, 80), why: clip(s.why, 240), hint: clip(s.hint, 300) })).filter(s => s.title);
       if (!steps.length) { res.status(502).json({ error: "We couldn't do that just now. Please try again." }); return; }

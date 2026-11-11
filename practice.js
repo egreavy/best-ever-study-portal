@@ -174,6 +174,18 @@
   .pr-verdict[hidden]{display:none}
   .pr-added{border-top:1px solid var(--t-line);padding-top:10px;display:flex;flex-direction:column;gap:4px;font-size:14px;color:var(--t-muted);line-height:1.45}
   .pr-added b{color:var(--t-ink)}
+  .pr-startbtn{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--t-card);border:2px dashed var(--t-line);border-radius:12px;padding:10px 14px;cursor:pointer;font:inherit;color:var(--t-ink)}
+  .pr-startbtn:hover{border-color:var(--t-accent)}
+  .pr-startbtn svg{width:22px;height:22px;flex:none;color:var(--t-accent)}
+  .pr-startbtn > span{display:flex;flex-direction:column;gap:2px}
+  .pr-startbtn b{font-size:16px;color:var(--t-accent)}
+  .pr-startbtn > span > span{font-size:14px;color:var(--t-muted)}
+  .pr-start{background:var(--t-accent-tint);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;font-size:16px;line-height:1.5}
+  .pr-start-shape{margin:0;font-weight:700}
+  .pr-start ol{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:6px}
+  .pr-start summary{cursor:pointer;font-weight:700;color:var(--t-accent);font-size:14px}
+  .pr-start details span{display:block;margin-top:2px}
+  .pr-start-open{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
   .pr-alldone{background:var(--t-accent-tint);color:var(--t-ink)!important;border-radius:10px;padding:10px 14px}
   .pp-hero{background:var(--t-card);border:2px solid var(--t-accent-border);border-radius:18px;padding:22px 24px;display:flex;align-items:center;gap:18px;margin:0 0 10px}
   .pp-hero .ft-icon{width:58px;height:58px;border-radius:16px}
@@ -371,7 +383,7 @@
       const tip = ((r.feedback || {}).to_improve || [])[0];
       return `${r.marks_awarded} out of ${r.marks_available} marks.${tip ? " " + tip : ""}`;
     }
-    const where = { quiz: "in a quiz", tutor: "with your tutor", written: "in a written answer", helped: "after improving your answer", memory: "in a memory check" }[String(prog.src[q.id] || "").split(":")[0]] || "";
+    const where = { quiz: "in a quiz", tutor: "with your tutor", written: "in a written answer", helped: "after improving your answer", started: "with help getting started", memory: "in a memory check" }[String(prog.src[q.id] || "").split(":")[0]] || "";
     return prog.latest[q.id] === 0 ? `You didn't know this one yet${where ? " (" + where + ")" : ""}` : `Half right${where ? " " + where : ""}. Nearly there.`;
   }
   const BOOK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h12v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5"/><path d="M9 8h6"/><path d="M9 12h6"/></svg>';
@@ -1040,6 +1052,34 @@
         box.querySelector(".pr-tip").innerHTML = `<b>Your first exam question on this chapter.</b> Read what the examiner is looking for, then write your answer. A low mark on a first go is normal.`;
         box.querySelector(".pr-tip").after(h(`<details class="pr-fb pr-guide" open><summary style="cursor:pointer;font-weight:700">What the examiner is looking for</summary><span style="white-space:pre-line;margin-top:6px">${esc(q.marking_scheme)}</span></details>`));
       }
+      // Help me get started: for the blank page, before a first attempt. The shape of a full-mark
+      // answer and a clue per point, never the answer itself. Not offered in memory checks.
+      let usedStart = false;
+      if (isExam && !mem && !entry.again) {
+        const sw = h(`<div class="pr-start-w"><button type="button" class="pr-startbtn" data-start>${STEPS_SVG}<span><b>Help me get started</b><span>See how to build this answer, with a clue for each point</span></span></button></div>`);
+        box.querySelector(".pr-answer").before(sw);
+        sw.querySelector("[data-start]").onclick = async function load(){
+          sw.innerHTML = `<p class="pr-small">Working out how to build this answer…</p>`;
+          try {
+            const r = await fetch("/api/improve", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ action: "start", question_id: q.id }) });
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok || !d.points) throw new Error(d.error || "That didn't work just now.");
+            usedStart = true;
+            const opener = String(d.opener || "").trim();
+            sw.innerHTML = `<div class="pr-start">
+              <span class="pr-eyebrow">How to build this answer</span>
+              ${d.shape ? `<p class="pr-start-shape">${esc(d.shape)}</p>` : ""}
+              <ol>${d.points.map(p => `<li><b>${esc(p.title)}</b>${p.hint ? `<details><summary>Clue</summary><span>${esc(p.hint)}</span></details>` : ""}</li>`).join("")}</ol>
+              ${opener ? `<div class="pr-start-open"><span>Try starting with: <i>${esc(opener)}</i></span>${ta.value.trim() ? "" : `<button type="button" class="pr-btn ghost" data-open>Use this start</button>`}</div>` : ""}
+              <p class="pr-small">Write each point in your own words. It's marked the same way as always.</p></div>`;
+            const ob = sw.querySelector("[data-open]");
+            if (ob) ob.onclick = () => { if (!ta.value.trim()) ta.value = opener.replace(/(\.\.\.|…)\s*$/, "").trim() + " "; ob.remove(); ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); };
+          } catch (e) {
+            sw.innerHTML = `<div class="pr-row" style="gap:10px"><p class="pr-err" style="margin:0">We couldn't load that just now.</p><button type="button" class="pr-btn ghost" data-start>Try again</button></div>`;
+            sw.querySelector("[data-start]").onclick = load;
+          }
+        };
+      }
       if (entry.again) {
         ta.value = entry.prev || "";
         box.querySelector(".pr-tip").textContent = entry.added && entry.added.length
@@ -1089,7 +1129,7 @@
           const frac = f.marks_available ? f.marks_awarded / f.marks_available : 0;
           const v = frac >= 0.8 ? 1 : frac >= 0.4 ? 0.5 : 0;
           if (!instant) await sb("answer_reviews", { method:"POST", prefer:"return=minimal", body:[{ profile_id: profile.id, question_id: q.id, answer_text: text || f.transcription || null, marks_awarded: f.marks_awarded, marks_available: f.marks_available, feedback: f }] });
-          done(v, mem ? `memory:${mem.origin}:${frac >= 0.6 ? "pass" : "miss"}` : entry.again ? "helped" : "written");
+          done(v, mem ? `memory:${mem.origin}:${frac >= 0.6 ? "pass" : "miss"}` : entry.again ? "helped" : usedStart ? "started" : "written");
           box.remove();
           const list = a => a.length ? `<ul>${a.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "";
           // Short first: the mark, one thing that worked, the one change worth most. The rest is folded.
