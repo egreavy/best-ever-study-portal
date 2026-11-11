@@ -180,12 +180,21 @@
   .pr-startbtn > span{display:flex;flex-direction:column;gap:2px}
   .pr-startbtn b{font-size:16px;color:var(--t-accent)}
   .pr-startbtn > span > span{font-size:14px;color:var(--t-muted)}
-  .pr-start{background:var(--t-accent-tint);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;font-size:16px;line-height:1.5}
-  .pr-start-shape{margin:0;font-weight:700}
-  .pr-start ol{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:6px}
-  .pr-start summary{cursor:pointer;font-weight:700;color:var(--t-accent);font-size:14px}
-  .pr-start details span{display:block;margin-top:2px}
-  .pr-start-open{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+  .pr-start{background:var(--t-soft2);border:1px solid var(--t-line);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;font-size:16px;line-height:1.5}
+  .pr-start-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+  .pr-start-shape{margin:0;font-size:15px;color:var(--t-muted)}
+  .pr-start-step{background:var(--t-card);border:1px solid var(--t-line);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;min-height:92px}
+  .pr-start-step > b{font-size:18px;line-height:1.35}
+  .pr-start-step summary{cursor:pointer;font-weight:700;color:var(--t-accent);font-size:15px;width:max-content}
+  .pr-start-step details span{display:block;margin-top:4px}
+  .pr-start-open{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;font-size:15px}
+  .pr-start-nav{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .pr-start-dots{display:flex;gap:6px}
+  .pr-start-dots i{width:8px;height:8px;border-radius:50%;background:var(--t-line)}
+  .pr-start-dots i.on{background:var(--t-accent)}
+  .pr-arrow{width:44px;height:44px;border-radius:50%;border:2px solid var(--t-accent);background:var(--t-card);color:var(--t-accent);font-size:22px;font-weight:700;line-height:1;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-family:inherit}
+  .pr-arrow[disabled]{border-color:var(--t-line);color:var(--t-line);cursor:default}
+  .pr-start-hide{background:none;border:0;padding:0;font:inherit;font-size:14px;color:var(--t-muted);text-decoration:underline;cursor:pointer}
   .pr-alldone{background:var(--t-accent-tint);color:var(--t-ink)!important;border-radius:10px;padding:10px 14px}
   .pp-hero{background:var(--t-card);border:2px solid var(--t-accent-border);border-radius:18px;padding:22px 24px;display:flex;align-items:center;gap:18px;margin:0 0 10px}
   .pp-hero .ft-icon{width:58px;height:58px;border-radius:16px}
@@ -1065,15 +1074,34 @@
             const d = await r.json().catch(() => ({}));
             if (!r.ok || !d.points) throw new Error(d.error || "That didn't work just now.");
             usedStart = true;
-            const opener = String(d.opener || "").trim();
-            sw.innerHTML = `<div class="pr-start">
-              <span class="pr-eyebrow">How to build this answer</span>
-              ${d.shape ? `<p class="pr-start-shape">${esc(d.shape)}</p>` : ""}
-              <ol>${d.points.map(p => `<li><b>${esc(p.title)}</b>${p.hint ? `<details><summary>Clue</summary><span>${esc(p.hint)}</span></details>` : ""}</li>`).join("")}</ol>
-              ${opener ? `<div class="pr-start-open"><span>Try starting with: <i>${esc(opener)}</i></span>${ta.value.trim() ? "" : `<button type="button" class="pr-btn ghost" data-open>Use this start</button>`}</div>` : ""}
-              <p class="pr-small">Write each point in your own words. It's marked the same way as always.</p></div>`;
-            const ob = sw.querySelector("[data-open]");
-            if (ob) ob.onclick = () => { if (!ta.value.trim()) ta.value = opener.replace(/(\.\.\.|…)\s*$/, "").trim() + " "; ob.remove(); ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); };
+            const opener = String(d.opener || "").trim(), pts = d.points;
+            let k = 0;
+            const paint = () => {
+              const p = pts[k], first = k === 0, last = k === pts.length - 1;
+              sw.innerHTML = `<div class="pr-start">
+                <div class="pr-start-top"><span class="pr-eyebrow">How to build this answer</span><span class="pr-small">Step ${k + 1} of ${pts.length}</span></div>
+                ${first && d.shape ? `<p class="pr-start-shape">${esc(d.shape)}</p>` : ""}
+                <div class="pr-start-step"><b>${esc(p.title)}</b>
+                  ${p.hint ? `<details><summary>Show a clue</summary><span>${esc(p.hint)}</span></details>` : ""}
+                  ${first && opener ? `<div class="pr-start-open"><span>Try starting with: <i>${esc(opener)}</i></span>${ta.value.trim() ? "" : `<button type="button" class="pr-btn ghost" data-open>Use this start</button>`}</div>` : ""}
+                  ${last ? `<p class="pr-small" style="margin:0">That's the plan. Write each point in your own words. It's marked the same way as always.</p>` : ""}
+                </div>
+                <div class="pr-start-nav">
+                  <button type="button" class="pr-arrow" data-prev aria-label="Previous step" ${first ? "disabled" : ""}>&#8249;</button>
+                  <span class="pr-start-dots" aria-hidden="true">${pts.map((_, j) => `<i class="${j <= k ? "on" : ""}"></i>`).join("")}</span>
+                  <button type="button" class="pr-arrow" data-next aria-label="Next step" ${last ? "disabled" : ""}>&#8250;</button>
+                </div>
+                <button type="button" class="pr-start-hide" data-hide>Hide the plan</button></div>`;
+              sw.querySelector("[data-prev]").onclick = () => { if (k > 0) { k--; paint(); sw.querySelector("[data-prev]:not([disabled]), [data-next]").focus({ preventScroll:true }); } };
+              sw.querySelector("[data-next]").onclick = () => { if (k < pts.length - 1) { k++; paint(); sw.querySelector("[data-next]:not([disabled]), [data-prev]").focus({ preventScroll:true }); } };
+              sw.querySelector("[data-hide]").onclick = () => {
+                sw.innerHTML = `<button type="button" class="pr-startbtn" data-show>${STEPS_SVG}<span><b>Show my plan</b><span>Step ${k + 1} of ${pts.length}</span></span></button>`;
+                sw.querySelector("[data-show]").onclick = paint;
+              };
+              const ob = sw.querySelector("[data-open]");
+              if (ob) ob.onclick = () => { if (!ta.value.trim()) ta.value = opener.replace(/(\.\.\.|…)\s*$/, "").trim() + " "; ob.remove(); ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); };
+            };
+            paint();
           } catch (e) {
             sw.innerHTML = `<div class="pr-row" style="gap:10px"><p class="pr-err" style="margin:0">We couldn't load that just now.</p><button type="button" class="pr-btn ghost" data-start>Try again</button></div>`;
             sw.querySelector("[data-start]").onclick = load;
