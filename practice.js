@@ -181,6 +181,10 @@
   .pr-startbtn b{font-size:16px;color:var(--t-accent)}
   .pr-startbtn > span > span{font-size:14px;color:var(--t-muted)}
   .pr-start{background:var(--t-card);border:2px solid var(--t-line);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;font-size:16px;line-height:1.5}
+  .pr-start-wait{margin:0;display:flex;align-items:center;gap:10px;color:var(--t-muted);font-size:15px}
+  .pr-spin{width:18px;height:18px;flex:none;border-radius:50%;border:3px solid var(--t-line);border-top-color:var(--t-accent);animation:prspin .9s linear infinite}
+  @keyframes prspin{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){.pr-spin{animation-duration:2.5s}}
   .pr-start-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
   .pr-start-shape{margin:0;font-size:15px;color:var(--t-muted)}
   .pr-start-step{padding:2px 0;display:flex;flex-direction:column;gap:8px;min-height:92px}
@@ -1068,9 +1072,10 @@
         const sw = h(`<div class="pr-start-w"><button type="button" class="pr-startbtn" data-start>${STEPS_SVG}<span><b>Help me get started</b><span>See how to build this answer, with a clue for each point</span></span></button></div>`);
         box.querySelector(".pr-answer").before(sw);
         sw.querySelector("[data-start]").onclick = async function load(){
-          sw.innerHTML = `<p class="pr-small">Working out how to build this answer…</p>`;
+          sw.innerHTML = `<div class="pr-start" role="status"><span class="pr-eyebrow">How to build this answer</span><p class="pr-start-wait"><span class="pr-spin" aria-hidden="true"></span>Reading the question and marking scheme. This takes a few seconds…</p></div>`;
+          const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 40000);
           try {
-            const r = await fetch("/api/improve", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ action: "start", question_id: q.id }) });
+            const r = await fetch("/api/improve", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ action: "start", question_id: q.id }), signal: ctl.signal }).finally(() => clearTimeout(timer));
             const d = await r.json().catch(() => ({}));
             if (!r.ok || !d.points) throw new Error(d.error || "That didn't work just now.");
             usedStart = true;
@@ -1103,7 +1108,7 @@
             };
             paint();
           } catch (e) {
-            sw.innerHTML = `<div class="pr-row" style="gap:10px"><p class="pr-err" style="margin:0">We couldn't load that just now.</p><button type="button" class="pr-btn ghost" data-start>Try again</button></div>`;
+            sw.innerHTML = `<div class="pr-start"><span class="pr-eyebrow">How to build this answer</span><p class="pr-err">${e && e.name === "AbortError" ? "That's taking too long." : "We couldn't load the plan just now."} You can try again, or start writing without it.</p><div><button type="button" class="pr-btn ghost" data-start>Try again</button></div></div>`;
             sw.querySelector("[data-start]").onclick = load;
           }
         };
