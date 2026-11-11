@@ -317,6 +317,7 @@
   .hm-links{display:flex;justify-content:space-between;gap:12px;margin-top:8px;flex-wrap:wrap}
   .hm-links .hs-link{font-size:15px}
   .hm-chips{margin-top:6px}
+  .hm-ck .hs-link{white-space:nowrap;flex:none}
   .hm-ck{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--t-card);border:2px solid var(--t-line);border-radius:16px;padding:12px 18px;font-size:15px}
   .hm-week{display:flex;justify-content:space-between;gap:12px;color:var(--t-muted);font-size:14px;margin:6px 4px -4px;flex-wrap:wrap}
   .hm-subs{background:var(--t-card);border:2px solid var(--t-line);border-radius:18px;overflow:hidden}
