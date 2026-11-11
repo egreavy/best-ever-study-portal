@@ -76,16 +76,20 @@ function startPrompt(ctx) {
 
 A student (dyslexic, finds it hard to start a blank answer) hasn't written anything yet and asked for help getting started. Help them plan, not answer.
 
+First, read the question wording (including any bracketed instructions under it) and list every explicit requirement the student must meet to get full marks, e.g. "Refer to at least two theorists, one named on your course", "Use contemporary Irish examples", "Refer to the source", "Include a labelled diagram", "Give two reasons". Only things the question or marking scheme actually asks for.
+
 Give:
+- "musts": those requirements, at most 5, each under 12 plain words, e.g. "Two theorists, at least one from your course".
 - "shape": one plain sentence on what a full-mark answer needs, worked out from the marking scheme, e.g. "Three explained points, about 5 marks each, plus a clear conclusion." Under 25 words.
-- "points": the parts of the answer to write, in order, at most 5 (one per point or part the marking scheme rewards). For each:
+- "points": the parts of the answer to write, in order, at most 6 (one per point or part the marking scheme rewards). For each:
   - "title": what this part does, 2-7 plain words, e.g. "First reason, with an example". Don't put the answer in the title.
   - "hint": one guiding question that points to the right area of the chapter without stating the fact, e.g. "What happened to food supplies in the cities during the war?" Under 25 words.
+  Every item in "musts" must appear in at least one step, named in that step's title, e.g. "Second area, linked to a named theorist from your course".
 - "opener": the first few words of a possible opening sentence, ending in "…", that doesn't contain any of the answer's facts, e.g. "One reason the government acted was…". Under 12 words.
 
 Never write a full sentence of the answer or name the key facts, dates, people or terms the student should recall. Calm, plain words; no exclamation marks.
 
-Reply with ONLY JSON: {"shape":"","points":[{"title":"","hint":""}],"opener":""}`;
+Reply with ONLY JSON: {"musts":[""],"shape":"","points":[{"title":"","hint":""}],"opener":""}`;
 }
 
 function checkPrompt(ctx, step, sentence) {
@@ -164,10 +168,11 @@ module.exports = async (req, res) => {
     }
     if (!parsed) { res.status(502).json({ error: "We couldn't do that just now. Please try again." }); return; }
     if (action === "start") {
-      const points = (Array.isArray(parsed.points) ? parsed.points : []).slice(0, 5)
+      const points = (Array.isArray(parsed.points) ? parsed.points : []).slice(0, 6)
         .map(p => ({ title: clip(p.title, 90), hint: clip(p.hint, 240) })).filter(p => p.title);
       if (!points.length) { res.status(502).json({ error: "We couldn't do that just now. Please try again." }); return; }
-      res.status(200).json({ shape: clip(parsed.shape, 240), points, opener: clip(parsed.opener, 120) });
+      const musts = (Array.isArray(parsed.musts) ? parsed.musts : []).slice(0, 5).map(m => clip(m, 120)).filter(Boolean);
+      res.status(200).json({ musts, shape: clip(parsed.shape, 240), points, opener: clip(parsed.opener, 120) });
     } else if (action === "plan") {
       const steps = (Array.isArray(parsed.steps) ? parsed.steps : []).slice(0, 3)
         .map(s => ({ title: clip(s.title, 80), why: clip(s.why, 240), hint: clip(s.hint, 300) })).filter(s => s.title);

@@ -185,6 +185,10 @@
   .pr-spin{width:18px;height:18px;flex:none;border-radius:50%;border:3px solid var(--t-line);border-top-color:var(--t-accent);animation:prspin .9s linear infinite}
   @keyframes prspin{to{transform:rotate(360deg)}}
   @media (prefers-reduced-motion:reduce){.pr-spin{animation-duration:2.5s}}
+  .pr-start-musts{font-size:15px;line-height:1.45}
+  .pr-start-musts b{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--t-muted)}
+  .pr-start-musts ul{margin:4px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:2px}
+  .pr-start-musts li::before{content:"\\2713";color:var(--t-accent);font-weight:700;margin-right:8px}
   .pr-start-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
   .pr-start-shape{margin:0;font-size:15px;color:var(--t-muted)}
   .pr-start-step{padding:2px 0;display:flex;flex-direction:column;gap:8px;min-height:92px}
@@ -1079,13 +1083,14 @@
             const d = await r.json().catch(() => ({}));
             if (!r.ok || !d.points) throw new Error(d.error || "That didn't work just now.");
             usedStart = true;
-            const opener = String(d.opener || "").trim(), pts = d.points;
+            const opener = String(d.opener || "").trim(), pts = d.points, musts = Array.isArray(d.musts) ? d.musts : [];
             let k = 0;
             const paint = () => {
               const p = pts[k], first = k === 0, last = k === pts.length - 1;
               sw.innerHTML = `<div class="pr-start">
                 <div class="pr-start-top"><span class="pr-eyebrow">How to build this answer</span><span class="pr-small">Step ${k + 1} of ${pts.length}</span></div>
                 ${d.shape ? `<p class="pr-start-shape">${esc(d.shape)}</p>` : ""}
+                ${musts.length ? `<div class="pr-start-musts"><b>Must include</b><ul>${musts.map(m => `<li>${esc(m)}</li>`).join("")}</ul></div>` : ""}
                 <div class="pr-start-step"><b>${esc(p.title)}</b>
                   ${p.hint ? `<details><summary>Show a clue</summary><span>${esc(p.hint)}</span></details>` : ""}
                   ${first && opener ? `<div class="pr-start-open"><span>Try starting with: <i>${esc(opener)}</i></span>${ta.value.trim() ? "" : `<button type="button" class="pr-btn ghost" data-open>Use this start</button>`}</div>` : ""}
