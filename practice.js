@@ -906,7 +906,17 @@
     function logTime(s){
       if (!s || !s.results.length) return;
       const sec = Math.min(Math.round((Date.now() - s.t0) / 1000), s.results.length * 300 + 60, 7200);
-      if (sec > 0) sb("study_time", { method:"POST", prefer:"return=minimal", body:[{ profile_id: profile.id, topic_id: topic.id, kind:"test", seconds: sec }] });
+      if (sec <= 0) return;
+      // Which activity the time went on, for the parents' weekly summary
+      let rows;
+      if (s.memory) rows = [["memory", sec]];
+      else if (s.recall) rows = [["recall", sec]];
+      else {
+        const ex = s.results.filter(r => r.q && r.q.qtype === "exam").length, qk = s.results.length - ex;
+        const exSec = ex && qk ? Math.round(sec * (ex * 5) / (ex * 5 + qk)) : ex ? sec : 0;
+        rows = [["exam", exSec], ["quick", sec - exSec]].filter(r => r[1] > 0);
+      }
+      sb("study_time", { method:"POST", prefer:"return=minimal", body: rows.map(([part, seconds]) => ({ profile_id: profile.id, topic_id: topic.id, kind:"test", part, seconds })) });
     }
 
     function mcqView(card, q, retry){

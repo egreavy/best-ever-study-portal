@@ -226,7 +226,7 @@ ${notes || "(no notes for this chapter)"}`;
         body: [{ profile_id: profile.id, topic_id: topic.id, transcript: transcript.slice(-200), seconds: sec, results: { mode: "coach", question_id: q.id, marks_awarded: f.marks_awarded ?? null, marks_available: f.marks_available ?? null } }] }).catch(() => {});
       if (callStart) {
         callStart = 0;
-        if (sec > 0) sb("study_time", { method: "POST", prefer: "return=minimal", body: [{ profile_id: profile.id, topic_id: topic.id, kind: "test", seconds: sec }] }).catch(() => {});
+        if (sec > 0) sb("study_time", { method: "POST", prefer: "return=minimal", body: [{ profile_id: profile.id, topic_id: topic.id, kind: "test", part: "tutor", seconds: sec }] }).catch(() => {});
       }
     };
     const finish = (msg) => {
@@ -336,7 +336,7 @@ ${notes || "(no notes for this chapter)"}`;
         body: [{ profile_id: profile.id, topic_id: topic.id, transcript: transcript.slice(-200), results, seconds: sec }] });
       if (callStart) {
         callStart = 0;
-        if (sec > 0) sb("study_time", { method: "POST", prefer: "return=minimal", body: [{ profile_id: profile.id, topic_id: topic.id, kind: "test", seconds: sec }] });
+        if (sec > 0) sb("study_time", { method: "POST", prefer: "return=minimal", body: [{ profile_id: profile.id, topic_id: topic.id, kind: "test", part: "tutor", seconds: sec }] });
       }
     }
     function showErr(m){ errEl.textContent = m; errEl.hidden = !m; }
