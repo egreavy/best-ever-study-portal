@@ -176,6 +176,8 @@
   .pr-added b{color:var(--t-ink)}
   .pr-startbtn{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--t-card);border:2px dashed var(--t-line);border-radius:12px;padding:10px 14px;cursor:pointer;font:inherit;color:var(--t-ink)}
   .pr-startbtn:hover{border-color:var(--t-accent)}
+  .pr-warmbtn{border-style:solid;border-color:var(--t-accent-border);background:var(--t-accent-tint)}
+  .pr-warmlog ul{padding-left:20px;display:flex;flex-direction:column;gap:6px}
   .pr-startbtn svg{width:22px;height:22px;flex:none;color:var(--t-accent)}
   .pr-startbtn > span{display:flex;flex-direction:column;gap:2px}
   .pr-startbtn b{font-size:16px;color:var(--t-accent)}
@@ -400,7 +402,7 @@
       const tip = ((r.feedback || {}).to_improve || [])[0];
       return `${r.marks_awarded} out of ${r.marks_available} marks.${tip ? " " + tip : ""}`;
     }
-    const where = { quiz: "in a quiz", tutor: "with your tutor", written: "in a written answer", helped: "after improving your answer", started: "with help getting started", memory: "in a memory check" }[String(prog.src[q.id] || "").split(":")[0]] || "";
+    const where = { quiz: "in a quiz", tutor: "with your tutor", written: "in a written answer", helped: "after improving your answer", started: "with help getting started", warmed: "after a warm-up", recall: "in a recall check", memory: "in a memory check" }[String(prog.src[q.id] || "").split(":")[0]] || "";
     return prog.latest[q.id] === 0 ? `You didn't know this one yet${where ? " (" + where + ")" : ""}` : `Half right${where ? " " + where : ""}. Nearly there.`;
   }
   const BOOK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h12v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5"/><path d="M9 8h6"/><path d="M9 12h6"/></svg>';
@@ -544,18 +546,24 @@
     const freshSince = typeof opts.freshSince === "function" ? opts.freshSince : () => opts.freshSince || null;
     if (!slot || !topic) return null;
     addCss();
-    const questions = await sb(`quiz_questions?select=id,qtype,topic_label,difficulty,prompt,display,options,answer_index,explanation,model_answer,marking_scheme,source,marks,accept,answer_kind&topic_id=eq.${topic.id}&retired=is.false&order=id.asc`);
+    const questions = await sb(`quiz_questions?select=id,qtype,topic_label,difficulty,prompt,display,options,answer_index,explanation,model_answer,marking_scheme,source,marks,accept,answer_kind,derived_from&topic_id=eq.${topic.id}&retired=is.false&order=id.asc`);
     if (!questions || !questions.length) return null;
     let prog = await loadProgress(sb, profile, questions, freshSince());
     let session = null;
 
     const mcq = questions.filter(q => q.qtype === "mcq"), rec = questions.filter(q => q.qtype === "recall"), ex = questions.filter(q => q.qtype === "exam");
+    // Warm-up ("build") questions: one sentence per point a past paper question needs, written from its
+    // marking scheme. They sit between the quick tests and the exam question, so they stay out of quick-test rounds.
+    const isQuick = q => q.qtype === "mcq" || q.qtype === "recall";
+    const build = questions.filter(q => q.qtype === "build");
+    const buildFor = id => build.filter(b => b.derived_from === id).sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
+    const parentOf = q => q.qtype === "build" ? ex.find(x => x.id === q.derived_from) || null : null;
     const fixes = () => questions.filter(q => prog.latest[q.id] !== undefined && prog.latest[q.id] < 1).sort((a, b) => prog.latest[a.id] - prog.latest[b.id]);
     const known = () => questions.filter(q => prog.latest[q.id] >= 1);
     const untried = () => questions.filter(q => prog.latest[q.id] === undefined);
 
     // Quick Tests: multiple choice and short answers only (exam questions live in Exam Prep)
-    const quickFixes = () => fixes().filter(q => q.qtype !== "exam");
+    const quickFixes = () => fixes().filter(isQuick);
     function todaysPick(){
       const pick = quickFixes().slice(0, 3);
       const fill = (pool, n) => shuffle(pool.filter(q => !pick.includes(q))).slice(0, n).forEach(q => pick.push(q));
@@ -573,7 +581,7 @@
     const estMin = list => Math.max(2, Math.round(list.reduce((n, q) => n + (q.qtype === "mcq" ? 25 : 90), 0) / 60));
     let lastRound = new Set();
     function roundList(){
-      const quick = questions.filter(q => q.qtype !== "exam");
+      const quick = questions.filter(isQuick);
       const left = quick.filter(q => prog.latest[q.id] === undefined || prog.latest[q.id] < 1);
       const fx = left.filter(q => prog.latest[q.id] !== undefined), fresh = left.filter(q => prog.latest[q.id] === undefined);
       const list = shuffle(fx.filter(q => !lastRound.has(q.id))).concat(shuffle(fresh), shuffle(fx.filter(q => lastRound.has(q.id))));
@@ -592,10 +600,11 @@
     }
 
     // ---- numbers for the tabs, and the Refresh tab ----
-    const weakSpots = () => questions.filter(q => prog.everWeak.has(q.id) || !prog.ever.has(q.id));
+    const weakSpots = () => questions.filter(q => prog.everWeak.has(q.id) || (!prog.ever.has(q.id) && q.qtype !== "build"));
     function paintStats(){
-      const fx = fixes(), kn = known(), un = untried();
-      onStats({ quickFix: quickFixes().length, total: questions.length, tried: questions.length - un.length, fixes: fx.length, right: kn.length, triedEver: prog.ever.size, lastAt: prog.lastAt, pastTotal: ex.filter(isPast).length, examTotal: ex.length, examTried: ex.filter(q => prog.latest[q.id] !== undefined).length });
+      const core = questions.filter(q => q.qtype !== "build"), inCore = l => l.filter(q => q.qtype !== "build");
+      const fx = inCore(fixes()), kn = inCore(known()), un = inCore(untried());
+      onStats({ quickFix: quickFixes().length, total: core.length, tried: core.length - un.length, fixes: fx.length, right: kn.length, triedEver: core.filter(q => prog.ever.has(q.id)).length, lastAt: prog.lastAt, pastTotal: ex.filter(isPast).length, examTotal: ex.length, examTried: ex.filter(q => prog.latest[q.id] !== undefined).length });
       paintRefresh();
       if (!session || session.where !== prepSlot) paintPrep();
     }
@@ -619,7 +628,7 @@
         e.target.disabled = true; e.target.textContent = "Starting…";
         await onStartFresh();
         prog = await loadProgress(sb, profile, questions, freshSince());
-        paintStats(); home(); start("Retest", shuffle(questions.slice()).slice(0, 15), "prep");
+        paintStats(); home(); start("Retest", shuffle(questions.filter(q => q.qtype !== "build")).slice(0, 15), "prep");
       };
       refreshSlot.replaceChildren(wrap);
     }
@@ -663,16 +672,17 @@
       hero.querySelector("button").onclick = () => start("Exam question", prepQueue().slice(0, 1), "prep", false, { planned: true });
       const nodes = [hero];
       const row = q => {
-        const b = h(`<button type="button" class="pp-row"><span class="pp-yr">${esc(isPast(q) ? yearOf(q) : "")}</span><span class="pp-b"><span class="pp-s">${esc(isPast(q) ? partOf(q) : "Practice question")} · ${q.marks || 5} marks</span><span class="pp-q">${esc(qMain(q))}</span></span>${chip(q)}</button>`);
+        const b = h(`<button type="button" class="pp-row"><span class="pp-yr">${esc(isPast(q) ? yearOf(q) : "")}</span><span class="pp-b"><span class="pp-s">${esc(isPast(q) ? partOf(q) : "Practice question")} · ${q.marks || 5} marks${buildFor(q.id).length ? " · Warm-up ready" : ""}</span><span class="pp-q">${esc(qMain(q))}</span></span>${chip(q)}</button>`);
         b.onclick = () => start("Exam Prep", [q], "prep");
         return b;
       };
       const list = past.length ? past : style;
       const best = Object.values(prog.reviews).filter(r => list.some(q => q.id === r.question_id) && r.marks_available).sort((a, b) => b.marks_awarded / b.marks_available - a.marks_awarded / a.marks_available)[0];
       const box = h(`<div class="pp-list"><div class="pp-head"><b>${past.length ? "Past paper questions" : "Exam questions"}</b>${best ? `<span>Best mark so far ${best.marks_awarded}/${best.marks_available}</span>` : ""}</div></div>`);
-      const show = prepAll ? list : list.slice(0, 4);
+      // Every question shows up to 12, so an older paper he's done isn't hidden behind "See all"
+      const show = prepAll || list.length <= 12 ? list : list.slice(0, 8);
       show.forEach(q => box.append(row(q)));
-      if (list.length > 4) {
+      if (list.length > 12) {
         const m = h(`<button type="button" class="pp-more">${prepAll ? "Show fewer" : `See all ${list.length} ›`}</button>`);
         m.onclick = () => { prepAll = !prepAll; paintPrep(); };
         box.append(m);
@@ -704,7 +714,7 @@
       session = null; setChrome(true);
       const fx = quickFixes();
       // Where he is on this chapter's quick questions, and how the last go went
-      const quick = questions.filter(q => q.qtype !== "exam");
+      const quick = questions.filter(isQuick);
       const nRight = quick.filter(q => prog.latest[q.id] >= 1).length, nFix = fx.length, nNew = quick.length - nRight - nFix;
       const last = lastGo(quick);
       const pctW = n => quick.length ? (n / quick.length * 100).toFixed(1) + "%" : "0";
@@ -830,9 +840,10 @@
       if (session.i >= session.queue.length) return finish();
       const entry = session.queue[session.i], { q, retry } = entry;
       const fromNotes = q.source === "From your notes" ? " · From your notes" : "";
-      const label = q.qtype === "exam" ? (isPast(q) ? `Past paper · ${esc(q.source || "")} · ${q.marks || 5} marks` : `Exam-style question · ${q.marks || 5} marks`) : (q.qtype === "recall" ? "Short answer" : "Quick quiz") + fromNotes;
+      const par = parentOf(q);
+      const label = q.qtype === "exam" ? (isPast(q) ? `Past paper · ${esc(q.source || "")} · ${q.marks || 5} marks` : `Exam-style question · ${q.marks || 5} marks`) : q.qtype === "build" ? `Warm-up${par ? ` for ${esc(isPast(par) ? String(par.source || "").replace(/\s*State Exam\s*[-–·]\s*/i, " ") : "the exam question")}` : ""}` : (q.qtype === "recall" ? "Short answer" : "Quick quiz") + fromNotes;
       const card = h(`<div class="pr-card">
-        <div class="pr-row" style="justify-content:space-between"><button type="button" class="pr-btn ghost" data-stop>${session.paper && toPaper ? "← Back to the paper" : session.results.length ? "← Finish here" : session.where === prepSlot ? "← Back to Exam questions" : "← Back to Test"}</button><span class="pr-small" style="font-variant-numeric:tabular-nums">${entry.again ? "Improving your answer" : retry ? "Second try" : session.memory ? "Memory check" : `Question ${session.i+1} of ${session.total}`}</span></div>
+        <div class="pr-row" style="justify-content:space-between"><button type="button" class="pr-btn ghost" data-stop>${session.paper && toPaper ? "← Back to the paper" : session.results.length ? "← Finish here" : session.where === prepSlot ? "← Back to Exam questions" : "← Back to Test"}</button><span class="pr-small" style="font-variant-numeric:tabular-nums">${entry.again ? "Improving your answer" : retry ? "Second try" : session.memory ? "Memory check" : entry.warm ? `Warm-up ${entry.warm} of ${entry.warmOf}` : entry.warmed ? "Now the exam question" : `Question ${session.i+1} of ${session.total}`}</span></div>
         <div class="pr-progress"><i style="width:${Math.min(session.i,session.total)/session.total*100}%"></i></div>
         <div class="pr-meta"><span>${label}</span>${session.today ? `<span class="pr-today" data-ring></span>` : ""}</div>
         ${questionHtml(q)}</div>`);
@@ -880,7 +891,8 @@
       const another = () => prepQueue().find(x => !cur || x.id !== cur.id) || null;
       const listNext = single && !planned && !session.paper && !session.memory && cur ? prepNextAfter(cur) : null;
       const hasNext = inPaper ? !!(paperNext && paperNext(false)) : !!listNext;
-      const label = (inPaper || single) && hasNext ? "Next question ›" : inPaper ? "Back to the paper" : !lastOne ? "Next question ›" : single ? "Back to Exam questions" : "Finish practice";
+      const upNext = session.queue[session.i + 1], toExam = !lastOne && cur && cur.qtype === "build" && upNext && upNext.warmed;
+      const label = (inPaper || single) && hasNext ? "Next question ›" : inPaper ? "Back to the paper" : toExam ? "On to the exam question ›" : !lastOne ? (cur && cur.qtype === "build" ? "Next warm-up ›" : "Next question ›") : single ? "Back to Exam questions" : "Finish practice";
       const back = (inPaper || single) && hasNext ? (inPaper ? "Back to the paper" : "Back to Exam questions") : planned && another() ? "Do another exam question" : "";
       const b = h(`<div class="pr-row pr-nextrow"><button type="button" class="pr-btn" data-go>${label}</button>${back ? `<button type="button" class="pr-btn ghost" data-back>${back}</button>` : ""}</div>`);
       const leave = () => { logTime(session); session = null; };
@@ -1082,6 +1094,26 @@
       // Help me get started: for the blank page, before a first attempt. The shape of a full-mark
       // answer and a clue per point, never the answer itself. Not offered in memory checks.
       let usedStart = false;
+      // Warm up first: the one-sentence questions built from this question's marking scheme, then back here
+      const warmQs = isExam && !mem && !entry.again && !retry && !entry.warmed ? buildFor(q.id) : [];
+      if (warmQs.length) {
+        const wb = h(`<button type="button" class="pr-startbtn pr-warmbtn">${STEPS_SVG}<span><b>Warm up first</b><span>${warmQs.length} one-sentence questions, one for each point this answer needs. Then you write the full answer.</span></span></button>`);
+        box.querySelector(".pr-answer").before(wb);
+        wb.onclick = () => {
+          stopMic();
+          entry.warmed = true;
+          session.warmLog = session.warmLog || {}; session.warmLog[q.id] = [];
+          session.queue.splice(session.i, 0, ...warmQs.map((b, k) => ({ q: b, retry: false, warm: k + 1, warmOf: warmQs.length })));
+          session.total += warmQs.length;
+          next();
+        };
+      }
+      if (entry.warmed) {
+        // Back from the warm-up: his own sentences, as the building blocks for the full answer
+        const log = ((session.warmLog || {})[q.id] || []).filter(w => w.text);
+        box.querySelector(".pr-tip").innerHTML = `<b>Warm-up done.</b> Now put those points together into one answer. For each point, say what it is and then explain it.`;
+        if (log.length) box.querySelector(".pr-tip").after(h(`<details class="pr-fb pr-warmlog" open><summary style="cursor:pointer;font-weight:700">Your warm-up answers</summary><ul style="margin-top:6px">${log.map(w => `<li><span class="pr-small">${esc(w.prompt)}</span><br>${esc(w.text)}</li>`).join("")}</ul></details>`));
+      }
       if (isExam && !mem && !entry.again) {
         const sw = h(`<div class="pr-start-w"><button type="button" class="pr-startbtn" data-start>${STEPS_SVG}<span><b>Help me get started</b><span>See how to build this answer, with a clue for each point</span></span></button></div>`);
         box.querySelector(".pr-answer").before(sw);
@@ -1153,7 +1185,8 @@
         }
         file.value = "";
       });
-      const done = (v, source) => {
+      const done = (v, source, typed) => {
+        if (q.qtype === "build" && session && session.warmLog && session.warmLog[q.derived_from]) session.warmLog[q.derived_from].push({ prompt: q.prompt, text: typed || "", v });
         if (entry.again) { const r = session.results.find(x => x.q === q); if (r) r.v = Math.max(r.v, v); save(q.id, v, source); }
         else if (!retry) { session.results.push({ q, v }); save(q.id, v, source); }
       };
@@ -1177,7 +1210,7 @@
           const frac = f.marks_available ? f.marks_awarded / f.marks_available : 0;
           const v = frac >= 0.8 ? 1 : frac >= 0.4 ? 0.5 : 0;
           if (!instant) await sb("answer_reviews", { method:"POST", prefer:"return=minimal", body:[{ profile_id: profile.id, question_id: q.id, answer_text: text || f.transcription || null, marks_awarded: f.marks_awarded, marks_available: f.marks_available, feedback: f }] });
-          done(v, mem ? `memory:${mem.origin}:${frac >= 0.6 ? "pass" : "miss"}` : entry.again ? "helped" : usedStart ? "started" : "written");
+          done(v, mem ? `memory:${mem.origin}:${frac >= 0.6 ? "pass" : "miss"}` : entry.again ? "helped" : entry.warmed ? "warmed" : usedStart ? "started" : "written", text || f.transcription || "");
           box.remove();
           const list = a => a.length ? `<ul>${a.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "";
           // Short first: the mark, one thing that worked, the one change worth most. The rest is folded.
@@ -1280,7 +1313,7 @@
       if (wasToday && !firstExam) {
         const done = mins >= dailyGoal;
         (card.querySelector(".pr-missed") || card.querySelector(".pr-score-msg") || card.querySelector("h3")).after(h(`<div class="pr-todaybox">${ringHtml(64, mins, 7)}<span>${done ? `<b>Today's ${dailyGoal} minutes: done &#10003;</b> Anything more is a bonus.` : `<b>${mins} of ${dailyGoal} minutes</b> today. ${dailyGoal - mins} to go.`}</span></div>`));
-        const leftHere = questions.filter(q => q.qtype !== "exam" && (prog.latest[q.id] === undefined || prog.latest[q.id] < 1)).length;
+        const leftHere = questions.filter(q => isQuick(q) && (prog.latest[q.id] === undefined || prog.latest[q.id] < 1)).length;
         const chTitle = String(topic.title).replace(/^Ch\s*\d+\s*:\s*/i, ""), nextN = Math.min(ROUND, leftHere);
         // Today's session comes first: once this chapter's part is done, go to the next item in it
         const pick = (sessionNext ? sessionNext(topic.id, wasRecall ? "recall" : "test").catch(() => null) : Promise.resolve(null)).then(sn => sn && sn.done ? { sessionDone: true } : sn || (leftHere ? { here: true, left: leftHere, title: stoppedEarly ? `Carry on with ${chTitle}` : `Another ${nextN} on ${chTitle}`, keep: stoppedEarly ? "Keep going" : `Another ${nextN}` } : (nextUp ? nextUp(topic.id) : null)));
