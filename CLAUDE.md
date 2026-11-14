@@ -7,14 +7,14 @@
   so browsers don't keep running the old version.
 - Exam question layouts live in quiz_questions.display (line markers: `??` question, `##` source section,
   `[[img: qimg/<file> | description | big]]` picture, `| a | b |` table rows). Pictures are in /qimg.
-- Warm-up questions: quiz_questions with qtype 'build', answer_kind 'sentence' (or 'word' + accept), derived_from = the
-  exam question id(s), comma-separated when one fact serves several questions (write each fact once per chapter), ids
-  '<exam id>-w1'…. One per marking-scheme point, written from the marking scheme; topic_label groups them. Every exam
-  question in a chapter (past paper and exam-style) should be covered. They are kept out of
-  quick tests, stages.js and the tutor (`qtype=neq.build`). They run from the chapter's Warm up tab (whole chapter, by
-  topic, 10 at a time; shown only when the chapter has warm-ups) or "Warm up first" on one exam question. Warm-up answers
-  are never shown on the exam question. Short answers (answer_kind set) show the answer only:
-  no "try again" or "see a good answer"; a wrong one comes back once at the end of the set. Second tries (MCQ and short
-  answers) are saved, so one got right on the second try leaves the Try Again list; the end-of-set summary says so.
-  Pilots: Daniel's Economics Ch 3 (16 exam questions, 79 warm-ups); Annabel's Science Ch 39 Water and Carbon
-  Cycles (5 exam questions, 24 warm-ups).
+- Quick questions (internally "warm-ups"): quiz_questions with qtype 'build', answer_kind 'sentence' (or 'word' + accept),
+  derived_from = the exam question id(s) they build towards, comma-separated when one fact serves several questions
+  (null for a chapter fact no exam question needs). ids '<exam id>-w1'… or '<chapter>-quick-N'. topic_label groups them.
+  In a chapter that has any, the steps are: Learn -> Multiple choice (the Test tab: MCQs only) -> Quick questions (the
+  warmup tab: builds + the chapter's recall questions) -> Exam questions. Every fact an exam question needs should be
+  covered by BOTH an MCQ and a quick question, and every MCQ fact by a quick question; write each fact once per format
+  (retire duplicates). Builds are kept out of stages.js and the tutor (`qtype=neq.build`). "Quick questions first" on an
+  exam question runs just its own. Quick-question answers are never shown on the exam question. Short answers show the
+  answer only; a wrong one comes back once at the end of the set, and second tries are saved (right on the second try
+  leaves the Try Again list). The next question's answer box is focused automatically; MCQs answer with A-D or 1-4.
+  Done: Annabel's Science Ch 39 (45 MCQ, 52 quick). Daniel's Economics Ch 3 has 79 builds but its MCQs do not yet cover them.

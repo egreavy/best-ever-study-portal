@@ -482,7 +482,7 @@
 </div>
 
 <script src="stages.js?v=20261114a"></script>
-<script src="practice.js?v=20261114d"></script>
+<script src="practice.js?v=20261114e"></script>
 <script src="tutor.js?v=20261114a"></script>
 <script src="notes.js?v=20261109d"></script>
 <script>
@@ -953,7 +953,7 @@ async function renderChapter(){
     updateProgressUI();
   }
 
-  const TABS = [["learn", "Learn"], ["test", "Test"], ["warmup", "Warm up"], ["refresh", "Exam questions"]];
+  const TABS = [["learn", "Learn"], ["test", "Test"], ["warmup", "Quick questions"], ["refresh", "Exam questions"]];
   const TAB_ICON = {
     learn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 4 20 12 6 20 6 4"/></svg>',
     test: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>',
@@ -982,7 +982,7 @@ async function renderChapter(){
       </div>
     </div>` : ""}
     <div class="cv-tabs" role="tablist" aria-label="Chapter sections">
-      ${TABS.map(([k, l]) => `<button type="button" role="tab" class="cv-tab" id="tabbtn-${k}" data-tab="${k}" aria-controls="tab-${k}"${k === "warmup" ? " hidden" : ""}><span class="cv-tab-l"><span class="cv-tab-i"></span><span class="cv-tab-ic">${TAB_ICON[k]}</span>${l}</span><span class="cv-tab-s"></span></button>`).join("")}
+      ${TABS.map(([k, l]) => `<button type="button" role="tab" class="cv-tab" id="tabbtn-${k}" data-tab="${k}" aria-controls="tab-${k}"${k === "warmup" ? " hidden" : ""}><span class="cv-tab-l"><span class="cv-tab-i"></span><span class="cv-tab-ic">${TAB_ICON[k]}</span><span class="cv-tab-t">${l}</span></span><span class="cv-tab-s"></span></button>`).join("")}
     </div>
 
     <section id="tab-learn" role="tabpanel" aria-labelledby="tabbtn-learn" hidden>
@@ -1052,6 +1052,8 @@ async function renderChapter(){
       // Warm up tab: only for chapters that have warm-up questions
       const wb = document.getElementById("tabbtn-warmup"), hasWarm = (st.warmTotal || 0) > 0 && !focusOn;
       if (wb && wb.hidden === hasWarm) { wb.hidden = !hasWarm; document.querySelector(".cv-tabs").classList.toggle("has-warm", hasWarm); }
+      // with quick questions, the Test tab is the multiple-choice step
+      const tt = document.querySelector("#tabbtn-test .cv-tab-t"); if (tt) tt.textContent = hasWarm ? "Multiple choice" : "Test";
       const info = paintTabs();
       if (autoTab) { autoTab = false; const t = { learn: "learn", none: "learn", test: "test", refresh: "refresh" }[info.stage]; if (t !== state.chapterTab) showTab(t); }
     },

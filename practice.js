@@ -401,7 +401,7 @@
       const tip = ((r.feedback || {}).to_improve || [])[0];
       return `${r.marks_awarded} out of ${r.marks_available} marks.${tip ? " " + tip : ""}`;
     }
-    const where = { quiz: "in a quiz", tutor: "with your tutor", written: "in a written answer", helped: "after improving your answer", started: "with help getting started", warmed: "after a warm-up", recall: "in a recall check", memory: "in a memory check" }[String(prog.src[q.id] || "").split(":")[0]] || "";
+    const where = { quiz: "in a quiz", tutor: "with your tutor", written: "in a written answer", helped: "after improving your answer", started: "with help getting started", warmed: "after quick questions", recall: "in a recall check", memory: "in a memory check" }[String(prog.src[q.id] || "").split(":")[0]] || "";
     return prog.latest[q.id] === 0 ? `You didn't know this one yet${where ? " (" + where + ")" : ""}` : `Half right${where ? " " + where : ""}. Nearly there.`;
   }
   const BOOK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h12v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5"/><path d="M9 8h6"/><path d="M9 12h6"/></svg>';
@@ -553,8 +553,11 @@
     const mcq = questions.filter(q => q.qtype === "mcq"), rec = questions.filter(q => q.qtype === "recall"), ex = questions.filter(q => q.qtype === "exam");
     // Warm-up ("build") questions: one sentence per point a past paper question needs, written from its
     // marking scheme. They sit between the quick tests and the exam question, so they stay out of quick-test rounds.
-    const isQuick = q => q.qtype === "mcq" || q.qtype === "recall";
-    const build = questions.filter(q => q.qtype === "build");
+    // In a chapter with warm-ups the steps are: multiple choice (Test tab) -> quick questions (Warm up tab: the
+    // warm-ups plus the chapter's short-answer questions) -> exam questions.
+    const build = questions.filter(q => q.qtype === "build"), hasWarm = build.length > 0;
+    const isQuick = q => q.qtype === "mcq" || (q.qtype === "recall" && !hasWarm);
+    const warmPool = hasWarm ? build.concat(rec) : [];
     const parentsOf = b => String(b.derived_from || "").split(",").map(x => x.trim()).filter(Boolean);
     const buildFor = id => build.filter(b => parentsOf(b).includes(id)).sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
     const fixes = () => questions.filter(q => prog.latest[q.id] !== undefined && prog.latest[q.id] < 1).sort((a, b) => prog.latest[a.id] - prog.latest[b.id]);
@@ -571,8 +574,9 @@
         const pool = type === "mcq" ? mcq : rec, fresh = pool.filter(q => prog.latest[q.id] === undefined && !pick.includes(q));
         fill(fresh.length >= need ? fresh : pool, need);
       };
-      want("recall", rec.length ? 2 : 0);
-      want("mcq", 10 - Math.min(2, rec.length));
+      const nRec = hasWarm ? 0 : Math.min(2, rec.length);
+      want("recall", nRec);
+      want("mcq", 10 - nRec);
       return shuffle(pick.slice(0, 3)).concat(shuffle(pick.slice(3)));
     }
     // Quick Tests run in rounds of 10: questions to try again first (not ones he just saw), then new ones
@@ -672,7 +676,7 @@
       hero.querySelector("button").onclick = () => start("Exam question", prepQueue().slice(0, 1), "prep", false, { planned: true });
       const nodes = [hero];
       const row = q => {
-        const b = h(`<button type="button" class="pp-row"><span class="pp-yr">${esc(isPast(q) ? yearOf(q) : "")}</span><span class="pp-b"><span class="pp-s">${esc(isPast(q) ? partOf(q) : "Practice question")} · ${q.marks || 5} marks${buildFor(q.id).length ? " · Warm-up ready" : ""}</span><span class="pp-q">${esc(qMain(q))}</span></span>${chip(q)}</button>`);
+        const b = h(`<button type="button" class="pp-row"><span class="pp-yr">${esc(isPast(q) ? yearOf(q) : "")}</span><span class="pp-b"><span class="pp-s">${esc(isPast(q) ? partOf(q) : "Practice question")} · ${q.marks || 5} marks${buildFor(q.id).length ? " · Quick questions ready" : ""}</span><span class="pp-q">${esc(qMain(q))}</span></span>${chip(q)}</button>`);
         b.onclick = () => start("Exam Prep", [q], "prep");
         return b;
       };
@@ -700,7 +704,7 @@
     // The step between quick tests and exam questions: every fact and point that the exam questions on this
     // chapter ask for, as short questions (each written once, even when several questions need it), by topic.
     const ROUND_W = 10;
-    const groupsOf = () => { const g = {}; build.forEach(b => { const k = b.topic_label || "This chapter"; (g[k] = g[k] || []).push(b); });
+    const groupsOf = () => { const g = {}; warmPool.forEach(b => { const k = b.topic_label || "This chapter"; (g[k] = g[k] || []).push(b); });
       return Object.keys(g).sort((x, y) => x.localeCompare(y)).map(k => ({ name: k, qs: g[k].sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true })) })); };
     const isRight = b => prog.latest[b.id] >= 1;
     function startWarm(list, name){
@@ -708,20 +712,20 @@
       const wrong = list.filter(b => prog.latest[b.id] !== undefined && !isRight(b)), fresh = list.filter(b => prog.latest[b.id] === undefined);
       const pick = wrong.concat(fresh).slice(0, ROUND_W);
       goTo("warmup");
-      start(name || "Warm-up", pick.length ? pick : shuffle(list).slice(0, ROUND_W), "warm");
+      start(name || "Quick questions", pick.length ? pick : shuffle(list).slice(0, ROUND_W), "warm");
     }
     function paintWarm(){
       if (!warmSlot) return;
-      if (!build.length) { warmSlot.replaceChildren(h(`<div class="pr-card"><p class="pr-sub" style="margin:0">Warm-up questions for this chapter are coming soon.</p></div>`)); return; }
+      if (!hasWarm) { warmSlot.replaceChildren(h(`<div class="pr-card"><p class="pr-sub" style="margin:0">Quick questions for this chapter are coming soon.</p></div>`)); return; }
       const groups = groupsOf(), all = groups.flatMap(g => g.qs), nRight = all.filter(isRight).length, left = all.length - nRight, anyTried = all.some(b => prog.latest[b.id] !== undefined);
-      const hero = h(`<div class="pp-hero"><span class="ft-icon">${STEPS_SVG}</span><span class="pp-hero-b"><span class="ft-tag">After Test, before Exam questions</span><span class="pp-hero-t">Warm up on this chapter</span><span class="pr-sub">${plural(all.length, "short question", "short questions")} covering every fact and point the exam questions on this chapter ask for, ${ROUND_W} at a time.${anyTried ? ` ${nRight} of ${all.length} right so far.` : ""}</span></span><button type="button" class="pr-btn big">${!anyTried ? "Start" : left ? "Keep going" : "Check it stuck"}</button></div>`);
+      const hero = h(`<div class="pp-hero"><span class="ft-icon">${STEPS_SVG}</span><span class="pp-hero-b"><span class="ft-tag">After multiple choice, before exam questions</span><span class="pp-hero-t">Quick questions on this chapter</span><span class="pr-sub">${plural(all.length, "question", "questions")} with a one-word or one-sentence answer, covering every fact and point the exam questions on this chapter ask for, ${ROUND_W} at a time.${anyTried ? ` ${nRight} of ${all.length} right so far.` : ""}</span></span><button type="button" class="pr-btn big">${!anyTried ? "Start" : left ? "Keep going" : "Check it stuck"}</button></div>`);
       hero.querySelector("button").onclick = () => startWarm(all);
       const box = h(`<div class="pp-list"><div class="pp-head"><b>Or pick a topic</b></div></div>`);
       groups.forEach(g => {
         const r = g.qs.filter(isRight).length, tried = g.qs.some(b => prog.latest[b.id] !== undefined);
         const c = !tried ? `<span class="pp-chip">Not tried</span>` : r === g.qs.length ? `<span class="pp-chip good">All ${r} right</span>` : `<span class="pp-chip mid">${r} of ${g.qs.length} right</span>`;
         const b = h(`<button type="button" class="pp-row"><span class="pp-b"><span class="pp-q" style="font-weight:700">${esc(g.name)}</span><span class="pp-s">${plural(g.qs.length, "question", "questions")}</span></span>${c}</button>`);
-        b.onclick = () => startWarm(g.qs, "Warm-up: " + g.name);
+        b.onclick = () => startWarm(g.qs, "Quick questions: " + g.name);
         box.append(b);
       });
       warmSlot.replaceChildren(hero, box);
@@ -789,7 +793,7 @@
           b.onclick = fn; box.append(b);
         };
         add("Quick Quiz", "Multiple choice, one tap answers", () => start("Quick Quiz", shuffle(mcq)), !mcq.length);
-        if (rec.length) add("Short Answer Practice", rec.some(q => q.answer_kind) ? "Quick answers: a word or one sentence" : "Write a line or two, then compare", () => start("Short Answer Practice", shuffle(rec)));
+        if (rec.length && !hasWarm) add("Short Answer Practice", rec.some(q => q.answer_kind) ? "Quick answers: a word or one sentence" : "Write a line or two, then compare", () => start("Short Answer Practice", shuffle(rec)));
         const nodes2 = [box];
         // Only once he's earned it: 80%+ on his last go
         if (ex.length && prepSlot && last && last.pct >= 80) {
@@ -871,9 +875,9 @@
       if (session.i >= session.queue.length) return finish();
       const entry = session.queue[session.i], { q, retry } = entry;
       const fromNotes = q.source === "From your notes" ? " · From your notes" : "";
-      const label = q.qtype === "exam" ? (isPast(q) ? `Past paper · ${esc(q.source || "")} · ${q.marks || 5} marks` : `Exam-style question · ${q.marks || 5} marks`) : q.qtype === "build" ? `Warm-up${q.topic_label ? " · " + esc(q.topic_label) : ""}` : (q.qtype === "recall" ? "Short answer" : "Quick quiz") + fromNotes;
+      const label = q.qtype === "exam" ? (isPast(q) ? `Past paper · ${esc(q.source || "")} · ${q.marks || 5} marks` : `Exam-style question · ${q.marks || 5} marks`) : q.qtype === "build" || (q.qtype === "recall" && hasWarm) ? `Quick question${q.topic_label ? " · " + esc(q.topic_label) : ""}` : (q.qtype === "recall" ? "Short answer" : "Quick quiz") + fromNotes;
       const card = h(`<div class="pr-card">
-        <div class="pr-row" style="justify-content:space-between"><button type="button" class="pr-btn ghost" data-stop>${session.paper && toPaper ? "← Back to the paper" : session.results.length ? "← Finish here" : session.where === prepSlot ? "← Back to Exam questions" : session.where === warmSlot ? "← Back to Warm up" : "← Back to Test"}</button><span class="pr-small" style="font-variant-numeric:tabular-nums">${entry.again ? "Improving your answer" : retry ? "Second try" : session.memory ? "Memory check" : entry.warm ? `Warm-up ${entry.warm} of ${entry.warmOf}` : entry.warmed ? "Now the exam question" : `Question ${session.i+1} of ${session.total}`}</span></div>
+        <div class="pr-row" style="justify-content:space-between"><button type="button" class="pr-btn ghost" data-stop>${session.paper && toPaper ? "← Back to the paper" : session.results.length ? "← Finish here" : session.where === prepSlot ? "← Back to Exam questions" : session.where === warmSlot ? "← Back to Quick questions" : "← Back to Test"}</button><span class="pr-small" style="font-variant-numeric:tabular-nums">${entry.again ? "Improving your answer" : retry ? "Second try" : session.memory ? "Memory check" : entry.warm ? `Warm-up ${entry.warm} of ${entry.warmOf}` : entry.warmed ? "Now the exam question" : `Question ${session.i+1} of ${session.total}`}</span></div>
         <div class="pr-progress"><i style="width:${Math.min(session.i,session.total)/session.total*100}%"></i></div>
         <div class="pr-meta"><span>${label}</span>${session.today ? `<span class="pr-today" data-ring></span>` : ""}</div>
         ${questionHtml(q)}</div>`);
@@ -885,6 +889,9 @@
       session.t0 = session.t0 || Date.now();
       if (q.qtype === "mcq") mcqView(card, q, retry); else writtenView(card, q, retry, entry);
       session.where.replaceChildren(card);
+      // Ready to type: the answer box is selected (for exam questions only with a mouse, so a phone keyboard doesn't cover the question)
+      const ta0 = card.querySelector(".pr-answer textarea");
+      if (ta0 && (q.qtype !== "exam" || (window.matchMedia && matchMedia("(pointer: fine)").matches))) ta0.focus({ preventScroll: true });
       paintRing();
       card.scrollIntoView({ block:"start", behavior:"smooth" });
     }
@@ -922,7 +929,7 @@
       const listNext = single && !planned && !session.paper && !session.memory && cur ? prepNextAfter(cur) : null;
       const hasNext = inPaper ? !!(paperNext && paperNext(false)) : !!listNext;
       const upNext = session.queue[session.i + 1], toExam = !lastOne && cur && cur.qtype === "build" && upNext && upNext.warmed;
-      const label = (inPaper || single) && hasNext ? "Next question ›" : inPaper ? "Back to the paper" : toExam ? "On to the exam question ›" : !lastOne ? (cur && cur.qtype === "build" ? "Next warm-up ›" : "Next question ›") : single ? "Back to Exam questions" : "Finish practice";
+      const label = (inPaper || single) && hasNext ? "Next question ›" : inPaper ? "Back to the paper" : toExam ? "On to the exam question ›" : !lastOne ? "Next question ›" : single ? "Back to Exam questions" : "Finish practice";
       const back = (inPaper || single) && hasNext ? (inPaper ? "Back to the paper" : "Back to Exam questions") : planned && another() ? "Do another exam question" : "";
       const b = h(`<div class="pr-row pr-nextrow"><button type="button" class="pr-btn" data-go>${label}</button>${back ? `<button type="button" class="pr-btn ghost" data-back>${back}</button>` : ""}</div>`);
       const leave = () => { logTime(session); session = null; };
@@ -983,6 +990,15 @@
         opts.append(b);
       });
       card.append(opts);
+      // Keyboard: A-D or 1-4 picks an answer, so a whole round can be done without the mouse
+      const key = e => {
+        if (!card.isConnected) { document.removeEventListener("keydown", key); return; }
+        if (e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test((e.target || {}).tagName || "")) return;
+        const k = e.key.toUpperCase(), i = "ABCD".indexOf(k) >= 0 ? "ABCD".indexOf(k) : "1234".indexOf(k);
+        const bs = opts.querySelectorAll(".pr-opt"); if (i < 0 || !bs[i] || bs[i].disabled) return;
+        e.preventDefault(); document.removeEventListener("keydown", key); bs[i].click();
+      };
+      document.addEventListener("keydown", key);
     }
 
     // After marking: "What next?" — improve it step by step, talk it through, or just try again
@@ -1133,7 +1149,7 @@
       // Warm up first: the one-sentence questions built from this question's marking scheme, then back here
       const warmQs = isExam && !mem && !entry.again && !retry && !entry.warmed ? buildFor(q.id) : [];
       if (warmQs.length) {
-        const wb = h(`<button type="button" class="pr-startbtn pr-warmbtn">${STEPS_SVG}<span><b>Warm up first</b><span>${warmQs.length} short questions, one for each point this answer needs. Then you write the full answer.</span></span></button>`);
+        const wb = h(`<button type="button" class="pr-startbtn pr-warmbtn">${STEPS_SVG}<span><b>Quick questions first</b><span>${warmQs.length} short questions, one for each point this answer needs. Then you write the full answer.</span></span></button>`);
         box.querySelector(".pr-answer").before(wb);
         wb.onclick = () => {
           stopMic();
@@ -1145,7 +1161,7 @@
       }
       if (entry.warmed) {
         // Back from the warm-up: write the full answer from memory (the warm-up answers are not shown)
-        box.querySelector(".pr-tip").innerHTML = `<b>Warm-up done.</b> Now write your full answer. For each point, say what it is and then explain it.`;
+        box.querySelector(".pr-tip").innerHTML = `<b>Quick questions done.</b> Now write your full answer. For each point, say what it is and then explain it.`;
       }
       if (isExam && !mem && !entry.again) {
         const sw = h(`<div class="pr-start-w"><button type="button" class="pr-startbtn" data-start>${STEPS_SVG}<span><b>Help me get started</b><span>See how to build this answer, with a clue for each point</span></span></button></div>`);
@@ -1312,7 +1328,7 @@
       const card = h(`<div class="pr-card"><h3>${esc(session.name)}: done</h3>
         <p class="pr-next">${R.length ? `You answered ${plural(R.length, "question", "questions")}. ${second.length ? `${good.length} right first time and ${second.length} right on the second try` : `${plural(good.length, "was", "were")} right`}${gaps.length ? `, and ${plural(gaps.length, "goes", "go")} on your Try Again list` : ""}.` : "No answers saved this time."}</p>
         ${gaps.length > 4 ? `<details class="pr-fb"><summary style="cursor:pointer;font-weight:700">${gaps.length} to try again next time</summary><ul style="margin-top:6px">${gaps.map(r=>`<li>${esc(shortTitle(r.q))}</li>`).join("")}</ul><span class="pr-tip">Your tutor will start with these too.</span></details>` : gaps.length ? `<div class="pr-fb"><h4>To try again next time</h4><ul>${gaps.map(r=>`<li>${esc(shortTitle(r.q))}</li>`).join("")}</ul><span class="pr-tip">Your tutor will start with these too.</span></div>` : ""}
-        <div class="pr-row" data-acts><button type="button" class="pr-btn${quickWhere && R.length >= 3 ? " ghost" : ""}" data-home>Back to ${session.where === prepSlot ? "Exam questions" : session.where === warmSlot ? "Warm up" : "Test"}</button></div></div>`);
+        <div class="pr-row" data-acts><button type="button" class="pr-btn${quickWhere && R.length >= 3 ? " ghost" : ""}" data-home>Back to ${session.where === prepSlot ? "Exam questions" : session.where === warmSlot ? "Quick questions" : "Test"}</button></div></div>`);
       card.querySelector("[data-home]").onclick = () => home();
       // After a quick test: under 70% -> review the material; 80%+ -> on to exam questions
       if (quickWhere && R.length >= 3) {
@@ -1327,6 +1343,7 @@
           const miss = gaps.slice(0, 8).map(r => `<li><b>${esc(r.q.prompt)}</b><br>${esc(r.q.qtype === "mcq" ? (r.q.explanation || (r.q.options || [])[r.q.answer_index] || "") : (r.q.model_answer || r.q.explanation || ""))}</li>`).join("");
           if (miss) missEl = (h(`<details class="pr-fb pr-missed"><summary style="cursor:pointer;font-weight:700">What you missed (${gaps.length})</summary><ul style="margin-top:8px;display:flex;flex-direction:column;gap:8px">${miss}</ul></details>`));
         }
+        else if (pct >= 80 && hasWarm) { msg = `You know this well. Now try the quick questions: a word or a sentence for each point.`; btn = h(`<button type="button" class="pr-btn">Go to Quick questions ›</button>`); btn.onclick = () => { home(); goTo("warmup"); }; }
         else if (pct >= 80) { msg = ex.length ? `You know this well. Time to try exam questions.` : `You know this well.`; if (ex.length) { btn = h(`<button type="button" class="pr-btn">Go to Exam questions ›</button>`); btn.onclick = () => { home(); goTo("refresh"); }; } }
         else { msg = `Nearly there. Try the ones you missed again, then you're ready for exam questions.`; const fx = quickFixes(); if (fx.length) { btn = h(`<button type="button" class="pr-btn">Try Again (${fx.length})</button>`); btn.onclick = () => start("Try Again", fx); } }
         const half = R.filter(r => r.v > 0 && r.v < 1).length;
@@ -1346,7 +1363,7 @@
         if (!card.isConnected) return;
         // After a warm-up set: more warm-ups while there are some to get right, then on to exam questions
         const all = groupsOf().flatMap(g => g.qs), leftW = all.filter(b => !isRight(b)).length;
-        const box = h(`<div class="pr-nextup"><span class="lab">Next up</span><b>${leftW ? `${plural(leftW, "warm-up question", "warm-up questions")} still to get right` : "You know every point for this chapter's exam questions"}</b>
+        const box = h(`<div class="pr-nextup"><span class="lab">Next up</span><b>${leftW ? `${plural(leftW, "quick question", "quick questions")} still to get right` : "You know every point for this chapter's exam questions"}</b>
           <button type="button" class="pr-btn big" data-wn>${leftW ? `Next ${Math.min(ROUND_W, leftW)} ›` : "Try an exam question ›"}</button></div>`);
         box.querySelector("[data-wn]").onclick = () => { if (leftW) startWarm(all); else { home(); goTo("refresh"); } };
         (card.querySelector("h3")).after(box);
