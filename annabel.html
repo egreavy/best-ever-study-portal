@@ -382,6 +382,9 @@
   .cv-tab:hover{filter:brightness(.97)}
   .cv-tab[aria-selected="true"]{background:var(--t-card);color:var(--t-accent);border-top-color:var(--t-accent);min-height:62px;font-size:17px;box-shadow:none;filter:none}
   .cv-tab-ic{display:inline-flex}.cv-tab-ic svg{width:19px;height:19px}
+  .cv-tabs.has-warm{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .cv-tab[hidden]{display:none!important}
+  @media (max-width:420px){.cv-tabs.has-warm .cv-tab{font-size:14px}.cv-tabs.has-warm .cv-tab[aria-selected="true"]{font-size:15px}}
   .cv section[role="tabpanel"]{background:var(--t-card);border-radius:14px;padding:12px;margin-bottom:14px}
   .cv[data-tab="learn"] #tab-learn{border-top-left-radius:0}
   .cv[data-tab="refresh"] #tab-refresh{border-top-right-radius:0}
@@ -479,7 +482,7 @@
 </div>
 
 <script src="stages.js?v=20261114a"></script>
-<script src="practice.js?v=20261114a"></script>
+<script src="practice.js?v=20261114b"></script>
 <script src="tutor.js?v=20261114a"></script>
 <script src="notes.js?v=20261109d"></script>
 <script>
@@ -950,10 +953,11 @@ async function renderChapter(){
     updateProgressUI();
   }
 
-  const TABS = [["learn", "Learn"], ["test", "Test"], ["refresh", "Exam questions"]];
+  const TABS = [["learn", "Learn"], ["test", "Test"], ["warmup", "Warm up"], ["refresh", "Exam questions"]];
   const TAB_ICON = {
     learn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 4 20 12 6 20 6 4"/></svg>',
     test: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>',
+    warmup: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h10M4 12h7M4 17h10"/><path d="M16 15l2 2 4-4"/></svg>',
     refresh: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M8 13h8"/><path d="M8 17h5"/></svg>'
   };
   // Open on the step he's at (worked out again once the questions have loaded)
@@ -978,7 +982,7 @@ async function renderChapter(){
       </div>
     </div>` : ""}
     <div class="cv-tabs" role="tablist" aria-label="Chapter sections">
-      ${TABS.map(([k, l]) => `<button type="button" role="tab" class="cv-tab" id="tabbtn-${k}" data-tab="${k}" aria-controls="tab-${k}"><span class="cv-tab-l"><span class="cv-tab-i"></span><span class="cv-tab-ic">${TAB_ICON[k]}</span>${l}</span><span class="cv-tab-s"></span></button>`).join("")}
+      ${TABS.map(([k, l]) => `<button type="button" role="tab" class="cv-tab" id="tabbtn-${k}" data-tab="${k}" aria-controls="tab-${k}"${k === "warmup" ? " hidden" : ""}><span class="cv-tab-l"><span class="cv-tab-i"></span><span class="cv-tab-ic">${TAB_ICON[k]}</span>${l}</span><span class="cv-tab-s"></span></button>`).join("")}
     </div>
 
     <section id="tab-learn" role="tabpanel" aria-labelledby="tabbtn-learn" hidden>
@@ -990,6 +994,10 @@ async function renderChapter(){
       <div id="practiceSlot"><div class="cv-card cv-empty">Quizzes for this chapter are coming soon. Use the extra practice below for now.</div></div>
       <div class="pr-pair" id="pairRow"><div id="paperSlot"></div><div id="tutorSlot"></div></div>
       <div id="practiceMoreSlot"></div>
+    </section>
+
+    <section id="tab-warmup" role="tabpanel" aria-labelledby="tabbtn-warmup" hidden>
+      <div id="warmSlot"></div>
     </section>
 
     <section id="tab-refresh" role="tabpanel" aria-labelledby="tabbtn-refresh" hidden>
@@ -1013,7 +1021,8 @@ async function renderChapter(){
     b.addEventListener("click", () => showTab(b.dataset.tab));
     b.addEventListener("keydown", (e) => {
       if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-      const n = all[(i + (e.key === "ArrowRight" ? 1 : all.length - 1)) % all.length];
+      const vis = Array.from(all).filter(x => !x.hidden), j = vis.indexOf(b);
+      const n = vis[(j + (e.key === "ArrowRight" ? 1 : vis.length - 1)) % vis.length];
       n.focus(); showTab(n.dataset.tab);
     });
   });
@@ -1033,12 +1042,16 @@ async function renderChapter(){
     paperSlot: document.getElementById("paperSlot"),
     refreshSlot: document.getElementById("refreshSlot"),
     prepSlot: document.getElementById("prepSlot"),
+    warmSlot: document.getElementById("warmSlot"),
     prepHide: [],
     rightSlot: document.getElementById("rightSlot"),
     freshSince: () => freshSince,
     goTo: goTab,
     onStats: (st) => {
       chapterStats = st;
+      // Warm up tab: only for chapters that have warm-up questions
+      const wb = document.getElementById("tabbtn-warmup"), hasWarm = (st.warmTotal || 0) > 0 && !focusOn;
+      if (wb && wb.hidden === hasWarm) { wb.hidden = !hasWarm; document.querySelector(".cv-tabs").classList.toggle("has-warm", hasWarm); }
       const info = paintTabs();
       if (autoTab) { autoTab = false; const t = { learn: "learn", none: "learn", test: "test", refresh: "refresh" }[info.stage]; if (t !== state.chapterTab) showTab(t); }
     },

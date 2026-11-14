@@ -541,7 +541,7 @@
 
   // ---- mount ----
   async function mountPractice(slot, opts){
-    const { topic, profile, sb, moreSlot, paperSlot, refreshSlot, prepSlot, rightSlot, goTo = () => {}, onStats = () => {}, onStartFresh = async () => {}, hideDuring = [], prepHide = [], nextUp = null, sessionNext = null, openToday = null, goHome = null, paperNext = null, backToPaper = null, dailyGoal = 30 } = opts;
+    const { topic, profile, sb, moreSlot, paperSlot, refreshSlot, prepSlot, rightSlot, goTo = () => {}, onStats = () => {}, onStartFresh = async () => {}, hideDuring = [], prepHide = [], nextUp = null, sessionNext = null, openToday = null, goHome = null, paperNext = null, backToPaper = null, dailyGoal = 30, warmSlot = null } = opts;
     const toPaper = backToPaper || goHome;
     const freshSince = typeof opts.freshSince === "function" ? opts.freshSince : () => opts.freshSince || null;
     if (!slot || !topic) return null;
@@ -604,9 +604,10 @@
     function paintStats(){
       const core = questions.filter(q => q.qtype !== "build"), inCore = l => l.filter(q => q.qtype !== "build");
       const fx = inCore(fixes()), kn = inCore(known()), un = inCore(untried());
-      onStats({ quickFix: quickFixes().length, total: core.length, tried: core.length - un.length, fixes: fx.length, right: kn.length, triedEver: core.filter(q => prog.ever.has(q.id)).length, lastAt: prog.lastAt, pastTotal: ex.filter(isPast).length, examTotal: ex.length, examTried: ex.filter(q => prog.latest[q.id] !== undefined).length });
+      onStats({ quickFix: quickFixes().length, total: core.length, tried: core.length - un.length, fixes: fx.length, right: kn.length, triedEver: core.filter(q => prog.ever.has(q.id)).length, lastAt: prog.lastAt, pastTotal: ex.filter(isPast).length, warmTotal: build.length, examTotal: ex.length, examTried: ex.filter(q => prog.latest[q.id] !== undefined).length });
       paintRefresh();
       if (!session || session.where !== prepSlot) paintPrep();
+      if (!session || session.where !== warmSlot) paintWarm();
     }
     function paintRefresh(){
       if (!refreshSlot) return;
@@ -696,6 +697,33 @@
       prepSlot.replaceChildren(...nodes);
     }
 
+    // ---- Warm up tab ----
+    // The step between quick tests and exam questions: for each exam question with warm-ups, its short
+    // questions (one per marking-scheme point), then straight on to the exam question itself.
+    function warmState(eq){ const bs = buildFor(eq.id); return { bs, right: bs.filter(b => prog.latest[b.id] >= 1).length, tried: bs.filter(b => prog.latest[b.id] !== undefined).length }; }
+    function startWarm(eq){
+      const bs = buildFor(eq.id); if (!bs.length) return;
+      goTo("warmup");
+      start("Warm-up", bs, "warm", false, { warmFor: eq.id, warmLog: { [eq.id]: [] } });
+    }
+    function paintWarm(){
+      if (!warmSlot) return;
+      const list = [...pastSorted(), ...styleQs()].filter(q => buildFor(q.id).length);
+      if (!list.length) { warmSlot.replaceChildren(h(`<div class="pr-card"><p class="pr-sub" style="margin:0">Warm-up questions for this chapter are coming soon.</p></div>`)); return; }
+      const nextQ = list.find(q => { const w = warmState(q); return w.right < w.bs.length; }) || list[0];
+      const hero = h(`<div class="pp-hero"><span class="ft-icon">${STEPS_SVG}</span><span class="pp-hero-b"><span class="ft-tag">After Test, before Exam questions</span><span class="pp-hero-t">Warm up for an exam question</span><span class="pr-sub">Short questions, one for each point the exam answer needs. Then you write the full answer.</span></span><button type="button" class="pr-btn big">Start</button></div>`);
+      hero.querySelector("button").onclick = () => startWarm(nextQ);
+      const box = h(`<div class="pp-list"><div class="pp-head"><b>Pick an exam question to warm up for</b></div></div>`);
+      list.forEach(q => {
+        const w = warmState(q);
+        const c = !w.tried ? `<span class="pp-chip">Not tried</span>` : w.right === w.bs.length ? `<span class="pp-chip good">All ${w.bs.length} right</span>` : `<span class="pp-chip mid">${w.right} of ${w.bs.length} right</span>`;
+        const b = h(`<button type="button" class="pp-row"><span class="pp-yr">${esc(isPast(q) ? yearOf(q) : "")}</span><span class="pp-b"><span class="pp-s">${esc(isPast(q) ? partOf(q) : "Practice question")} · ${plural(w.bs.length, "warm-up", "warm-ups")}</span><span class="pp-q">${esc(qMain(q))}</span></span>${c}</button>`);
+        b.onclick = () => startWarm(q);
+        box.append(b);
+      });
+      warmSlot.replaceChildren(hero, box);
+    }
+
     // ---- Test tab ----
     function setChrome(show, where){ hideDuring.forEach(el => { if (el) el.hidden = !show; }); prepHide.forEach(el => { if (el) el.hidden = !show; }); }
     // The last day he tested this chapter: first answer to each quick question that day
@@ -768,7 +796,7 @@
         }
         moreSlot.replaceChildren(...nodes2);
       }
-      paintPrep();
+      paintPrep(); paintWarm();
       if (rightSlot) {
         const kn = known();
         rightSlot.replaceChildren();
@@ -830,7 +858,10 @@
     function start(name, list, where, today, extra){
       if (!list || !list.length) return;
       if (session) { logTime(session); home(); }
-      session = { recall: !!(extra && extra.recall), planned: !!(extra && extra.planned), guided: !!(extra && extra.guided), name, queue: list.map(q => ({ q, retry:false })), i:0, results:[], total:list.length, startTotal:list.length, t0: Date.now(), where: where === "prep" && prepSlot ? prepSlot : slot, today: !!today, base: 0, memory: (extra && extra.memory) || null, paper: !!(extra && extra.paper) };
+      session = { recall: !!(extra && extra.recall), planned: !!(extra && extra.planned), guided: !!(extra && extra.guided), name, queue: list.map(q => ({ q, retry:false })), i:0, results:[], total:list.length, startTotal:list.length, t0: Date.now(), where: where === "prep" && prepSlot ? prepSlot : where === "warm" && warmSlot ? warmSlot : slot, today: !!today, base: 0, memory: (extra && extra.memory) || null, paper: !!(extra && extra.paper), warmFor: (extra && extra.warmFor) || null, warmLog: (extra && extra.warmLog) || null };
+      // A set of warm-ups (from the Warm up tab): number them; an exam question that follows one is marked as warmed
+      if (session.warmFor) session.queue.forEach((e, k) => { e.warm = k + 1; e.warmOf = list.length; });
+      if (extra && extra.warmed) session.queue[0].warmed = true;
       if (today) todayBase().then(m => { if (session) { session.base = m; paintRing(); } });
       setChrome(false);
       next();
@@ -843,7 +874,7 @@
       const par = parentOf(q);
       const label = q.qtype === "exam" ? (isPast(q) ? `Past paper · ${esc(q.source || "")} · ${q.marks || 5} marks` : `Exam-style question · ${q.marks || 5} marks`) : q.qtype === "build" ? `Warm-up${par ? ` for ${esc(isPast(par) ? String(par.source || "").replace(/\s*State Exam\s*[-–·]\s*/i, " ") : "the exam question")}` : ""}` : (q.qtype === "recall" ? "Short answer" : "Quick quiz") + fromNotes;
       const card = h(`<div class="pr-card">
-        <div class="pr-row" style="justify-content:space-between"><button type="button" class="pr-btn ghost" data-stop>${session.paper && toPaper ? "← Back to the paper" : session.results.length ? "← Finish here" : session.where === prepSlot ? "← Back to Exam questions" : "← Back to Test"}</button><span class="pr-small" style="font-variant-numeric:tabular-nums">${entry.again ? "Improving your answer" : retry ? "Second try" : session.memory ? "Memory check" : entry.warm ? `Warm-up ${entry.warm} of ${entry.warmOf}` : entry.warmed ? "Now the exam question" : `Question ${session.i+1} of ${session.total}`}</span></div>
+        <div class="pr-row" style="justify-content:space-between"><button type="button" class="pr-btn ghost" data-stop>${session.paper && toPaper ? "← Back to the paper" : session.results.length ? "← Finish here" : session.where === prepSlot ? "← Back to Exam questions" : session.where === warmSlot ? "← Back to Warm up" : "← Back to Test"}</button><span class="pr-small" style="font-variant-numeric:tabular-nums">${entry.again ? "Improving your answer" : retry ? "Second try" : session.memory ? "Memory check" : entry.warm ? `Warm-up ${entry.warm} of ${entry.warmOf}` : entry.warmed ? "Now the exam question" : `Question ${session.i+1} of ${session.total}`}</span></div>
         <div class="pr-progress"><i style="width:${Math.min(session.i,session.total)/session.total*100}%"></i></div>
         <div class="pr-meta"><span>${label}</span>${session.today ? `<span class="pr-today" data-ring></span>` : ""}</div>
         ${questionHtml(q)}</div>`);
@@ -892,11 +923,13 @@
       const listNext = single && !planned && !session.paper && !session.memory && cur ? prepNextAfter(cur) : null;
       const hasNext = inPaper ? !!(paperNext && paperNext(false)) : !!listNext;
       const upNext = session.queue[session.i + 1], toExam = !lastOne && cur && cur.qtype === "build" && upNext && upNext.warmed;
-      const label = (inPaper || single) && hasNext ? "Next question ›" : inPaper ? "Back to the paper" : toExam ? "On to the exam question ›" : !lastOne ? (cur && cur.qtype === "build" ? "Next warm-up ›" : "Next question ›") : single ? "Back to Exam questions" : "Finish practice";
-      const back = (inPaper || single) && hasNext ? (inPaper ? "Back to the paper" : "Back to Exam questions") : planned && another() ? "Do another exam question" : "";
+      const warmEnd = lastOne && session.warmFor && !session.paper;
+      const label = warmEnd ? "Now try the exam question ›" : (inPaper || single) && hasNext ? "Next question ›" : inPaper ? "Back to the paper" : toExam ? "On to the exam question ›" : !lastOne ? (cur && cur.qtype === "build" ? "Next warm-up ›" : "Next question ›") : single ? "Back to Exam questions" : "Finish practice";
+      const back = warmEnd ? "Back to Warm up" : (inPaper || single) && hasNext ? (inPaper ? "Back to the paper" : "Back to Exam questions") : planned && another() ? "Do another exam question" : "";
       const b = h(`<div class="pr-row pr-nextrow"><button type="button" class="pr-btn" data-go>${label}</button>${back ? `<button type="button" class="pr-btn ghost" data-back>${back}</button>` : ""}</div>`);
       const leave = () => { logTime(session); session = null; };
       b.querySelector("[data-go]").onclick = () => {
+        if (warmEnd) { const eq = ex.find(x => x.id === session.warmFor), log = session.warmLog; logTime(session); session = null; paintWarm(); if (eq) { goTo("refresh"); start("Exam question", [eq], "prep", false, { planned: true, warmed: true, warmLog: log }); } return; }
         if (inPaper && hasNext) { leave(); paperNext(true); return; }
         if (inPaper) { leave(); toPaper(); return; }
         if (single && listNext) { logTime(session); start("Exam Prep", [listNext], "prep"); return; }
@@ -905,6 +938,7 @@
       };
       const bk = b.querySelector("[data-back]");
       if (bk) bk.onclick = () => {
+        if (warmEnd) { finish(); return; }
         if (inPaper) { leave(); toPaper(); return; }
         const nx = planned ? another() : null;
         logTime(session);
@@ -1186,7 +1220,8 @@
         file.value = "";
       });
       const done = (v, source, typed) => {
-        if (q.qtype === "build" && session && session.warmLog && session.warmLog[q.derived_from]) session.warmLog[q.derived_from].push({ prompt: q.prompt, text: typed || "", v });
+        const wl = q.qtype === "build" && session && session.warmLog && session.warmLog[q.derived_from];
+        if (wl) { const old = wl.find(w => w.prompt === q.prompt); if (!old) wl.push({ prompt: q.prompt, text: typed || "", v }); else if (typed && v >= old.v) { old.text = typed; old.v = v; } }
         if (entry.again) { const r = session.results.find(x => x.q === q); if (r) r.v = Math.max(r.v, v); save(q.id, v, source); }
         else if (!retry) { session.results.push({ q, v }); save(q.id, v, source); }
       };
@@ -1237,12 +1272,19 @@
 
           </div>`);
           card.append(fbEl);
-          fbEl.querySelector(".pr-key").after(h(modelBlock()));
+          // Short answers: the answer is already shown, so no "see a good answer" or "try again" here.
+          // A wrong one comes back once at the end of the set instead (before the exam question, after a warm-up).
+          if (!quickQ) fbEl.querySelector(".pr-key").after(h(modelBlock()));
+          if (quickQ && v < 1 && !retry && !entry.again && session && !mem) {
+            let at = session.queue.findIndex((e, k) => k > session.i && e.warmed); if (at < 0) at = session.queue.length;
+            session.queue.splice(at, 0, { q, retry: true, warm: entry.warm, warmOf: entry.warmOf });
+            fbEl.querySelector(".pr-key").append(h(`<p class="pr-tip">You'll get another go at the end.</p>`));
+          }
           const hb = fbEl.querySelector("[data-hear]");
           if (hb) hb.onclick = () => speakOut(hb, (isExam
             ? [`${f.marks_awarded} out of ${f.marks_available}.`, stopLine, upTxt, ...(partsOf(f).length >= 2 ? partsOf(f).map(p => `Part ${p.part.replace(/[()]/g, "")}: ${p.awarded} out of ${p.available}. ${p.comment}`) : [good1 ? "Good: " + good1 : "", fix1 ? "For more marks: " + fix1 : ""])]
             : [v === 1 ? "Got it." : v ? "Nearly." : "Not yet.", upTxt, ansLine, good1, v < 1 && fix1 ? "To fix: " + fix1 : ""]).filter(Boolean).join(" "));
-          if (f.to_improve.length && (isExam || v < 1) && (!f.marks_available || f.marks_awarded < f.marks_available)) improveRow(fbEl, q, text || f.transcription || "", f, entry, { quiet: !!stopHere, images });
+          if (!quickQ && f.to_improve.length && (isExam || v < 1) && (!f.marks_available || f.marks_awarded < f.marks_available)) improveRow(fbEl, q, text || f.transcription || "", f, entry, { quiet: !!stopHere, images });
           nextBtn(card);
         } catch (e) {
           err.textContent = e.message + (mem ? "" : " You can also check it yourself with Just show the answer."); err.hidden = false;
@@ -1268,13 +1310,14 @@
 
     function finish(){
       const R = session.results, good = R.filter(r => r.v >= 1), gaps = R.filter(r => r.v < 1);
+      const quickWhere = session.where !== prepSlot && session.where !== warmSlot;
       const card = h(`<div class="pr-card"><h3>${esc(session.name)}: done</h3>
         <p class="pr-next">${R.length ? `You answered ${plural(R.length, "question", "questions")}. ${plural(good.length, "was", "were")} right${gaps.length ? `, and ${plural(gaps.length, "goes", "go")} on your Try Again list` : ""}.` : "No answers saved this time."}</p>
         ${gaps.length > 4 ? `<details class="pr-fb"><summary style="cursor:pointer;font-weight:700">${gaps.length} to try again next time</summary><ul style="margin-top:6px">${gaps.map(r=>`<li>${esc(shortTitle(r.q))}</li>`).join("")}</ul><span class="pr-tip">Your tutor will start with these too.</span></details>` : gaps.length ? `<div class="pr-fb"><h4>To try again next time</h4><ul>${gaps.map(r=>`<li>${esc(shortTitle(r.q))}</li>`).join("")}</ul><span class="pr-tip">Your tutor will start with these too.</span></div>` : ""}
-        <div class="pr-row" data-acts><button type="button" class="pr-btn${session.where !== prepSlot && R.length >= 3 ? " ghost" : ""}" data-home>Back to ${session.where === prepSlot ? "Exam questions" : "Test"}</button></div></div>`);
+        <div class="pr-row" data-acts><button type="button" class="pr-btn${quickWhere && R.length >= 3 ? " ghost" : ""}" data-home>Back to ${session.where === prepSlot ? "Exam questions" : session.where === warmSlot ? "Warm up" : "Test"}</button></div></div>`);
       card.querySelector("[data-home]").onclick = () => home();
       // After a quick test: under 70% -> review the material; 80%+ -> on to exam questions
-      if (session.where !== prepSlot && R.length >= 3) {
+      if (quickWhere && R.length >= 3) {
         const pct = Math.round(R.reduce((n, r) => n + r.v, 0) / R.length * 100);
         const acts = card.querySelector("[data-acts]");
         let msg, btn, missEl = null;
@@ -1296,7 +1339,7 @@
       const wasToday = session.today, mins = todayMins(), stoppedEarly = session.i < session.queue.length - 1;
       // After the first quick-test round on a chapter: an exam question while it's fresh
       const wasRecall = !!session.recall;
-      const firstExam = !wasRecall && session.where !== prepSlot && R.length >= 3 && ex.length > 0 && !ex.some(q => prog.ever.has(q.id));
+      const firstExam = !wasRecall && quickWhere && R.length >= 3 && ex.length > 0 && !ex.some(q => prog.ever.has(q.id));
       logTime(session);
       const where = session.where;
       session = null;
