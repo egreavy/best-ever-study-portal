@@ -14,6 +14,7 @@
   quick tests, stages.js and the tutor (`qtype=neq.build`). They run from the chapter's Warm up tab (whole chapter, by
   topic, 10 at a time; shown only when the chapter has warm-ups) or "Warm up first" on one exam question. Warm-up answers
   are never shown on the exam question. Short answers (answer_kind set) show the answer only:
-  no "try again" or "see a good answer"; a wrong one comes back once at the end of the set.
+  no "try again" or "see a good answer"; a wrong one comes back once at the end of the set. Second tries (MCQ and short
+  answers) are saved, so one got right on the second try leaves the Try Again list; the end-of-set summary says so.
   Pilots: Daniel's Economics Ch 3 (16 exam questions, 79 warm-ups); Annabel's Science Ch 39 Water and Carbon
   Cycles (5 exam questions, 24 warm-ups).

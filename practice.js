@@ -944,6 +944,12 @@
       if (single && !inPaper && (planned || session.memory)) sessionContinue(card, session.memory ? "memory" : "exam");
     }
     let saving = Promise.resolve();
+    // A wrong answer that comes back at the end of a set: the second go is saved, so one got right then
+    // leaves the Try Again list (it still counts as found hard before, for Weak Spots)
+    function secondTry(q, v, source){
+      const r = session && session.results.find(x => x.q === q && x.second === undefined); if (!r) return;
+      r.second = v; save(q.id, v, source);
+    }
     const save = (qid, v, source) => (saving = (async () => { await record(sb, profile, qid, v, session && session.recall && !/^memory/.test(source || "") ? "recall" : source); prog = await loadProgress(sb, profile, questions, freshSince()); paintStats(); })());
     function logTime(s){
       if (!s || !s.results.length) return;
@@ -969,7 +975,7 @@
           const ok = oi === q.answer_index;
           opts.querySelectorAll(".pr-opt").forEach((x,p) => { x.disabled = true; if (order[p] === q.answer_index) x.classList.add("right"); });
           if (!ok) b.classList.add("wrong"); else b.classList.add("pop");
-          if (!retry) { session.results.push({ q, v: ok?1:0 }); save(q.id, ok?1:0, "quiz"); }
+          if (!retry) { session.results.push({ q, v: ok?1:0 }); save(q.id, ok?1:0, "quiz"); } else secondTry(q, ok ? 1 : 0, "quiz");
           if (!ok && !retry) session.queue.push({ q, retry:true });
           card.append(h(`<div class="pr-fb ${ok?"good":""}"><span class="pr-verd">${ok ? `<span class="pr-tick" aria-hidden="true">&#10003;</span>` : ""}<strong>${ok?"Right.":"Not this one."}</strong></span><span>${esc(q.explanation||"")}</span>${!ok&&!retry?`<span class="pr-tip">You'll get another go at the end.</span>`:""}</div>`));
           nextBtn(card);
@@ -1215,6 +1221,7 @@
       const done = (v, source) => {
         if (entry.again) { const r = session.results.find(x => x.q === q); if (r) r.v = Math.max(r.v, v); save(q.id, v, source); }
         else if (!retry) { session.results.push({ q, v }); save(q.id, v, source); }
+        else secondTry(q, v, source);
       };
       const modelBlock = () => `<details class="pr-modelbl pr-modelbtn"><summary><span class="pr-mb-i" aria-hidden="true">${BOOK_SVG}</span>${isExam ? "See the model answer and marking scheme" : "See a good answer"}</summary><div class="pr-fb" style="margin-top:8px"><span>${esc(q.model_answer||"")}</span>${q.marking_scheme?`<span class="pr-scheme"><strong>Marking scheme:</strong> ${esc(q.marking_scheme)}</span>`:""}</div></details>`;
 
@@ -1300,10 +1307,10 @@
     }
 
     function finish(){
-      const R = session.results, good = R.filter(r => r.v >= 1), gaps = R.filter(r => r.v < 1);
+      const R = session.results, good = R.filter(r => r.v >= 1), second = R.filter(r => r.v < 1 && r.second >= 1), gaps = R.filter(r => r.v < 1 && !(r.second >= 1));
       const quickWhere = session.where !== prepSlot && session.where !== warmSlot;
       const card = h(`<div class="pr-card"><h3>${esc(session.name)}: done</h3>
-        <p class="pr-next">${R.length ? `You answered ${plural(R.length, "question", "questions")}. ${plural(good.length, "was", "were")} right${gaps.length ? `, and ${plural(gaps.length, "goes", "go")} on your Try Again list` : ""}.` : "No answers saved this time."}</p>
+        <p class="pr-next">${R.length ? `You answered ${plural(R.length, "question", "questions")}. ${second.length ? `${good.length} right first time and ${second.length} right on the second try` : `${plural(good.length, "was", "were")} right`}${gaps.length ? `, and ${plural(gaps.length, "goes", "go")} on your Try Again list` : ""}.` : "No answers saved this time."}</p>
         ${gaps.length > 4 ? `<details class="pr-fb"><summary style="cursor:pointer;font-weight:700">${gaps.length} to try again next time</summary><ul style="margin-top:6px">${gaps.map(r=>`<li>${esc(shortTitle(r.q))}</li>`).join("")}</ul><span class="pr-tip">Your tutor will start with these too.</span></details>` : gaps.length ? `<div class="pr-fb"><h4>To try again next time</h4><ul>${gaps.map(r=>`<li>${esc(shortTitle(r.q))}</li>`).join("")}</ul><span class="pr-tip">Your tutor will start with these too.</span></div>` : ""}
         <div class="pr-row" data-acts><button type="button" class="pr-btn${quickWhere && R.length >= 3 ? " ghost" : ""}" data-home>Back to ${session.where === prepSlot ? "Exam questions" : session.where === warmSlot ? "Warm up" : "Test"}</button></div></div>`);
       card.querySelector("[data-home]").onclick = () => home();
