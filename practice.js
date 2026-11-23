@@ -801,7 +801,7 @@
         const nodes2 = [box];
         // Only once he's earned it: 80%+ on his last go
         if (ex.length && prepSlot && last && last.pct >= 80) {
-          const nx = h(`<button type="button" class="pp-next"><span class="pr-li-body"><span class="pr-li-title">Know this chapter well?</span><span class="pr-li-note">Move on to Exam questions and try ${ex.some(isPast) ? "a real past paper question" : "an exam question"}.</span></span><b class="go">Exam Prep ›</b></button>`);
+          const nx = h(`<button type="button" class="pp-next"><span class="pr-li-body"><span class="pr-li-title">Know this chapter well?</span><span class="pr-li-note">Move on to Go and try ${ex.some(isPast) ? "a real past paper question" : "an exam question"}.</span></span><b class="go">Go ›</b></button>`);
           nx.onclick = () => goTo("refresh");
           nodes2.push(nx);
         }
