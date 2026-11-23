@@ -673,7 +673,7 @@
       const doneN = pool.filter(q => prog.latest[q.id] !== undefined).length;
       const years = past.map(yearOf).filter(Boolean).sort();
       const tag = past.length ? `Real State Exam questions${years.length ? ` · ${years[0] === years[years.length - 1] ? years[0] : years[0] + " to " + years[years.length - 1]}` : ""}` : "Exam-style questions from your textbook";
-      const hero = h(`<div class="pp-hero"><span class="ft-icon">${PAPER_SVG}</span><span class="pp-hero-b"><span class="ft-tag">${esc(tag)}</span><span class="pp-hero-t">Do an exam question</span><span class="pr-sub">Write it, get it marked like the real exam, then improve it with your tutor. ${doneN} of ${pool.length} done.</span></span><button type="button" class="pr-btn big">Start</button></div>`);
+      const hero = h(`<div class="pp-hero"><span class="ft-icon">${PAPER_SVG}</span><span class="pp-hero-b"><span class="ft-tag">Go · ${esc(tag)}</span><span class="pp-hero-t">Do an exam question</span><span class="pr-sub">Write it, get it marked like the real exam, then improve it with your tutor. ${doneN} of ${pool.length} done.</span></span><button type="button" class="pr-btn big">Start</button></div>`);
       hero.querySelector("button").onclick = () => start("Exam question", prepQueue().slice(0, 1), "prep", false, { planned: true });
       const nodes = [hero];
       const row = q => {
@@ -716,20 +716,20 @@
       const fresh = freshAll.filter(examLinked).concat(freshAll.filter(b => !examLinked(b)));
       const pick = wrong.concat(fresh).slice(0, ROUND_W);
       goTo("warmup");
-      start(name || "Quick questions", pick.length ? pick : shuffle(list).slice(0, ROUND_W), "warm");
+      start(name || "Set: quick questions", pick.length ? pick : shuffle(list).slice(0, ROUND_W), "warm");
     }
     function paintWarm(){
       if (!warmSlot) return;
-      if (!hasWarm) { warmSlot.replaceChildren(h(`<div class="pr-card"><p class="pr-sub" style="margin:0">Quick questions for this chapter are coming soon.</p></div>`)); return; }
+      if (!hasWarm) { warmSlot.replaceChildren(h(`<div class="pr-card"><p class="pr-sub" style="margin:0"><b>Set: quick questions</b> for this chapter are coming soon. They build up each point the exam questions need, a word or a sentence at a time. For now, go from Ready to Go.</p></div>`)); return; }
       const groups = groupsOf(), all = groups.flatMap(g => g.qs), nRight = all.filter(isRight).length, left = all.length - nRight, anyTried = all.some(b => prog.latest[b.id] !== undefined);
-      const hero = h(`<div class="pp-hero"><span class="ft-icon">${STEPS_SVG}</span><span class="pp-hero-b"><span class="ft-tag">After multiple choice, before exam questions</span><span class="pp-hero-t">Quick questions on this chapter</span><span class="pr-sub">${plural(all.length, "question", "questions")} with a one-word or one-sentence answer, covering every fact and point the exam questions on this chapter ask for, ${ROUND_W} at a time.${anyTried ? ` ${nRight} of ${all.length} right so far.` : ""}</span></span><button type="button" class="pr-btn big">${!anyTried ? "Start" : left ? "Keep going" : "Check it stuck"}</button></div>`);
+      const hero = h(`<div class="pp-hero"><span class="ft-icon">${STEPS_SVG}</span><span class="pp-hero-b"><span class="ft-tag">Set · after Ready, before Go</span><span class="pp-hero-t">Quick questions on this chapter</span><span class="pr-sub">${plural(all.length, "question", "questions")} with a one-word or one-sentence answer, covering every fact and point the exam questions on this chapter ask for, ${ROUND_W} at a time.${anyTried ? ` ${nRight} of ${all.length} right so far.` : ""}</span></span><button type="button" class="pr-btn big">${!anyTried ? "Start" : left ? "Keep going" : "Check it stuck"}</button></div>`);
       hero.querySelector("button").onclick = () => startWarm(all);
       const box = h(`<div class="pp-list"><div class="pp-head"><b>Or pick a topic</b></div></div>`);
       groups.forEach(g => {
         const r = g.qs.filter(isRight).length, tried = g.qs.some(b => prog.latest[b.id] !== undefined);
         const c = !tried ? `<span class="pp-chip">Not tried</span>` : r === g.qs.length ? `<span class="pp-chip good">All ${r} right</span>` : `<span class="pp-chip mid">${r} of ${g.qs.length} right</span>`;
         const b = h(`<button type="button" class="pp-row"><span class="pp-b"><span class="pp-q" style="font-weight:700">${esc(g.name)}</span><span class="pp-s">${plural(g.qs.length, "question", "questions")}</span></span>${c}</button>`);
-        b.onclick = () => startWarm(g.qs, "Quick questions: " + g.name);
+        b.onclick = () => startWarm(g.qs, "Set: " + g.name);
         box.append(b);
       });
       warmSlot.replaceChildren(hero, box);
@@ -771,7 +771,7 @@
       const nSecure = quick.filter(q => prog.latest[q.id] >= 1 && rightDays[q.id] && rightDays[q.id].size >= 2).length;
       const line = (k, v) => `<p class="pr-sum-l"><span class="k">${k}</span><span class="v">${v}</span></p>`;
       const hero = h(`<div class="pr-card pr-prog">
-          <span class="pr-hero-title">${tried ? "Your progress on this chapter" : "Test yourself on this chapter"}</span>
+          <span class="ft-tag">Ready · multiple choice</span><span class="pr-hero-title">${tried ? "Your progress on this chapter" : "Test yourself on this chapter"}</span>
           <div class="pr-sum">
             ${last ? line("Last practice", `${esc(last.when.replace(/^on /, ""))}: <b>${last.right} of ${last.n} right</b>${last.half ? `, ${last.half} half right` : ""}`) : ""}
             ${line("This round", `<b>${esc(nextText)}</b>`)}
@@ -1347,8 +1347,8 @@
           const miss = gaps.slice(0, 8).map(r => `<li><b>${esc(r.q.prompt)}</b><br>${esc(r.q.qtype === "mcq" ? (r.q.explanation || (r.q.options || [])[r.q.answer_index] || "") : (r.q.model_answer || r.q.explanation || ""))}</li>`).join("");
           if (miss) missEl = (h(`<details class="pr-fb pr-missed"><summary style="cursor:pointer;font-weight:700">What you missed (${gaps.length})</summary><ul style="margin-top:8px;display:flex;flex-direction:column;gap:8px">${miss}</ul></details>`));
         }
-        else if (pct >= 80 && hasWarm) { msg = `You know this well. Now try the quick questions: a word or a sentence for each point.`; btn = h(`<button type="button" class="pr-btn">Go to Quick questions ›</button>`); btn.onclick = () => { home(); goTo("warmup"); }; }
-        else if (pct >= 80) { msg = ex.length ? `You know this well. Time to try exam questions.` : `You know this well.`; if (ex.length) { btn = h(`<button type="button" class="pr-btn">Go to Exam questions ›</button>`); btn.onclick = () => { home(); goTo("refresh"); }; } }
+        else if (pct >= 80 && hasWarm) { msg = `You know this well. You're Ready. Next is Set: quick questions, a word or a sentence for each point.`; btn = h(`<button type="button" class="pr-btn">On to Set ›</button>`); btn.onclick = () => { home(); goTo("warmup"); }; }
+        else if (pct >= 80) { msg = ex.length ? `You know this well. Time for Go: exam questions.` : `You know this well.`; if (ex.length) { btn = h(`<button type="button" class="pr-btn">On to Go ›</button>`); btn.onclick = () => { home(); goTo("refresh"); }; } }
         else { msg = `Nearly there. Try the ones you missed again, then you're ready for exam questions.`; const fx = quickFixes(); if (fx.length) { btn = h(`<button type="button" class="pr-btn">Try Again (${fx.length})</button>`); btn.onclick = () => start("Try Again", fx); } }
         const half = R.filter(r => r.v > 0 && r.v < 1).length;
         card.querySelector("h3").after(h(`<div class="pr-score-msg ${pct >= 80 ? "good" : pct < 70 ? "low" : ""}"><span class="pr-score">${good.length}/${R.length}</span><span><b>right</b>${half ? `, ${half} half right` : ""}<br>${esc(msg)}</span></div>`));

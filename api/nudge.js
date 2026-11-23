@@ -74,9 +74,9 @@ async function lookAt(id) {
 }
 
 function studentText(st, info, n) {
-  const what = info.chapter ? `10 quick questions on ${info.subject ? info.subject + " " : ""}${shortChapter(info.chapter)}` : info.subject ? `10 quick questions on ${info.subject}` : "one round of 10 quick questions";
+  const where = info.chapter ? `${info.subject ? info.subject + " " : ""}${shortChapter(info.chapter)}` : info.subject || "";
   const open = ["Hi " + st.name + ", 15 mins today?", "Quick one " + st.name + ":", st.name + ", 15 mins tonight?"][n % 3];
-  return `${open} Try ${what}. ${SITE}/${st.page}`;
+  return `${open} Ready, set, go: 10 questions${where ? " on " + where : ""}. ${SITE}/${st.page}`;
 }
 
 module.exports = async (req, res) => {

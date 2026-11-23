@@ -423,7 +423,7 @@
     const st = s.stats || {};
     if (s.stage === "refresh") {
       if (s.done) return "Exam ready";
-      if (s.freshSince) return st.fixes ? `Exam prep · ${st.fixes} to try again` : `Exam prep · ${plural((st.total||0) - (st.tried||0), "question", "questions")} to go`;
+      if (s.freshSince) return st.fixes ? `Go · ${st.fixes} to try again` : `Go · ${plural((st.total||0) - (st.tried||0), "question", "questions")} to go`;
       return `Exams ${untilText(s.examDate)}${st.lastAt ? " · last tested " + ago(st.lastAt) : ""}`;
     }
     if (s.stage === "test") {
@@ -439,13 +439,13 @@
     }
     return "Not started";
   }
-  const TAG = { learn: "Learn", test: "Quick Tests", refresh: "Exam Prep" };
+  const TAG = { learn: "Learn", test: "Ready", refresh: "Go" };
   // Three arrows: none lit = not started, 1 = learning, 2 = quick tests, 3 = exam prep
   // Without Learn: two arrows, quick tests then exam prep
   function stepLevel(c){
     const off = LEARN_ON ? 0 : 1;
-    if (c.stage === "refresh" || c.tested) return [3 - off, "Exam prep"];
-    if (c.stage === "test") return [2 - off, "Quick tests"];
+    if (c.stage === "refresh" || c.tested) return [3 - off, "Go: exam questions"];
+    if (c.stage === "test") return [2 - off, "Ready: multiple choice"];
     if (c.stage === "learn" && LEARN_ON) return [1, "Learning"];
     return [0, "Not started"];
   }
@@ -507,7 +507,7 @@
     const r = (size - stroke) / 2, c = 2 * Math.PI * r, f = Math.max(0, Math.min(1, frac));
     return `<span class="ring" style="width:${size}px;height:${size}px" aria-hidden="true"><svg width="${size}" height="${size}"><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--t-line)" stroke-width="${stroke}"/><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--t-accent)" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${(c * f).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 ${size/2} ${size/2})"/></svg><b>${label}</b></span>`;
   }
-  const GO = { learn: "Keep learning ›", test: "Test myself ›", refresh: "Exam prep ›", none: "Start ›" };
+  const GO = { learn: "Keep learning ›", test: "Get ready ›", refresh: "Go ›", none: "Start ›" };
   const TAB_FOR = LEARN_ON ? { learn: "learn", test: "test", refresh: "refresh", none: "learn" } : { learn: "test", test: "test", refresh: "refresh", none: "test" };
 
   // ---- load everything the homepage and subject pages need ----
@@ -1006,7 +1006,7 @@
         const chSelect = () => { const chs = (m.bySubject[a.subject_id] || { chapters: [] }).chapters.slice().sort((x, y) => (x.order_num || 0) - (y.order_num || 0));
           return `<select data-i="${i}" aria-label="Which chapter">${chs.map(x => `<option value="${x.id}"${x.id === a.topic_id ? " selected" : ""}>Ch ${x.order_num ?? ""}: ${esc(shortTitle(x.title))}</option>`).join("")}</select>`; };
         let ic, k, t, w;
-        if (a.type === "class_done") { ic = ["done", "✓"]; k = chName(c); t = shortTitle(c.title); w = "Covered in class: added to your revision list for a quick test"; }
+        if (a.type === "class_done") { ic = ["done", "✓"]; k = chName(c); t = shortTitle(c.title); w = "Covered in class: added to your revision list to get Ready"; }
         else if (a.type === "coming_up") { ic = ["up", "›"]; k = chName(c); t = shortTitle(c.title); w = `Coming up${d ? " " + d : " in class"}: added to your revision list to learn ahead`; }
         else if (a.type === "class_test") { ic = ["date", "!"]; k = `${subjTitle(a.subject_id)} · class test`; t = d; w = `Which chapter? ${chSelect()}`; }
         else if (a.type === "deadline") { ic = ["date", "!"]; k = `${subjTitle(a.subject_id)} · ${esc(a.label || "deadline")}`; t = `Due ${d}`; w = `For ${chSelect()}`; }
@@ -1045,7 +1045,7 @@
           await setStatus(c.id, { class_done_at: new Date().toISOString() });
           await setFlag(c.id, "Covered in class · test yourself");
           undo.push(async () => { await setStatus(c.id, { class_done_at: prevAt }); await restoreFlag(c.id, prevFlag); });
-          said.push(`${chName(c)} is on your revision list for a quick test`);
+          said.push(`${chName(c)} is on your revision list to get Ready`);
         } else if (a.type === "coming_up" && c) {
           const prevFlag = flagPrev(c.id);
           await setFlag(c.id, "Coming up in class" + (a.date ? " " + fmtDate(parseDate(a.date)) : ""));
@@ -1206,15 +1206,15 @@
   function describe(m, it){
     const c = m.topics[it.topic_id]; if (!c) return null;
     const st = c.stats || {}, short = shortTitle(c.title);
-    let what = /quick tests?/i.test(it.what || "") ? "Quick test" : it.what, detail;
+    let what = /quick tests?/i.test(it.what || "") ? "Ready" : it.what, detail;
     if (it.kind === "memory") { what = what || "Memory check"; detail = `a ${it.marks ? it.marks + "-mark " : ""}exam question, from memory · you did this chapter ${it.days} days ago · about ${it.mins} min`; }
     else if (it.kind === "learn") { what = what || "Learn"; detail = `video or revision guide · about ${it.mins} min`; }
-    else if (it.kind === "exam") { what = what || "Exam question"; detail = `write one and get it marked · about ${it.mins} min`; }
+    else if (it.kind === "exam") { what = what || "Go: exam question"; detail = `write one and get it marked · about ${it.mins} min`; }
     else if (it.kind === "recall") { what = what || "Recall"; detail = `${it.q} quick questions · you tested this ${it.days >= 28 ? Math.round(it.days / 7) + " weeks" : it.days + " days"} ago · about ${it.mins} min`; }
     else if (it.kind === "revise") { what = what || "Revise"; detail = `revision guide, then a quick round · about ${it.mins} min`; }
     else {
       const fixOnly = st.quickFix && !st.quickNew && (st.quickLeft || 0) <= it.q;
-      what = what || (fixOnly ? `${plural(st.quickFix, "question", "questions")} you got wrong` : "Quick test");
+      what = what || (fixOnly ? `Ready: ${plural(st.quickFix, "question", "questions")} you got wrong` : "Ready: multiple choice");
       detail = `${it.rounds > 1 ? it.rounds + " rounds" : "1 round"} · about ${it.mins} min`;
     }
     return { c, subj: subjOf(m, c), name: `Ch ${c.order_num ?? ""}: ${short}`, short, what, detail };
@@ -1628,8 +1628,8 @@
   function topicStatus(c){
     const st = c.stats || {};
     if (c.tested) return ["ok", "Tested ✓"];
-    if (c.stage === "refresh") return ["now", "Exam prep"];
-    if (c.stage === "test") return ["now", st.quickFix ? `Testing · ${st.quickFix} to fix` : "Testing"];
+    if (c.stage === "refresh") return ["now", "Go: exam questions"];
+    if (c.stage === "test") return ["now", st.quickFix ? `Ready · ${st.quickFix} to fix` : "Ready"];
     if (c.stage === "learn") return ["", "Learning"];
     return ["dim", "Not started"];
   }
