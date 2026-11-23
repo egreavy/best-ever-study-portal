@@ -710,7 +710,10 @@
     const isRight = b => prog.latest[b.id] >= 1;
     function startWarm(list, name){
       // ones got wrong first, then new ones, in topic order; all right: a mixed set to check it stuck
-      const wrong = list.filter(b => prog.latest[b.id] !== undefined && !isRight(b)), fresh = list.filter(b => prog.latest[b.id] === undefined);
+      // New ones that build towards an exam question come before extra chapter facts and short-answer questions
+      const examLinked = b => b.qtype === "build" && !!b.derived_from;
+      const wrong = list.filter(b => prog.latest[b.id] !== undefined && !isRight(b)), freshAll = list.filter(b => prog.latest[b.id] === undefined);
+      const fresh = freshAll.filter(examLinked).concat(freshAll.filter(b => !examLinked(b)));
       const pick = wrong.concat(fresh).slice(0, ROUND_W);
       goTo("warmup");
       start(name || "Quick questions", pick.length ? pick : shuffle(list).slice(0, ROUND_W), "warm");
