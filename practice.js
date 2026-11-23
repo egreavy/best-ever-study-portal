@@ -414,7 +414,8 @@
   // Quick recall: a one-to-three-word answer is checked on the spot against the accepted answers,
   // allowing small spelling slips. Anything that doesn't match goes to the AI, so a correct answer
   // in other words still counts.
-  const norm = t => String(t || "").toLowerCase().replace(/[‘’']/g, "").replace(/[^a-z0-9=+%€.\s-]/g, " ").replace(/\b(a|an|the)\b/g, " ").replace(/\s+/g, " ").trim();
+  // Dashes and hyphens between two things ("1962–65", "1962 - 65", "fold-mountains") count as a space, so they match either way
+  const norm = t => String(t || "").toLowerCase().replace(/[‐‑‒–—―]/g, "-").replace(/(\S)\s*-\s*(?=\S)/g, "$1 ").replace(/[‘’']/g, "").replace(/[^a-z0-9=+%€.\s-]/g, " ").replace(/\b(a|an|the)\b/g, " ").replace(/\s+/g, " ").trim();
   function editDist(a, b){ if (Math.abs(a.length - b.length) > 2) return 9; const d = Array.from({ length: a.length + 1 }, (_, i) => [i]); for (let j = 1; j <= b.length; j++) d[0][j] = j;
     for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i-1][j] + 1, d[i][j-1] + 1, d[i-1][j-1] + (a[i-1] === b[j-1] ? 0 : 1)); return d[a.length][b.length]; }
   function instantMatch(q, text){
