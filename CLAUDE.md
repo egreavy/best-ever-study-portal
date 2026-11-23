@@ -17,4 +17,7 @@
   exam question runs just its own. Quick-question answers are never shown on the exam question. Short answers show the
   answer only; a wrong one comes back once at the end of the set, and second tries are saved (right on the second try
   leaves the Try Again list). The next question's answer box is focused automatically; MCQs answer with A-D or 1-4.
-  Done: Annabel's Science Ch 39 (45 MCQ, 52 quick). Daniel's Economics Ch 3 has 79 builds but its MCQs do not yet cover them.
+  Done: Annabel's Science Ch 39 (45 MCQ, 52 quick). Daniel's first 8 chapters of Economics, Geography, Politics & Society,
+  Religion 1 and Religion 2 (Nov 2026: ~3,800 quick questions, ~3,200 extra MCQs; every exam question has linked builds).
+- The Learn tab is switched off (stages.js LEARN_ON = false): the app is testing and exam prep only. Steps are
+  Multiple choice -> Quick questions -> Exam questions. Set LEARN_ON = true to bring Learn back.
