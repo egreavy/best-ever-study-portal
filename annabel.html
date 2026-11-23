@@ -481,7 +481,7 @@
   <div id="view"><div class="loading">Loading…</div></div>
 </div>
 
-<script src="stages.js?v=20261114a"></script>
+<script src="stages.js?v=20261123a"></script>
 <script src="practice.js?v=20261114e"></script>
 <script src="tutor.js?v=20261114a"></script>
 <script src="notes.js?v=20261109d"></script>
@@ -953,7 +953,7 @@ async function renderChapter(){
     updateProgressUI();
   }
 
-  const TABS = [["learn", "Learn"], ["test", "Test"], ["warmup", "Quick questions"], ["refresh", "Exam questions"]];
+  const TABS = [["learn", "Learn"], ["test", "Test"], ["warmup", "Quick questions"], ["refresh", "Exam questions"]].filter(([k]) => k !== "learn" || Stages.LEARN_ON);
   const TAB_ICON = {
     learn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 4 20 12 6 20 6 4"/></svg>',
     test: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>',
@@ -963,7 +963,7 @@ async function renderChapter(){
   // Open on the step he's at (worked out again once the questions have loaded)
   let autoTab = false;
   if (!state.chapterTab || state.chapterTabTopic !== state.topicId) {
-    state.chapterTab = "learn";
+    state.chapterTab = Stages.LEARN_ON ? "learn" : "test";
     state.chapterTabTopic = state.topicId;
     autoTab = true;
   }
@@ -977,7 +977,7 @@ async function renderChapter(){
     ${topic ? `<div class="cv-again" id="cvAgain">
       <button type="button" class="cv-again-btn" id="againBtn" aria-expanded="false" aria-controls="againBox">&#8634; Start this chapter again</button>
       <div class="cv-again-box" id="againBox" hidden>
-        <p>Start this chapter from the beginning? Learn will show as to-do again and every question will come back as new. Your earlier answers and marks are kept, so you can see what stuck.</p>
+        <p>Start this chapter from the beginning? ${Stages.LEARN_ON ? "Learn will show as to-do again and every" : "Every"} question will come back as new. Your earlier answers and marks are kept, so you can see what stuck.</p>
         <div class="cv-again-row"><button type="button" class="cv-btn" id="againYes">Yes, start again</button><button type="button" class="cv-again-btn" id="againNo">Cancel</button></div>
       </div>
     </div>` : ""}
@@ -987,13 +987,14 @@ async function renderChapter(){
 
     <section id="tab-learn" role="tabpanel" aria-labelledby="tabbtn-learn" hidden>
       <div class="cv-card cv-list" id="stepsContainer"></div>
-      <div class="cv-card" id="notesSlot"></div>
+      ${Stages.LEARN_ON ? `<div class="cv-card" id="notesSlot"></div>` : ""}
     </section>
 
     <section id="tab-test" role="tabpanel" aria-labelledby="tabbtn-test" hidden>
       <div id="practiceSlot"><div class="cv-card cv-empty">Quizzes for this chapter are coming soon. Use the extra practice below for now.</div></div>
       <div class="pr-pair" id="pairRow"><div id="paperSlot"></div><div id="tutorSlot"></div></div>
       <div id="practiceMoreSlot"></div>
+      ${Stages.LEARN_ON ? "" : `<div class="cv-card" id="notesSlot"></div>`}
     </section>
 
     <section id="tab-warmup" role="tabpanel" aria-labelledby="tabbtn-warmup" hidden>
@@ -1055,7 +1056,7 @@ async function renderChapter(){
       // with quick questions, the Test tab is the multiple-choice step
       const tt = document.querySelector("#tabbtn-test .cv-tab-t"); if (tt) tt.textContent = hasWarm ? "Multiple choice" : "Test";
       const info = paintTabs();
-      if (autoTab) { autoTab = false; const t = { learn: "learn", none: "learn", test: "test", refresh: "refresh" }[info.stage]; if (t !== state.chapterTab) showTab(t); }
+      if (autoTab) { autoTab = false; const t = Stages.LEARN_ON ? { learn: "learn", none: "learn", test: "test", refresh: "refresh" }[info.stage] : (info.stage === "refresh" ? "refresh" : "test"); if (t !== state.chapterTab) showTab(t); }
     },
     onStartFresh: async () => { freshSince = new Date().toISOString(); await Stages.startFresh(sb, PROFILE, state.topicId); },
     hideDuring: [document.getElementById("pairRow"), document.getElementById("practiceMoreSlot"), document.getElementById("extraPractice")],
@@ -1123,7 +1124,7 @@ async function renderChapter(){
         const sbStrict = async (p, o) => { const r = await sb(p, o); if (lastError) throw new Error(lastError); return r; };
         await Stages.restartChapter(sbStrict, PROFILE, state.topicId);
         const { model } = await loadModel(); state.model = model;
-        openChapter(state.topicId, topic.subject_id, "learn");
+        openChapter(state.topicId, topic.subject_id, Stages.LEARN_ON ? "learn" : "test");
       } catch (e) {
         againYes.disabled = false; againYes.textContent = "Yes, start again";
         againBox.querySelector("p").textContent = "That didn't work. The connection may have dropped. Please try again.";
@@ -1145,7 +1146,7 @@ async function renderChapter(){
         prefer: "resolution=merge-duplicates,return=minimal",
         body: [{ topic_id: state.topicId, profile_id: PROFILE.id, flag_type: "revise", updated_at: new Date().toISOString() }]
       });
-      if (topic) maybeAutoQueueVideo(state.topicId, topic.subject_id);
+      if (topic && Stages.LEARN_ON) maybeAutoQueueVideo(state.topicId, topic.subject_id);
       state.view = "dashboard";
       await renderDashboard();
       window.scrollTo({ top: 0, behavior: "smooth" });

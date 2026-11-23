@@ -1,4 +1,4 @@
-// Learn it. Test it. Prep it for the exam.
+// Test it. Prep it for the exam. (Learn is switched off: see LEARN_ON)
 // Works out where each chapter is (Learn, Quick Tests or Exam Prep) and draws the homepage
 // and the subject pages. Shared by every student page.
 (function(){
@@ -357,6 +357,9 @@
   const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
   const DAY = 86400000;
+  // The app is a testing and exam-prep app: the Learn tab is hidden (videos and revision guides are free on YouTube).
+  // Set to true to bring Learn back everywhere.
+  const LEARN_ON = false;
   const PRACTICE_TITLES = ["Flashcards Review", "Quiz Yourself", "Exam Practice"];
   const LEARN_MINUTES = { "Revision Guide": 15, "Video Overview": 8, "In-Depth Slide Deck": 15, "Audio Recap": 15, "Mind Map": 5 };
   const REFRESH_DAYS = 21;
@@ -400,7 +403,7 @@
     if (refreshOpen && (freshSince || tested)) { stage = "refresh"; done = !!freshSince && tested; }
     // after "Start this chapter again" (fresh_since set), only answers since then count
     else if (tried > 0 || (!freshSince && (stats.triedEver || 0) > 0)) { stage = "test"; done = tested; }
-    else if (learnDone > 0) { stage = "learn"; done = learnTotal > 0 && learnDone >= learnTotal; }
+    else if (LEARN_ON && learnDone > 0) { stage = "learn"; done = learnTotal > 0 && learnDone >= learnTotal; }
     else stage = "none";
     return { stage, done, tested, refreshOpen, examDate, opensOn, learnDone, learnTotal, classDone, freshSince, stats };
   }
@@ -438,15 +441,17 @@
   }
   const TAG = { learn: "Learn", test: "Quick Tests", refresh: "Exam Prep" };
   // Three arrows: none lit = not started, 1 = learning, 2 = quick tests, 3 = exam prep
+  // Without Learn: two arrows, quick tests then exam prep
   function stepLevel(c){
-    if (c.stage === "refresh" || c.tested) return [3, "Exam prep"];
-    if (c.stage === "test") return [2, "Quick tests"];
-    if (c.stage === "learn") return [1, "Learning"];
+    const off = LEARN_ON ? 0 : 1;
+    if (c.stage === "refresh" || c.tested) return [3 - off, "Exam prep"];
+    if (c.stage === "test") return [2 - off, "Quick tests"];
+    if (c.stage === "learn" && LEARN_ON) return [1, "Learning"];
     return [0, "Not started"];
   }
   function stepsArrows(c){
-    const [n, label] = stepLevel(c);
-    return `<span class="hs-arrows" role="img" aria-label="Step ${n} of 3: ${label}">${[1,2,3].map(i => `<i${i <= n ? ' class="on"' : ""}></i>`).join("")}</span>`;
+    const [n, label] = stepLevel(c), of = LEARN_ON ? 3 : 2;
+    return `<span class="hs-arrows" role="img" aria-label="Step ${n} of ${of}: ${label}">${Array.from({ length: of }, (_, k) => k + 1).map(i => `<i${i <= n ? ' class="on"' : ""}></i>`).join("")}</span>`;
   }
   function stepsMark(c){
     const [n, label] = stepLevel(c);
@@ -503,7 +508,7 @@
     return `<span class="ring" style="width:${size}px;height:${size}px" aria-hidden="true"><svg width="${size}" height="${size}"><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--t-line)" stroke-width="${stroke}"/><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--t-accent)" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${(c * f).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 ${size/2} ${size/2})"/></svg><b>${label}</b></span>`;
   }
   const GO = { learn: "Keep learning ›", test: "Test myself ›", refresh: "Exam prep ›", none: "Start ›" };
-  const TAB_FOR = { learn: "learn", test: "test", refresh: "refresh", none: "learn" };
+  const TAB_FOR = LEARN_ON ? { learn: "learn", test: "test", refresh: "refresh", none: "learn" } : { learn: "test", test: "test", refresh: "refresh", none: "test" };
 
   // ---- load everything the homepage and subject pages need ----
   async function loadOverview(sb, profile){
@@ -1183,6 +1188,7 @@
         .sort((a, b) => (a.bookIdx || 0) - (b.bookIdx || 0) || (a.order_num || 0) - (b.order_num || 0));
       for (const c of fresh) {
         if (total >= need || items.length >= 6 || (items.length && need - total < 6)) break;
+        if (!LEARN_ON) { const t = testItem(c, 1); if (t) { items.push(t); total += t.mins; } continue; }
         const mins = Math.min(15, Math.max(6, need - total)); items.push({ topic_id: c.id, kind: "learn", mins }); total += mins;
       }
     }
@@ -1225,7 +1231,7 @@
     const next = rows.find(r => !isHere(r) && !itemStatus(r.c, r.it, s.startedAt, m).done);
     if (!next) return rows.length && here ? { done: true, title: s.title || "" } : null;
     const d = describe(m, next.it);
-    return { c: next.c, item: next.it, tab: { learn: "learn", revise: "learn", exam: "refresh" }[next.it.kind] || "test",
+    return { c: next.c, item: next.it, tab: { learn: LEARN_ON ? "learn" : "test", revise: LEARN_ON ? "learn" : "test", exam: "refresh" }[next.it.kind] || "test",
       title: `Next in today's session: ${d.subj} · ${d.name}`, note: `${d.what} · ${d.detail}.` };
   }
 
@@ -1236,7 +1242,8 @@
     else if (it.kind === "memory") { state.memoryRun = { topic: c.id, qid: it.qid, origin: it.origin, days: it.days }; openChapter(c.id, c.subject_id, "refresh"); }
     else if (it.kind === "exam") { state.examRun = c.id; openChapter(c.id, c.subject_id, "refresh"); }
     else if (it.kind === "recall") { state.recallRun = { topic: c.id, q: it.q || 10 }; openChapter(c.id, c.subject_id, "test"); }
-    else openChapter(c.id, c.subject_id, "learn");
+    else if (LEARN_ON) openChapter(c.id, c.subject_id, "learn");
+    else { state.todayRun = c.id; openChapter(c.id, c.subject_id, "test"); }
   }
 
   // ---- Study now: choose how long, then a subject; the subject page suggests what fills that time ----
@@ -1388,7 +1395,9 @@
         if (seen.has(c.id)) return; seen.add(c.id);
         const hasQuick = !!(c.stats && c.stats.quickTotal);
         let it = null;
-        if (a.kind === "learn" || (!hasQuick && a.kind !== "exam")) {
+        if (!LEARN_ON && (a.kind === "learn" || a.kind === "revise" || (!hasQuick && a.kind !== "exam"))) {
+          it = hasQuick ? testItem(c, 1) : { topic_id: c.id, kind: "exam", mins: 12 };
+        } else if (a.kind === "learn" || (!hasQuick && a.kind !== "exam")) {
           it = { topic_id: c.id, kind: "learn", mins: 8 };
         } else if (a.kind === "exam") {
           it = { topic_id: c.id, kind: "exam", mins: 12 };
@@ -1688,5 +1697,5 @@
     });
   }
 
-  window.Stages = { openItem, examLine, topicStatus, ago, leftOff, nextUp, sessionNext, ringSvg, DAILY_GOAL, loadOverview, buildModel, renderHome, renderSubject, chapterStage, statusLine, examBox, markClassDone, startFresh, restartChapter, parseDate, fmtDate, untilText, REFRESH_DAYS, PRACTICE_TITLES, addCss };
+  window.Stages = { LEARN_ON, openItem, examLine, topicStatus, ago, leftOff, nextUp, sessionNext, ringSvg, DAILY_GOAL, loadOverview, buildModel, renderHome, renderSubject, chapterStage, statusLine, examBox, markClassDone, startFresh, restartChapter, parseDate, fmtDate, untilText, REFRESH_DAYS, PRACTICE_TITLES, addCss };
 })();
