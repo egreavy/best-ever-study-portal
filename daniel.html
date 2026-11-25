@@ -406,6 +406,9 @@
   .cv-status{font-size:15px;font-weight:600;color:var(--t-muted);margin:-4px 0 14px}
   .cv-status.on{color:var(--t-accent)}
   .cv-exline{font-size:14px;color:var(--t-muted);margin:-8px 0 14px}
+  .cv-course{background:var(--t-card);border:1px solid var(--t-line);border-radius:12px;padding:10px 14px;margin:0 0 14px;font-size:15px}
+  .cv-course summary{cursor:pointer;font-weight:700}
+  .cv-course ul{margin:8px 0 2px;padding-left:20px;display:flex;flex-direction:column;gap:4px}
   .cv-again{margin:-8px 0 14px}
   .cv-again-btn{background:none;border:none;padding:4px 0;font:inherit;font-size:14px;font-weight:600;color:var(--t-muted);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
   .cv-again-btn:hover{color:var(--t-accent)}
@@ -483,7 +486,7 @@
   <div id="view"><div class="loading">Loading…</div></div>
 </div>
 
-<script src="stages.js?v=20261123b"></script>
+<script src="stages.js?v=20261125a"></script>
 <script src="practice.js?v=20261123d"></script>
 <script src="tutor.js?v=20261114a"></script>
 <script src="notes.js?v=20261109d"></script>
@@ -978,6 +981,7 @@ async function renderChapter(){
     <h2 class="cv-title">${esc(topic ? topic.title : "")}</h2>
     <div class="cv-status" id="cvStatus"></div>
     <div class="cv-exline" id="cvExam" hidden></div>
+    ${topic ? Stages.courseNote(state, topic.id, topic.order_num) : ""}
     ${topic ? `<div class="cv-again" id="cvAgain">
       <button type="button" class="cv-again-btn" id="againBtn" aria-expanded="false" aria-controls="againBox">&#8634; Start this chapter again</button>
       <div class="cv-again-box" id="againBox" hidden>

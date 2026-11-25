@@ -257,6 +257,23 @@
   .sv-ana-p{margin:0;padding:0 18px 10px;font-size:15px;line-height:1.45;color:var(--t-muted)}
   .sv-ana-r{display:flex;flex-direction:column;gap:2px;padding:10px 18px;border-top:1px solid var(--t-line)}
   .sv-ana-t{font-size:16px;font-weight:700}
+  .cp-card{background:var(--t-card);border-radius:18px;padding:16px 18px;display:flex;flex-direction:column;gap:10px}
+  .cp-card h2{margin:0;font-size:19px}
+  .cp-card.main{border:2px solid var(--t-accent)}
+  .cp-go{display:flex;flex-direction:column;align-items:center;gap:2px;width:100%;border:none;border-radius:16px;padding:14px;background:var(--t-accent);color:#fff;font:inherit;cursor:pointer}
+  .cp-go b{font-size:17px}.cp-go span{font-size:14px;opacity:.95}
+  .cp-row{display:flex;align-items:center;gap:10px;width:100%;border:none;border-top:1px solid var(--t-line);background:none;padding:10px 0;font:inherit;color:var(--t-ink);text-align:left;cursor:pointer}
+  .cp-row:first-of-type{border-top:none}
+  .cp-row .b{flex:1;display:flex;flex-direction:column;gap:2px}.cp-row .t{font-size:15px;font-weight:700}.cp-row .s{font-size:13px;color:var(--t-muted)}
+  .cp-row .a{font-weight:700;color:var(--t-accent);white-space:nowrap;font-size:14px}
+  .cp-gap{background:var(--t-soft2);border-radius:12px;padding:10px 12px;border-top:none;margin-top:6px}
+  .cp-bar{display:flex;flex-direction:column;gap:5px}.cp-bar .l{display:flex;justify-content:space-between;font-size:14px}.cp-bar .l span{color:var(--t-muted)}
+  .cp-track{height:8px;background:var(--t-soft2);border-radius:999px;overflow:hidden}.cp-fill{height:8px;background:var(--t-accent);border-radius:999px}
+  .cp-link{display:flex;align-items:center;gap:12px;width:100%;border:none;background:var(--t-card);border-radius:18px;padding:14px 18px;font:inherit;color:var(--t-ink);text-align:left;cursor:pointer}
+  .cp-link .b{flex:1;display:flex;flex-direction:column;gap:3px}.cp-link .t{font-size:17px;font-weight:700}.cp-link .s{font-size:14px;color:var(--t-muted)}
+  .cp-link .a{font-weight:700;color:var(--t-accent)}
+  .cp-card details summary{cursor:pointer;font-weight:700;font-size:17px}
+  .cp-note{font-size:14px;color:var(--t-muted)}
   .sv-s.ok{color:var(--t-accent);font-weight:700}.sv-s.now{color:var(--t-accent);font-weight:600}.sv-s.dim{color:var(--t-muted)}
   .sv-papers{display:flex;align-items:center;gap:14px;width:100%;padding:16px 18px;border:2px solid var(--t-line);border-radius:18px;background:var(--t-card);font:inherit;color:var(--t-ink);text-align:left;cursor:pointer}
   .sv-ico{flex:none;width:44px;height:44px;border-radius:12px;background:var(--t-accent-tint);color:var(--t-accent);display:grid;place-items:center}
@@ -686,6 +703,7 @@
     m.goal = { minutes: GOAL_MIN, days: GOAL_DAYS, dayMin, weeksDone, thisWeekGood, today: Math.round(dayMin[dayKey(new Date())] || 0), todayCounts: goodDay(dayKey(new Date())), streakRule: STREAK_RULE, weekDone: thisWeekGood >= GOAL_DAYS, runs, streakNow, testMin: Math.round(testMin) };
     m.week = { testSec, learnMin, answered, fixed, days, ws, streak };
     m.memory = memorySchedule(raw, m);
+    m.lastResult = {}; (raw.attempts || []).forEach(a => { if (!/^memory:/.test(a.source || "")) m.lastResult[a.question_id] = Number(a.result); });
     // exam questions per chapter, for exam focus: how many, how many still to try or improve, and the marks in those
     const examBy = {};
     (raw.questions || []).forEach(q => { if (q.qtype !== "exam" || !m.topics[q.topic_id]) return;
@@ -1633,6 +1651,81 @@
     if (c.stage === "learn") return ["", "Learning"];
     return ["dim", "Not started"];
   }
+  // ---- New-course view: questions tagged to course outcomes (quiz_questions.outcomes) ----
+  // Only subjects whose questions carry outcome tags get this (Daniel's LC Geography, Core textbook).
+  const COURSE_BOOK = "Core (Gill)";
+  const STRANDS = [["U", "Skills and inquiry"], ["1", "Physical environment"], ["2", "Human environment"], ["3", "Global environment"]];
+  const SKILL_NAMES = { map: "Map reading", photo: "Photos", graph: "Graphs and charts", data: "Tables and data", diagram: "Diagrams", fieldwork: "Fieldwork" };
+  async function loadCourse(sb, s){
+    const ids = s.chapters.map(c => c.id), qs = [];
+    for (let i = 0; i < ids.length; i += 40) for (let off = 0; ; off += 1000) {
+      const part = await sb(`quiz_questions?select=id,topic_id,qtype,outcomes,skill&topic_id=in.${inList(ids.slice(i, i + 40))}&retired=is.false&outcomes=not.is.null&order=id.asc&limit=1000&offset=${off}`) || [];
+      part.forEach(q => qs.push(q)); if (part.length < 1000) break;
+    }
+    if (!qs.length) return null;
+    const [outs, map] = await Promise.all([
+      sb(`curriculum_outcomes?select=code,strand,title,sort_order&course=eq.${encodeURIComponent("LC Geography (2026 spec)")}&order=sort_order.asc`),
+      sb(`curriculum_chapter_map?select=chapter_no,outcome_codes&textbook=eq.${encodeURIComponent(COURSE_BOOK)}`)
+    ]);
+    const outcomes = (outs || []).filter(o => /^(U\d|\d\.\d+)$/.test(o.code || ""));
+    const chapterCodes = {}; (map || []).forEach(r => { chapterCodes[String(r.chapter_no)] = r.outcome_codes || []; });
+    return { qs, outcomes, chapterCodes };
+  }
+  function courseStats(m, s, course){
+    const byCode = {}, skill = {};
+    course.outcomes.forEach(o => { byCode[o.code] = { o, n: 0, tried: 0, sum: 0, chapters: {}, untriedCh: {} }; });
+    course.qs.forEach(q => {
+      const v = m.lastResult[q.id];
+      (q.outcomes || []).forEach((code, i) => { const x = byCode[code]; if (!x) return;
+        x.n++; x.chapters[q.topic_id] = (x.chapters[q.topic_id] || 0) + (i === 0 ? 2 : 1);
+        if (v !== undefined) { x.tried++; x.sum += Math.max(0, Math.min(1, v)); } else x.untriedCh[q.topic_id] = (x.untriedCh[q.topic_id] || 0) + 1; });
+      if (q.skill && (q.outcomes || []).length) { const k = skill[q.skill] = skill[q.skill] || { n: 0, tried: 0, sum: 0, exams: {} };
+        k.n++; if (v !== undefined) { k.tried++; k.sum += Math.max(0, Math.min(1, v)); }
+        if (q.qtype === "exam" && v === undefined) k.exams[q.topic_id] = (k.exams[q.topic_id] || 0) + 1; }
+    });
+    const top = o => Object.entries(o).sort((a, b) => b[1] - a[1])[0];
+    Object.values(byCode).forEach(x => { x.avg = x.tried ? x.sum / x.tried : null; const t = top(x.chapters); x.chapter = t && t[0]; const u = top(x.untriedCh); x.nextChapter = (u && u[0]) || x.chapter; });
+    Object.values(skill).forEach(k => { k.avg = k.tried ? k.sum / k.tried : null; const t = top(k.exams); k.chapter = t && t[0]; });
+    const list = Object.values(byCode).filter(x => x.n);
+    const gaps = list.filter(x => x.tried >= 3 && x.avg < 0.6).sort((a, b) => a.avg - b.avg).slice(0, 3);
+    const untried = list.filter(x => !x.tried).sort((a, b) => a.o.sort_order - b.o.sort_order);
+    const empty = Object.values(byCode).filter(x => !x.n);
+    return { byCode, list, gaps, untried, empty, skill, practised: list.filter(x => x.tried).length, total: course.outcomes.length };
+  }
+  function strandOf(code){ return code[0] === "U" ? "U" : code[0]; }
+  function courseProgressHTML(s, cs, m){
+    const ch = id => m.topics[id];
+    const chName = id => { const c = ch(id); return c ? `Ch ${c.order_num}` : ""; };
+    const pct = x => Math.round(100 * x);
+    const level = k => k.tried < 3 ? "Not tried yet" : k.avg >= 0.75 ? "Good" : k.avg >= 0.5 ? "Getting there" : "Needs work";
+    const pick = cs.gaps[0] || cs.untried[0];
+    const gapRows = cs.gaps.length ? cs.gaps.map(x => `<button type="button" class="cp-row cp-gap" data-go="${x.chapter}" data-tab="test"><span class="b"><span class="t">${esc(x.o.code)} ${esc(x.o.title)}</span><span class="s">${pct(x.avg)}% right on ${plural(x.tried, "question", "questions")} · ${esc(chName(x.chapter))}</span></span><span class="a">Practise ›</span></button>`).join("")
+      : `<span class="cp-note">Nothing stands out yet. Once you've answered a few questions on a topic, the ones costing you marks show up here.</span>`;
+    const bars = STRANDS.map(([k, name]) => { const xs = cs.list.filter(x => strandOf(x.o.code) === k), done = xs.filter(x => x.tried).length;
+      return xs.length ? `<div class="cp-bar"><div class="l"><b>${name}</b><span>${done} of ${xs.length}</span></div><div class="cp-track"><div class="cp-fill" style="width:${pct(done / xs.length)}%"></div></div></div>` : ""; }).join("");
+    const untried = cs.untried.map(x => `<button type="button" class="cp-row" data-go="${x.nextChapter}" data-tab="test"><span class="b"><span class="t">${esc(x.o.code)} ${esc(x.o.title)}</span><span class="s">${esc(chName(x.nextChapter))}</span></span><span class="a">Start ›</span></button>`).join("");
+    const skills = Object.keys(SKILL_NAMES).filter(k => cs.skill[k]).map(k => { const x = cs.skill[k], c = x.chapter || Object.keys(cs.byCode).length && null;
+      const act = x.tried < 3 ? "Start" : x.avg >= 0.75 ? "Keep it sharp" : "Practise";
+      return x.chapter ? `<button type="button" class="cp-row" data-go="${x.chapter}" data-tab="refresh"><span class="b"><span class="t">${SKILL_NAMES[k]}</span><span class="s">${level(x)}</span></span><span class="a">${act} ›</span></button>` : `<div class="cp-row" style="cursor:default"><span class="b"><span class="t">${SKILL_NAMES[k]}</span><span class="s">${level(x)} · all tried</span></span></div>`; }).join("");
+    return `<button type="button" class="hs-back" data-mode="">← ${esc(s.title)}</button>
+      <h1>My progress</h1>
+      <span class="hs-sub" style="font-size:15px">You've practised <b style="color:var(--t-ink)">${cs.practised} of the ${cs.total}</b> course topics.</span>
+      ${pick ? `<button type="button" class="cp-go" data-go="${pick.chapter && cs.gaps[0] ? pick.chapter : pick.nextChapter}" data-tab="test"><b>${cs.gaps[0] ? "Start a catch-up session" : "Start something new"}</b><span>${esc(pick.o.code)} ${esc(pick.o.title)}</span></button>` : ""}
+      <div class="cp-card main"><h2>Work on these next</h2>${cs.gaps.length ? `<span class="cp-note">Where your answers have lost the most marks.</span>` : ""}${gapRows}</div>
+      <div class="cp-card"><h2>Course check</h2>${bars}</div>
+      ${untried ? `<div class="cp-card"><details><summary>Not tried yet (${cs.untried.length})</summary><div style="margin-top:8px">${untried}</div></details></div>` : ""}
+      ${skills ? `<div class="cp-card"><h2>Skills</h2>${skills}</div>` : ""}
+      ${cs.empty.length ? `<span class="cp-note">Coming soon: questions for ${cs.empty.map(x => esc(x.o.code)).join(" and ")} (planning and judging an inquiry), the skills behind your Geography Project.</span>` : ""}`;
+  }
+
+  // "On the course" note for a chapter page: which course outcomes this chapter teaches
+  function courseNote(state, topicId, orderNum){
+    const c = Object.values(state.course || {}).find(x => x && x.qs.some(q => q.topic_id === topicId));
+    if (!c) return "";
+    const codes = c.chapterCodes[String(orderNum)] || []; if (!codes.length) return "";
+    const t = {}; c.outcomes.forEach(o => { t[o.code] = o.title; });
+    return `<details class="cv-course"><summary>On the course: what this chapter covers</summary><ul>${codes.map(k => `<li><b>${esc(k)}</b> ${esc(t[k] || "")}</li>`).join("")}</ul></details>`;
+  }
   function renderSubject(view, m, subjectId, { sb, profile, openChapter, goHome, reload, state }){
     addCss();
     const key = (m.groupOf && m.groupOf[subjectId]) || subjectId;
@@ -1645,8 +1738,15 @@
     const chs = s.chapters.slice().sort((a, b) => (a.bookIdx || 0) - (b.bookIdx || 0) || (a.order_num || 0) - (b.order_num || 0));
     const papers = m.papers[key] || {}, years = Object.keys(papers).sort().reverse();
     const chip = qq => qq.best ? `<span class="pp-chip${qq.best.a / Math.max(1, qq.best.b) >= 0.6 ? " good" : " mid"}">${qq.best.a}/${qq.best.b}</span>` : qq.v !== undefined ? `<span class="pp-chip${qq.v >= 1 ? " good" : " mid"}">${qq.v >= 1 ? "Got it" : "Tried"}</span>` : `<span class="pp-chip">Not tried</span>`;
+    state.course = state.course || {};
+    const course = state.course[key];
+    if (course === undefined && !state.courseLoading) { state.courseLoading = true; loadCourse(sb, s).then(c => { state.course[key] = c; }).catch(() => { state.course[key] = null; }).finally(() => { state.courseLoading = false; if (view.isConnected) again(); }); }
+    const cs = course ? courseStats(m, s, course) : null;
+    if (sv.mode === "progress" && !cs) sv.mode = "";
     let body;
-    if (sv.mode === "paper" && papers[sv.year]) {
+    if (sv.mode === "progress") {
+      body = courseProgressHTML(s, cs, m);
+    } else if (sv.mode === "paper" && papers[sv.year]) {
       // one real paper, as set: sections in order; each question opens straight into that question
       const qs = papers[sv.year], tried = qs.filter(q => q.v !== undefined), withMarks = tried.filter(q => q.best);
       const got = withMarks.reduce((t, q) => t + q.best.a, 0), of = withMarks.reduce((t, q) => t + q.best.b, 0);
@@ -1670,12 +1770,14 @@
       const examLine = ex && ex >= today ? `${esc(s.exam.label || "Exams")} ${untilText(ex)}` : "";
       body = `<button type="button" class="hs-back" data-home>← Home</button>
         <h1>${esc(s.title)}</h1>
+        ${cs ? `<span class="hs-sub" style="font-size:15px">Book: <b style="color:var(--t-ink)">Core</b> · every question covers the whole course</span>` : ""}
         <span class="hs-sub" style="font-size:15px">${examLine ? examLine + " · " : ""}${started} of ${plural(chs.length, "topic", "topics")} started${tested ? `, ${tested} tested` : ""} · <button type="button" class="hs-link" data-exam style="font-size:15px">${examLine ? "Change exam date" : "Set exam date"}</button></span>
         <div id="hsExam"${state.examEdit === key ? "" : " hidden"}></div>
         ${chs.length ? `<div id="subjSession"></div>` : ""}
+        ${cs ? `<button type="button" class="cp-link" data-mode="progress"><span class="b"><span class="t">My progress</span><span class="s">${cs.practised} of ${cs.total} course topics practised${cs.gaps.length ? ` · ${plural(cs.gaps.length, "to work on", "to work on")}` : ""}</span></span><span class="a">See ›</span></button>` : ""}
         ${chs.length ? `<div class="sv-list"><span class="sv-lab" style="padding:14px 18px 6px">${state.examFocus ? "Exam questions by topic" : "Topics"}</span>${gapNote(chs)}${chs.filter(c => !state.examFocus || (c.exam && c.exam.n)).map(c => { const [cls, txt0] = topicStatus(c);
           const txt = state.examFocus ? `${plural(c.exam.n, "exam question", "exam questions")}${c.exam.tried ? ` · ${c.exam.tried} tried` : ""}` : txt0;
-          return `<button type="button" class="sv-row" data-open="${c.id}"><span class="sv-n">${esc(String(c.order_num ?? ""))}</span><span class="sv-b"><span class="sv-t">${c.examInfo && c.examInfo.star ? `<span class="sv-star" title="Asked every year" aria-label="Asked every year">★</span>` : ""}${esc(shortTitle(c.title))}</span><span class="sv-s ${cls}">${c.book ? esc(c.book) + " · " : ""}${esc(txt)}</span></span><span class="hs-chev" aria-hidden="true">›</span></button>`; }).join("")}</div>` : `<div class="hs-empty">No topics yet.</div>`}
+          return `<button type="button" class="sv-row" data-open="${c.id}"><span class="sv-n">${esc(String(c.order_num ?? ""))}</span><span class="sv-b"><span class="sv-t">${c.examInfo && c.examInfo.star ? `<span class="sv-star" title="Asked every year" aria-label="Asked every year">★</span>` : ""}${esc(shortTitle(c.title))}</span><span class="sv-s ${cls}">${c.book ? esc(c.book) + " · " : ""}${cs && (course.chapterCodes[String(c.order_num)] || []).length ? `<span style="color:var(--t-muted);font-weight:400">${esc(course.chapterCodes[String(c.order_num)].slice(0, 4).join(", "))} · </span>` : ""}${esc(txt)}</span></span><span class="hs-chev" aria-hidden="true">›</span></button>`; }).join("")}</div>` : `<div class="hs-empty">No topics yet.</div>`}
         ${chs.length ? analysisHTML(m, s) : ""}
         ${years.length ? `<button type="button" class="sv-papers" data-mode="papers"><span class="sv-ico" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M8 13h8"/><path d="M8 17h5"/></svg></span><span class="sv-b"><span class="sv-t">Past papers</span><span class="sv-s">Real exam papers, ${years.length > 1 ? `${years[years.length - 1]}–${years[0]}` : years[0]}</span></span><span class="hs-chev" aria-hidden="true">›</span></button>` : ""}`;
     }
@@ -1687,6 +1789,7 @@
     if (eb) examBox(eb, { sb, profile, subjectId: (s.members || [s.id])[0], subjectIds: s.members || [s.id], exam: s.exam, onChange: () => { state.examEdit = null; reload(); } });
     const xb = view.querySelector("[data-exam]"); if (xb) xb.onclick = () => { state.examEdit = state.examEdit === key ? null : key; again(); };
     view.querySelectorAll("[data-mode]").forEach(b => b.onclick = () => { sv.mode = b.dataset.mode; sv.year = ""; again(); window.scrollTo({ top: 0 }); });
+    view.querySelectorAll("[data-go]").forEach(b => b.onclick = () => { const c = m.topics[b.dataset.go]; if (!c) return; state.fromPaper = false; openChapter(c.id, c.subject_id, b.dataset.tab || "test"); });
     view.querySelectorAll("[data-year]").forEach(b => b.onclick = () => { sv.mode = "paper"; sv.year = b.dataset.year; again(); window.scrollTo({ top: 0 }); });
     view.querySelectorAll("[data-open]").forEach(b => b.onclick = () => { state.fromPaper = false; const c = m.topics[b.dataset.open]; openChapter(c.id, c.subject_id, state.examFocus ? "refresh" : TAB_FOR[c.stage]); });
     view.querySelectorAll("[data-q]").forEach(b => b.onclick = () => {
@@ -1697,5 +1800,5 @@
     });
   }
 
-  window.Stages = { LEARN_ON, openItem, examLine, topicStatus, ago, leftOff, nextUp, sessionNext, ringSvg, DAILY_GOAL, loadOverview, buildModel, renderHome, renderSubject, chapterStage, statusLine, examBox, markClassDone, startFresh, restartChapter, parseDate, fmtDate, untilText, REFRESH_DAYS, PRACTICE_TITLES, addCss };
+  window.Stages = { LEARN_ON, courseNote, openItem, examLine, topicStatus, ago, leftOff, nextUp, sessionNext, ringSvg, DAILY_GOAL, loadOverview, buildModel, renderHome, renderSubject, chapterStage, statusLine, examBox, markClassDone, startFresh, restartChapter, parseDate, fmtDate, untilText, REFRESH_DAYS, PRACTICE_TITLES, addCss };
 })();
