@@ -490,7 +490,7 @@
 
 <script src="stages.js?v=20261127a"></script>
 <script src="practice.js?v=20261127a"></script>
-<script src="tutor.js?v=20261114a"></script>
+<script src="tutor.js?v=20261127a"></script>
 <script src="notes.js?v=20261109d"></script>
 <script>
 const SUPABASE_URL = "https://dhxwajidrtyukyxmiyml.supabase.co";
@@ -1260,7 +1260,7 @@ async function renderSettings(){
         <div class="look-seg" role="radiogroup" aria-label="Screen">${["light","dark"].map(m => `<button type="button" role="radio" aria-checked="${th.mode === m}" data-mode="${m}">${m === "light" ? "Light" : "Dark"}</button>`).join("")}</div></div>
     </div>` : ""}
     <div id="myPage"></div>
-    <button type="button" class="parent-link" id="parentSetup">Parent set-up: materials and voice tutor time &rsaquo;</button>
+    <button type="button" class="parent-link" id="parentSetup">Parent set-up: materials &rsaquo;</button>
   `;
   document.getElementById("view").innerHTML = html;
 

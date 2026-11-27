@@ -427,7 +427,12 @@ ${notes || "(no notes for this chapter)"}`;
     window.addEventListener("pagehide", () => { saveSession(); if (convo) convo.endSession(); }, { once: true });
   }
 
-  window.mountTutor = mountTutor;
-  window.coachAnswer = coachAnswer;
-  window.TutorLimits = { voiceLeft, voicePanel, limitMessage };
+  // Voice tutor switched off site-wide for now. Set VOICE_ON = true to bring it back
+  // (the chapter "Practise aloud" card, "Talk it through with my tutor", and the parent voice-time panel).
+  const VOICE_ON = false;
+  if (VOICE_ON) {
+    window.mountTutor = mountTutor;
+    window.coachAnswer = coachAnswer;
+    window.TutorLimits = { voiceLeft, voicePanel, limitMessage };
+  }
 })();
