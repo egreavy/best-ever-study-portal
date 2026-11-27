@@ -672,7 +672,7 @@
       const past = pastSorted(), style = styleQs(), pool = past.length ? past : style;
       const doneN = pool.filter(q => prog.latest[q.id] !== undefined).length;
       const years = past.map(yearOf).filter(Boolean).sort();
-      const tag = past.length ? `Real State Exam questions${years.length ? ` · ${years[0] === years[years.length - 1] ? years[0] : years[0] + " to " + years[years.length - 1]}` : ""}` : "Exam-style questions from your textbook";
+      const tag = past.length ? `Real State Exam questions${years.length ? ` · ${years[0] === years[years.length - 1] ? years[0] : years[0] + " to " + years[years.length - 1]}` : ""}` : "Exam-style practice questions";
       const hero = h(`<div class="pp-hero"><span class="ft-icon">${PAPER_SVG}</span><span class="pp-hero-b"><span class="ft-tag">Go · ${esc(tag)}</span><span class="pp-hero-t">Do an exam question</span><span class="pr-sub">Write it, get a guide mark based on past marking schemes, then improve it with your tutor. ${doneN} of ${pool.length} done.</span></span><button type="button" class="pr-btn big">Start</button></div>`);
       hero.querySelector("button").onclick = () => start("Exam question", prepQueue().slice(0, 1), "prep", false, { planned: true });
       const nodes = [hero];
@@ -694,7 +694,7 @@
       }
       nodes.push(box);
       if (past.length && style.length) {
-        const l = h(`<button type="button" class="pp-link">Plus ${plural(style.length, "practice exam question", "practice exam questions")} written from your textbook ›</button>`);
+        const l = h(`<button type="button" class="pp-link">Plus ${plural(style.length, "practice exam question", "practice exam questions")} in the exam style ›</button>`);
         l.onclick = () => start("Practice exam questions", style.slice(), "prep");
         nodes.push(l);
       }
