@@ -289,7 +289,7 @@
   .pr-thumbs:empty{display:none}
   .pr-rate{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
   .pr-rate button{border:2px solid var(--t-ink);background:var(--t-card);border-radius:12px;padding:8px 6px;cursor:pointer;font:inherit;font-weight:700;font-size:15px;min-height:44px;color:var(--t-ink)}
-  .pr-score{font-size:30px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+  .pr-score{font-size:30px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}.pr-guide{font-size:13px;color:var(--t-muted);margin:6px 0 0}
   .pr-err{color:#a32020;font-size:14px;margin:0}
   .pr-card button:focus-visible,.pr-choice:focus-visible,.pr-btn:focus-visible{outline:3px solid var(--t-accent);outline-offset:3px}
   @media (max-width:600px){.pr-li{flex-direction:column;align-items:flex-start}.pr-card{padding:14px 16px}.pr-choices{padding:2px 16px}.pr-steps{gap:8px}}
@@ -673,7 +673,7 @@
       const doneN = pool.filter(q => prog.latest[q.id] !== undefined).length;
       const years = past.map(yearOf).filter(Boolean).sort();
       const tag = past.length ? `Real State Exam questions${years.length ? ` · ${years[0] === years[years.length - 1] ? years[0] : years[0] + " to " + years[years.length - 1]}` : ""}` : "Exam-style questions from your textbook";
-      const hero = h(`<div class="pp-hero"><span class="ft-icon">${PAPER_SVG}</span><span class="pp-hero-b"><span class="ft-tag">Go · ${esc(tag)}</span><span class="pp-hero-t">Do an exam question</span><span class="pr-sub">Write it, get it marked like the real exam, then improve it with your tutor. ${doneN} of ${pool.length} done.</span></span><button type="button" class="pr-btn big">Start</button></div>`);
+      const hero = h(`<div class="pp-hero"><span class="ft-icon">${PAPER_SVG}</span><span class="pp-hero-b"><span class="ft-tag">Go · ${esc(tag)}</span><span class="pp-hero-t">Do an exam question</span><span class="pr-sub">Write it, get a guide mark based on past marking schemes, then improve it with your tutor. ${doneN} of ${pool.length} done.</span></span><button type="button" class="pr-btn big">Start</button></div>`);
       hero.querySelector("button").onclick = () => start("Exam question", prepQueue().slice(0, 1), "prep", false, { planned: true });
       const nodes = [hero];
       const row = q => {
@@ -1139,13 +1139,13 @@
       const fbBtn = box.querySelector("[data-fb]"), selfBtn = box.querySelector("[data-self]");
       if (mem) {
         // From fresh: no notes, no peeking at the answer, marked like the real exam
-        box.querySelector(".pr-tip").innerHTML = `<b>Memory check.</b> Answer from memory, with no notes or book. It's marked like the real exam, and shows what has stuck since you did this chapter ${mem.days} days ago.`;
+        box.querySelector(".pr-tip").innerHTML = `<b>Memory check.</b> Answer from memory, with no notes or book. It gets a guide mark based on past marking schemes, and shows what has stuck since you did this chapter ${mem.days} days ago.`;
         selfBtn.style.display = "none";
       }
       if (session && session.guided && isExam && !entry.again && !retry && !mem && q.marking_scheme) {
         // First exam question on a chapter: show what the examiner rewards, while the content is fresh
-        box.querySelector(".pr-tip").innerHTML = `<b>Your first exam question on this chapter.</b> Read what the examiner is looking for, then write your answer. A low mark on a first go is normal.`;
-        box.querySelector(".pr-tip").after(h(`<details class="pr-fb pr-guide" open><summary style="cursor:pointer;font-weight:700">What the examiner is looking for</summary><span style="white-space:pre-line;margin-top:6px">${esc(q.marking_scheme)}</span></details>`));
+        box.querySelector(".pr-tip").innerHTML = `<b>Your first exam question on this chapter.</b> Read what examiners have looked for, then write your answer. A low mark on a first go is normal.`;
+        box.querySelector(".pr-tip").after(h(`<details class="pr-fb pr-guide" open><summary style="cursor:pointer;font-weight:700">What examiners have looked for</summary><span style="white-space:pre-line;margin-top:6px">${esc(q.marking_scheme)}</span></details>`));
       }
       // Help me get started: for the blank page, before a first attempt. The shape of a full-mark
       // answer and a clue per point, never the answer itself. Not offered in memory checks.
@@ -1281,7 +1281,8 @@
           const fbEl = h(`<div class="pr-fb ${v===1?"good":""}">
             <div class="pr-key">${memLine}
               <div class="pr-row" style="gap:12px 16px">${isExam ? `<span class="pr-score">${f.marks_awarded}/${f.marks_available}</span>` : `<span class="pr-verd">${v === 1 ? `<span class="pr-tick" aria-hidden="true">&#10003;</span><strong>Got it.</strong>` : `<strong>${v ? "Nearly." : "Not yet."}</strong>`}</span>`}${upTxt ? `<span class="pr-up">${upTxt}</span>` : ""}${"speechSynthesis" in window ? `<button type="button" class="pr-hear" data-hear aria-label="Hear the feedback">${SPEAK_SVG}<span>Hear it</span></button>` : ""}</div>
-              ${ansLine ? `<p class="pr-k"><b>${esc(ansLine.split(": ")[0])}:</b> ${esc(ansLine.slice(ansLine.indexOf(": ") + 2))}</p>` : ""}
+              ${isExam ? `<p class="pr-guide">A guide mark only. It's worked out by AI from past SEC marking schemes, so your real exam mark may be different.</p>` : ""}
+            ${ansLine ? `<p class="pr-k"><b>${esc(ansLine.split(": ")[0])}:</b> ${esc(ansLine.slice(ansLine.indexOf(": ") + 2))}</p>` : ""}
               ${isExam ? (partsOf(f).length >= 2 ? partsHTML(partsOf(f)) : multiPart(q) ? `${f.went_well.length ? `<p class="pr-k"><b>Good:</b></p>${list(f.went_well)}` : ""}${f.to_improve.length ? `<p class="pr-k"><b>For more marks:</b></p>${list(f.to_improve)}` : ""}` : `${good1 ? `<p class="pr-k"><b>Good:</b> ${esc(good1)}</p>` : ""}
               ${fix1 ? `<p class="pr-k"><b>For more marks:</b> ${esc(fix1)}</p>` : ""}`) : `${good1 ? `<p class="pr-k">${esc(good1)}</p>` : ""}
               ${v < 1 && fix1 ? `<p class="pr-k"><b>To fix:</b> ${esc(fix1)}</p>` : ""}
@@ -1375,7 +1376,7 @@
       });
       if (firstExam) {
         const fq = prepQueue()[0];
-        const box = h(`<div class="pr-nextup"><span class="lab">While it's fresh</span><b>Try an exam question on this chapter</b><span>See what the examiner looks for, then write your answer. A low mark on a first go is normal. About 12 min.</span>
+        const box = h(`<div class="pr-nextup"><span class="lab">While it's fresh</span><b>Try an exam question on this chapter</b><span>See what examiners have looked for, then write your answer. A low mark on a first go is normal. About 12 min.</span>
           <button type="button" class="pr-btn big" data-exq>Try an exam question</button></div>`);
         box.querySelector("[data-exq]").onclick = () => { goTo("refresh"); start("Exam question", [fq], "prep", false, { planned: true, guided: true }); };
         (card.querySelector(".pr-missed") || card.querySelector(".pr-score-msg") || card.querySelector("h3")).after(box);
