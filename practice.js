@@ -881,11 +881,19 @@
       const fromNotes = q.source === "From your notes" ? " · From your notes" : "";
       const label = q.qtype === "exam" ? (isPast(q) ? `Past paper · ${esc(q.source || "")} · ${q.marks || 5} marks` : `Exam-style question · ${q.marks || 5} marks`) : q.qtype === "build" || (q.qtype === "recall" && hasWarm) ? `Quick question${q.topic_label ? " · " + esc(q.topic_label) : ""}` : (q.qtype === "recall" ? "Short answer" : "Quick quiz") + fromNotes;
       const card = h(`<div class="pr-card">
-        <div class="pr-row" style="justify-content:space-between"><button type="button" class="pr-btn ghost" data-stop>${session.paper && toPaper ? "← Back to the paper" : session.results.length ? "← Finish here" : session.where === prepSlot ? "← Back to Exam questions" : session.where === warmSlot ? "← Back to Quick questions" : "← Back to Test"}</button><span class="pr-small" style="font-variant-numeric:tabular-nums">${entry.again ? "Improving your answer" : retry ? "Second try" : session.memory ? "Memory check" : entry.warm ? `Warm-up ${entry.warm} of ${entry.warmOf}` : entry.warmed ? "Now the exam question" : `Question ${session.i+1} of ${session.total}`}</span></div>
+        <div class="pr-row" style="justify-content:space-between"><button type="button" class="pr-btn ghost" data-stop>${entry.warm ? "← Back to the exam question" : session.paper && toPaper ? "← Back to the paper" : session.results.length ? "← Finish here" : session.where === prepSlot ? "← Back to Exam questions" : session.where === warmSlot ? "← Back to Quick questions" : "← Back to Test"}</button><span class="pr-small" style="font-variant-numeric:tabular-nums">${entry.again ? "Improving your answer" : retry ? "Second try" : session.memory ? "Memory check" : entry.warm ? `Warm-up ${entry.warm} of ${entry.warmOf}` : entry.warmed ? "Now the exam question" : `Question ${session.i+1} of ${session.total}`}</span></div>
         <div class="pr-progress"><i style="width:${Math.min(session.i,session.total)/session.total*100}%"></i></div>
         <div class="pr-meta"><span>${label}</span>${session.today ? `<span class="pr-today" data-ring></span>` : ""}</div>
         ${questionHtml(q)}</div>`);
       card.querySelector("[data-stop]").onclick = () => {
+        // In the quick questions before an exam question, back means that exam question: skip the rest of them
+        if (entry.warm) {
+          card.querySelectorAll("*").forEach(el => { if (el._stopMic) el._stopMic(); });
+          let n = 0; while (session.queue[session.i + n] && session.queue[session.i + n].warm) n++;
+          session.queue.splice(session.i, n); session.total -= n;
+          const ex = session.queue[session.i]; if (ex) ex.warmCut = true;
+          next(); return;
+        }
         // From an exam paper, back always means the paper
         if (session.paper && toPaper) { logTime(session); session = null; toPaper(); return; }
         session.results.length ? finish() : home();
@@ -1165,7 +1173,7 @@
       }
       if (entry.warmed) {
         // Back from the warm-up: write the full answer from memory (the warm-up answers are not shown)
-        box.querySelector(".pr-tip").innerHTML = `<b>Quick questions done.</b> Now write your full answer. For each point, say what it is and then explain it.`;
+        box.querySelector(".pr-tip").innerHTML = entry.warmCut ? `Back to the exam question. Write your full answer: for each point, say what it is and then explain it.` : `<b>Quick questions done.</b> Now write your full answer. For each point, say what it is and then explain it.`;
       }
       if (isExam && !mem && !entry.again) {
         const sw = h(`<div class="pr-start-w"><button type="button" class="pr-startbtn" data-start>${STEPS_SVG}<span><b>Help me get started</b><span>See how to build this answer, with a clue for each point</span></span></button></div>`);
