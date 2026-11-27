@@ -18,6 +18,6 @@
   answer only; a wrong one comes back once at the end of the set, and second tries are saved (right on the second try
   leaves the Try Again list). The next question's answer box is focused automatically; MCQs answer with A-D or 1-4.
   Done: Annabel's Science Ch 39 (45 MCQ, 52 quick). Daniel's first 8 chapters of Economics, Geography, Politics & Society,
-  Religion 1 and Religion 2 (Nov 2026: ~3,800 quick questions, ~3,200 extra MCQs; every exam question has linked builds). Daniel's Geography: all 28 Core chapters (Nov 2026: 2,854 quick, 2,779 MCQs in total). Content is being rebuilt clean-room from our own notes (course_notes, curriculum_outcomes; audit log question_audit): Geography Strand 1 and all of Religion (2003 syllabus, A-D) done; every exam question in those has >=2 linked builds.
+  Religion 1 and Religion 2 (Nov 2026: ~3,800 quick questions, ~3,200 extra MCQs; every exam question has linked builds). Daniel's Geography: all 28 Core chapters (Nov 2026: 2,854 quick, 2,779 MCQs in total). Content is being rebuilt clean-room from our own notes (course_notes, curriculum_outcomes; audit log question_audit): Geography Strand 1, all of Religion (2003 syllabus, A-D) and all of Economics (2019 spec, Ch 1-18) done; Politics & Society in progress; every exam question in those has >=2 linked builds.
 - The Learn tab is switched off (stages.js LEARN_ON = false): the app is testing and exam prep only. Steps are
   Multiple choice -> Quick questions -> Exam questions. Set LEARN_ON = true to bring Learn back.
