@@ -1657,6 +1657,8 @@
   const STRANDS = [["U", "Skills and inquiry"], ["1", "Physical environment"], ["2", "Human environment"], ["3", "Global environment"]];
   const SKILL_NAMES = { map: "Map reading", photo: "Photos", graph: "Graphs and charts", data: "Tables and data", diagram: "Diagrams", fieldwork: "Fieldwork" };
   async function loadCourse(sb, s){
+    // Course map is built for Geography only (other subjects' outcome codes are a different course)
+    if (!/^geography$/i.test(String(s.fullTitle || s.title || "").trim())) return null;
     const ids = s.chapters.map(c => c.id), qs = [];
     for (let i = 0; i < ids.length; i += 40) for (let off = 0; ; off += 1000) {
       const part = await sb(`quiz_questions?select=id,topic_id,qtype,outcomes,skill&topic_id=in.${inList(ids.slice(i, i + 40))}&retired=is.false&outcomes=not.is.null&order=id.asc&limit=1000&offset=${off}`) || [];
